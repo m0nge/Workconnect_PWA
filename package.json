@@ -1,0 +1,20 @@
+{
+  "name": "workconnect-administracion",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node servidor.js",
+    "start": "node servidor.js",
+    "build": "node scripts/verificar.js",
+    "lint": "node scripts/verificar.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.119.0",
+    "dotenv": "^17.2.3",
+    "express": "^4.21.2"
+  },
+  "engines": {
+    "node": "22.x"
+  }
+}

@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WorkConnect - Administración del Portal</title>
+    <meta
+      name="description"
+      content="Panel de administración de WorkConnect: métricas, gestión de usuarios, empresas, vacantes y moderación de contenido."
+    />
+    <meta property="og:title" content="WorkConnect - Administración del Portal" />
+    <meta
+      property="og:description"
+      content="Panel de administración de WorkConnect: métricas, gestión de usuarios, empresas, vacantes y moderación de contenido."
+    />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/css/estilos.css" />
+  </head>
+  <body>
+    <div class="aplicacion-raiz">
+      <!-- 1. Barra de navegación superior -->
+      <header id="encabezado-principal" class="encabezado"></header>
+
+      <!-- 2. Notificación flotante de confirmación -->
+      <div id="notificacion-flotante" class="notificacion-flotante oculto" role="status" aria-live="polite">
+        <span class="notificacion-punto"></span>
+        <span id="notificacion-texto"></span>
+      </div>
+
+      <!-- 3. Contenedor principal -->
+      <main class="contenedor-principal">
+        <div class="disposicion-panel">
+          <!-- Menú lateral (P11 a P16, P19) -->
+          <aside id="menu-lateral" class="menu-lateral-columna"></aside>
+
+          <!-- Área de trabajo dinámica -->
+          <section id="area-contenido" class="area-contenido" aria-live="polite">
+            <div class="tarjeta-estado-carga">Cargando módulo de administración...</div>
+          </section>
+        </div>
+      </main>
+
+      <!-- 4. Pie de página institucional -->
+      <footer class="pie-pagina">
+        <div class="pie-pagina-contenido">
+          <p class="pie-marca">WorkConnect © 2026 · Portal de Empleo de El Salvador</p>
+          <p class="pie-detalle">
+            Módulo de Administración: P11 a P16 y P19 · Node.js, HTML, CSS y JavaScript
+          </p>
+        </div>
+      </footer>
+    </div>
+
+    <!-- 5. Contenedor global de ventana modal -->
+    <div id="modal-raiz"></div>
+
+    <script type="module" src="/js/aplicacion.js"></script>
+  </body>
+</html>
