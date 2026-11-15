@@ -9,6 +9,9 @@ SELECT
   column_name,
   data_type,
   is_nullable,
+  character_maximum_length,
+  numeric_precision,
+  numeric_scale,
   column_default
 FROM information_schema.columns
 WHERE table_schema = 'public'
@@ -17,11 +20,11 @@ WHERE table_schema = 'public'
     'empresas',
     'vacantes',
     'postulaciones',
-    'perfiles_candidato',
+    'perfiles_candidatos',
     'experiencias_laborales',
-    'estudios',
-    'habilidades',
-    'alertas_empleo'
+    'estudios_candidatos',
+    'habilidades_candidatos',
+    'alertas_laborales'
   )
 ORDER BY table_name, ordinal_position;
 
@@ -41,7 +44,17 @@ FROM pg_constraint AS restriccion
 JOIN pg_class AS tabla ON tabla.oid = restriccion.conrelid
 JOIN pg_namespace AS esquema ON esquema.oid = tabla.relnamespace
 WHERE esquema.nspname = 'public'
-  AND tabla.relname IN ('usuarios', 'empresas', 'vacantes', 'postulaciones')
+  AND tabla.relname IN (
+    'usuarios',
+    'empresas',
+    'vacantes',
+    'postulaciones',
+    'perfiles_candidatos',
+    'experiencias_laborales',
+    'estudios_candidatos',
+    'habilidades_candidatos',
+    'alertas_laborales'
+  )
 ORDER BY tabla.relname, tipo, restriccion.conname;
 
 -- Estado de RLS y FORCE ROW LEVEL SECURITY en las tablas del módulo.
@@ -59,11 +72,11 @@ WHERE esquema.nspname = 'public'
     'empresas',
     'vacantes',
     'postulaciones',
-    'perfiles_candidato',
+    'perfiles_candidatos',
     'experiencias_laborales',
-    'estudios',
-    'habilidades',
-    'alertas_empleo'
+    'estudios_candidatos',
+    'habilidades_candidatos',
+    'alertas_laborales'
   )
 ORDER BY tabla.relname;
 
@@ -85,11 +98,11 @@ WHERE schemaname IN ('public', 'storage')
       'empresas',
       'vacantes',
       'postulaciones',
-      'perfiles_candidato',
+      'perfiles_candidatos',
       'experiencias_laborales',
-      'estudios',
-      'habilidades',
-      'alertas_empleo',
+      'estudios_candidatos',
+      'habilidades_candidatos',
+      'alertas_laborales',
       'objects'
     )
   )
@@ -124,7 +137,17 @@ WHERE NOT trg.tgisinternal
   AND (
     (
       esquema.nspname = 'public'
-      AND tabla.relname IN ('usuarios', 'empresas', 'vacantes', 'postulaciones')
+      AND tabla.relname IN (
+        'usuarios',
+        'empresas',
+        'vacantes',
+        'postulaciones',
+        'perfiles_candidatos',
+        'experiencias_laborales',
+        'estudios_candidatos',
+        'habilidades_candidatos',
+        'alertas_laborales'
+      )
     )
     OR (esquema.nspname = 'auth' AND tabla.relname = 'users')
   )

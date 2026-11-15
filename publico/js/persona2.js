@@ -154,11 +154,13 @@ function renderizarPerfilCandidato() {
     </section>
     <section class="persona2-tarjeta">
       <h3>Experiencia laboral</h3>
-      <p>Estos elementos solo se mantienen en la memoria de esta página.</p>
+      <p>Los elementos de esta lista son borradores locales y no se guardan en la base.</p>
       <form class="persona2-formulario" data-lista="experiencia">
         <div class="persona2-campos">
           ${campo('Puesto', 'experiencia-puesto', 'text', { requerido: true })}
           ${campo('Empresa', 'experiencia-empresa', 'text', { requerido: true })}
+          ${campo('Fecha de inicio', 'experiencia-fecha-inicio', 'date', { requerido: true })}
+          ${campo('Fecha de fin (opcional)', 'experiencia-fecha-fin', 'date')}
         </div>
         <div class="persona2-acciones"><button class="boton" type="submit">Agregar experiencia</button></div>
       </form>
@@ -166,10 +168,14 @@ function renderizarPerfilCandidato() {
     </section>
     <section class="persona2-tarjeta">
       <h3>Estudios</h3>
+      <p>Los datos requeridos corresponden a carrera/programa, institución, nivel académico y año de inicio. Estos elementos son borradores locales.</p>
       <form class="persona2-formulario" data-lista="estudios">
         <div class="persona2-campos">
-          ${campo('Título o nivel de estudio', 'estudio-titulo', 'text', { requerido: true })}
+          ${campo('Carrera o programa', 'estudio-programa', 'text', { requerido: true })}
           ${campo('Institución', 'estudio-institucion', 'text', { requerido: true })}
+          ${campo('Nivel académico', 'estudio-nivel', 'text', { requerido: true })}
+          ${campo('Año de inicio', 'estudio-anio-inicio', 'number', { requerido: true, atributo: 'min="1900" step="1"' })}
+          ${campo('Año de finalización (opcional)', 'estudio-anio-fin', 'number', { atributo: 'min="1900" step="1"' })}
         </div>
         <div class="persona2-acciones"><button class="boton" type="submit">Agregar estudio</button></div>
       </form>
@@ -177,6 +183,7 @@ function renderizarPerfilCandidato() {
     </section>
     <section class="persona2-tarjeta">
       <h3>Habilidades</h3>
+      <p>Las habilidades que agregues aquí son borradores locales; no se guardan.</p>
       <form class="persona2-formulario" data-lista="habilidades">
         ${campo('Habilidad', 'habilidad-nombre', 'text', { requerido: true })}
         <div class="persona2-acciones"><button class="boton" type="submit">Registrar habilidad</button></div>
@@ -193,12 +200,24 @@ function renderizarPerfilCandidato() {
       <h3>Postulaciones y alertas laborales</h3>
       <p>No hay una sesión ni datos de postulaciones disponibles para consultar.</p>
       <div class="persona2-vacio">Las postulaciones guardadas y su historial aparecerán cuando exista una conexión autenticada.</div>
+      <p>La tabla existente no tiene un campo de ubicación; esta pantalla usa los filtros disponibles en el esquema.</p>
       <form class="persona2-formulario" data-formulario="alertas">
         <div class="persona2-campos">
-          ${campo('Puesto o palabra clave', 'alerta-palabra')}
-          ${campo('Ubicación', 'alerta-ubicacion')}
+          ${campo('Nombre de la alerta', 'alerta-nombre', 'text', { requerido: true })}
+          ${campo('Sector', 'alerta-sector', 'text', { requerido: true })}
+          <div class="persona2-campo">
+            <label for="alerta-modalidad">Modalidad (opcional)</label>
+            <select id="alerta-modalidad" name="alerta-modalidad">
+              <option value="">Cualquier modalidad</option>
+              <option value="Presencial">Presencial</option>
+              <option value="Híbrido">Híbrido</option>
+              <option value="Remoto">Remoto</option>
+            </select>
+          </div>
+          ${campo('Salario mínimo (USD, opcional)', 'alerta-salario-minimo', 'number', { atributo: 'min="0" step="0.01"' })}
+          ${campo('Frecuencia', 'alerta-frecuencia', 'text', { atributo: 'value="Semanal"' })}
         </div>
-        <label class="persona2-opcion"><input type="checkbox" name="alertas" /> Quiero recibir alertas de empleo</label>
+        <label class="persona2-opcion"><input id="alerta-activa" type="checkbox" checked /> Alerta activa</label>
         <div class="persona2-acciones"><button class="boton" type="submit">Configurar alerta</button></div>
         <div data-mensaje-formulario></div>
       </form>
@@ -228,12 +247,39 @@ function enlazarPerfilCandidato() {
     formPerfil.querySelector('[data-mensaje-formulario]').innerHTML = avisoAccion();
   });
 
+  const validarRangos = (form) => {
+    const tipo = form.getAttribute('data-lista');
+    const inicio = form.querySelector(
+      tipo === 'experiencia' ? '#experiencia-fecha-inicio' : '#estudio-anio-inicio'
+    );
+    const fin = form.querySelector(
+      tipo === 'experiencia' ? '#experiencia-fecha-fin' : '#estudio-anio-fin'
+    );
+    if (!inicio || !fin) return;
+    const finAnterior =
+      tipo === 'experiencia'
+        ? fin.value < inicio.value
+        : Number(fin.value) < Number(inicio.value);
+    fin.setCustomValidity(
+      inicio.value && fin.value && finAnterior
+        ? tipo === 'experiencia'
+          ? 'La fecha de fin no puede ser anterior a la fecha de inicio.'
+          : 'El año de finalización no puede ser anterior al año de inicio.'
+        : ''
+    );
+  };
+
   contenido.querySelectorAll('[data-lista]').forEach((form) => {
+    form.querySelectorAll('input').forEach((entrada) => {
+      entrada.addEventListener('input', () => validarRangos(form));
+    });
     form.addEventListener('submit', (evento) => {
       evento.preventDefault();
+      validarRangos(form);
       if (!form.reportValidity()) return;
       const tipo = form.getAttribute('data-lista');
-      const valores = [...form.querySelectorAll('input')].map((elemento) => elemento.value.trim());
+      const controles = [...form.querySelectorAll('input, select, textarea')];
+      const valores = controles.map((elemento) => elemento.value.trim());
       const etiqueta = valores.filter(Boolean).join(' · ');
       const lista = contenido.querySelector(`[data-lista-items="${tipo}"]`);
       if (lista.querySelector('.persona2-vacio')) lista.innerHTML = '';
@@ -261,7 +307,7 @@ function enlazarPerfilCandidato() {
           </span>
         `;
         nuevoElemento.querySelector('[data-editar]')?.addEventListener('click', () => {
-          const entradas = form.querySelectorAll('input');
+          const entradas = form.querySelectorAll('input, select, textarea');
           JSON.parse(nuevoElemento.dataset.valores).forEach((valor, indice) => {
             entradas[indice].value = valor;
           });
@@ -274,7 +320,11 @@ function enlazarPerfilCandidato() {
             delete form.dataset.editando;
             form.reset();
             form.querySelector('[type="submit"]').textContent =
-              tipo === 'experiencia' ? 'Agregar experiencia' : 'Agregar estudio';
+              tipo === 'experiencia'
+                ? 'Agregar experiencia'
+                : tipo === 'estudios'
+                  ? 'Agregar estudio'
+                  : 'Registrar habilidad';
           }
           nuevoElemento.remove();
           if (!lista.children.length) {
@@ -324,18 +374,24 @@ function renderizarEmpresa() {
       <form class="persona2-formulario" data-formulario="empresa">
         <div class="persona2-campos">
           ${campo('Nombre comercial', 'empresa-nombre', 'text', { requerido: true })}
+          ${campo('Razón social', 'empresa-razon-social', 'text', { requerido: true })}
+          ${campo('NIT', 'empresa-nit', 'text', { requerido: true })}
           ${campo('Sector', 'empresa-sector', 'text', { requerido: true })}
           ${campo('Departamento', 'empresa-departamento', 'text', { requerido: true })}
           ${campo('Municipio', 'empresa-municipio', 'text', { requerido: true })}
+          ${campo('Dirección (opcional)', 'empresa-direccion')}
           ${campo('Correo de contacto', 'empresa-correo', 'email', { requerido: true })}
-          ${campo('Teléfono', 'empresa-telefono', 'tel')}
+          ${campo('Teléfono', 'empresa-telefono', 'tel', { requerido: true })}
           ${campo('Sitio web', 'empresa-web', 'url')}
           ${campo('Descripción', 'empresa-descripcion', 'textarea', { completo: true })}
         </div>
         <div class="persona2-campo">
           <label for="empresa-tamano">Tamaño de empresa</label>
           <select id="empresa-tamano" name="tamano">
-            <option value="">Selecciona una opción</option><option>1-10 colaboradores</option><option>11-50 colaboradores</option><option>51-200 colaboradores</option><option>Más de 200 colaboradores</option>
+            <option value="51-200 empleados" selected>51-200 empleados (predeterminado)</option>
+            <option value="1-10 empleados">1-10 empleados</option>
+            <option value="11-50 empleados">11-50 empleados</option>
+            <option value="Más de 200 empleados">Más de 200 empleados</option>
           </select>
         </div>
         <div class="persona2-campo">
@@ -370,16 +426,24 @@ function renderizarEmpresa() {
 
 function enlazarEmpresa() {
   const formulario = contenido.querySelector('[data-formulario="empresa"]');
-  const controles = ['empresa-nombre', 'empresa-sector', 'empresa-departamento', 'empresa-municipio', 'empresa-descripcion'];
+  const controles = [
+    'empresa-nombre',
+    'empresa-sector',
+    'empresa-departamento',
+    'empresa-municipio',
+    'empresa-direccion',
+    'empresa-descripcion'
+  ];
   const actualizarPrevia = () => {
     const nombre = contenido.querySelector('#empresa-nombre').value.trim();
     const sector = contenido.querySelector('#empresa-sector').value.trim();
     const departamento = contenido.querySelector('#empresa-departamento').value.trim();
     const municipio = contenido.querySelector('#empresa-municipio').value.trim();
+    const direccion = contenido.querySelector('#empresa-direccion').value.trim();
     const descripcion = contenido.querySelector('#empresa-descripcion').value.trim();
     contenido.querySelector('#empresa-previa-nombre').textContent = nombre || 'Nombre comercial';
     contenido.querySelector('#empresa-previa-sector').textContent =
-      `${sector || 'Sector'} · ${municipio || 'Municipio'}${departamento ? `, ${departamento}` : ''}`;
+      `${sector || 'Sector'} · ${direccion ? `${direccion}, ` : ''}${municipio || 'Municipio'}${departamento ? `, ${departamento}` : ''}`;
     contenido.querySelector('#empresa-previa-descripcion').textContent =
       descripcion || 'La descripción de la empresa aparecerá aquí.';
   };
@@ -411,7 +475,7 @@ function renderizarVacante() {
   return `<div class="persona2-contenedor">
     <section class="persona2-tarjeta">
       <h2>Publicar vacante</h2>
-      <p>Las vacantes nuevas deben enviarse a revisión. El estado que usa el módulo administrativo para una nueva vacante es <strong>Pendiente</strong>; esta pantalla todavía no puede crearla.</p>
+      <p>La base requiere ambos salarios y deja las vacantes nuevas en <strong>Pendiente</strong>. Esta pantalla solo valida un borrador; todavía no lo crea ni lo envía.</p>
       <form class="persona2-formulario" data-formulario="vacante">
         <div class="persona2-campos">
           ${campo('Título del puesto', 'vacante-titulo', 'text', { requerido: true })}
@@ -420,13 +484,13 @@ function renderizarVacante() {
           ${campo('Municipio', 'vacante-municipio', 'text', { requerido: true })}
         </div>
         <div class="persona2-campos">
-          <div class="persona2-campo"><label for="vacante-modalidad">Modalidad *</label><select id="vacante-modalidad" required><option value="">Selecciona modalidad</option><option>Presencial</option><option>Remoto</option><option>Híbrido</option></select></div>
-          <div class="persona2-campo"><label for="vacante-contrato">Tipo de contrato *</label><select id="vacante-contrato" required><option value="">Selecciona tipo de contrato</option><option>Tiempo completo</option><option>Medio tiempo</option><option>Temporal</option><option>Por servicios profesionales</option><option>Prácticas</option></select></div>
+          <div class="persona2-campo"><label for="vacante-modalidad">Modalidad *</label><select id="vacante-modalidad" name="modalidad" required><option value="">Selecciona modalidad</option><option value="Presencial">Presencial</option><option value="Híbrido">Híbrido</option><option value="Remoto">Remoto</option></select></div>
+          <div class="persona2-campo"><label for="vacante-contrato">Tipo de contrato *</label><select id="vacante-contrato" name="tipo_contrato" required><option value="">Selecciona tipo de contrato</option><option value="Tiempo completo">Tiempo completo</option><option value="Medio tiempo">Medio tiempo</option><option value="Servicios profesionales">Servicios profesionales</option></select></div>
           ${campo('Número de plazas', 'vacante-plazas', 'number', { requerido: true, atributo: 'min="1" step="1" value="1"' })}
         </div>
         <div class="persona2-campos">
-          ${campo('Salario mínimo (USD)', 'vacante-salario-min', 'number', { atributo: 'min="0" step="0.01"' })}
-          ${campo('Salario máximo (USD)', 'vacante-salario-max', 'number', { atributo: 'min="0" step="0.01"' })}
+          ${campo('Salario mínimo (USD)', 'vacante-salario-min', 'number', { requerido: true, atributo: 'min="0" step="0.01"' })}
+          ${campo('Salario máximo (USD)', 'vacante-salario-max', 'number', { requerido: true, atributo: 'min="0" step="0.01"' })}
         </div>
         <div class="persona2-campos">
           ${campo('Descripción', 'vacante-descripcion', 'textarea', { requerido: true, completo: true })}
