@@ -1,0 +1,332 @@
+.persona2-encabezado {
+  max-width: 80rem;
+}
+
+.persona2-marca {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  color: var(--color-carbon);
+  text-decoration: none;
+}
+
+.persona2-marca > span:last-child {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.persona2-marca small {
+  color: var(--color-texto-atenuado);
+  font-size: 0.7rem;
+}
+
+.persona2-logo {
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  place-items: center;
+  border-radius: var(--radio-pequeno);
+  background: var(--color-vino);
+  color: var(--color-blanco);
+  font-weight: 800;
+}
+
+.persona2-principal {
+  max-width: 64rem;
+}
+
+.persona2-introduccion {
+  margin-bottom: 1.25rem;
+}
+
+.persona2-navegacion {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--color-borde);
+}
+
+.persona2-navegacion a {
+  flex: 0 0 auto;
+  padding: 0.75rem 0.65rem;
+  border-bottom: 2px solid transparent;
+  color: var(--color-texto-secundario);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.persona2-navegacion a:hover,
+.persona2-navegacion a.activo {
+  border-bottom-color: var(--color-vino);
+  color: var(--color-vino);
+}
+
+.persona2-aviso,
+.persona2-mensaje {
+  margin: 0 0 1.25rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--color-ambar-borde);
+  border-radius: var(--radio-mediano);
+  background: var(--color-ambar-fondo);
+  color: #78350f;
+  font-size: 0.83rem;
+}
+
+.persona2-mensaje {
+  margin: 0;
+}
+
+.persona2-contenedor {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.persona2-tarjeta {
+  padding: 1.25rem;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio-mediano);
+  background: var(--color-blanco);
+  box-shadow: var(--sombra-suave);
+}
+
+.persona2-tarjeta h2,
+.persona2-tarjeta h3 {
+  margin: 0 0 0.35rem;
+  color: var(--color-carbon);
+}
+
+.persona2-tarjeta h2 {
+  font-size: 1.25rem;
+}
+
+.persona2-tarjeta h3 {
+  font-size: 1rem;
+}
+
+.persona2-tarjeta > p,
+.persona2-ayuda {
+  color: var(--color-texto-secundario);
+  font-size: 0.83rem;
+}
+
+.persona2-formulario,
+.persona2-campos {
+  display: grid;
+  gap: 1rem;
+}
+
+.persona2-campos {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  margin-top: 1rem;
+}
+
+.persona2-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.persona2-campo.completo {
+  grid-column: 1 / -1;
+}
+
+.persona2-campo label,
+.persona2-etiqueta {
+  color: var(--color-texto);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.persona2-campo input,
+.persona2-campo select,
+.persona2-campo textarea {
+  width: 100%;
+  min-height: 2.7rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio-mediano);
+  background: var(--color-blanco);
+  color: var(--color-carbon);
+  font-size: 0.875rem;
+}
+
+.persona2-campo textarea {
+  min-height: 7rem;
+  resize: vertical;
+}
+
+.persona2-campo input:focus,
+.persona2-campo select:focus,
+.persona2-campo textarea:focus {
+  border-color: var(--color-vino);
+  outline: 2px solid var(--color-vino-suave);
+}
+
+.persona2-opciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  align-items: center;
+}
+
+.persona2-opcion {
+  display: inline-flex;
+  gap: 0.45rem;
+  align-items: center;
+  color: var(--color-texto-secundario);
+  font-size: 0.84rem;
+}
+
+.persona2-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+  margin-top: 1rem;
+}
+
+.persona2-enlace-boton {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.persona2-lista {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.persona2-lista li,
+.persona2-vacio {
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--color-borde-suave);
+  border-radius: var(--radio-mediano);
+  color: var(--color-texto-secundario);
+  font-size: 0.83rem;
+}
+
+.persona2-lista li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.persona2-lista button {
+  border: 0;
+  background: transparent;
+  color: var(--color-vino);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+
+.persona2-vacio {
+  color: var(--color-texto-atenuado);
+}
+
+.persona2-progreso {
+  width: 100%;
+  height: 0.6rem;
+  accent-color: var(--color-vino);
+}
+
+.persona2-avance {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0.75rem 0 0.4rem;
+  color: var(--color-texto-secundario);
+  font-size: 0.8rem;
+}
+
+.persona2-vista-previa {
+  min-height: 9rem;
+  padding: 1rem;
+  border: 1px dashed var(--color-borde);
+  border-radius: var(--radio-mediano);
+  background: var(--color-hueso);
+}
+
+.persona2-vista-previa img {
+  display: block;
+  max-width: 9rem;
+  max-height: 5rem;
+  margin-bottom: 0.75rem;
+  object-fit: contain;
+}
+
+.persona2-filtros {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: 0.75rem;
+}
+
+.persona2-filtros .persona2-campo {
+  margin: 0;
+}
+
+.persona2-tabla {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.persona2-tabla th,
+.persona2-tabla td {
+  padding: 0.75rem;
+  border-bottom: 1px solid var(--color-borde-suave);
+  color: var(--color-texto-secundario);
+  font-size: 0.8rem;
+}
+
+.persona2-tabla th {
+  color: var(--color-texto);
+  font-size: 0.7rem;
+}
+
+.persona2-desplazamiento {
+  overflow-x: auto;
+}
+
+.persona2-estadisticas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.75rem;
+}
+
+.persona2-estadistica {
+  padding: 0.9rem;
+  border: 1px solid var(--color-borde-suave);
+  border-radius: var(--radio-mediano);
+  background: var(--color-hueso);
+}
+
+.persona2-estadistica strong {
+  display: block;
+  color: var(--color-carbon);
+  font-size: 1.25rem;
+}
+
+.persona2-estadistica span {
+  color: var(--color-texto-atenuado);
+  font-size: 0.72rem;
+}
+
+@media (max-width: 639px) {
+  .persona2-encabezado .boton {
+    padding: 0.55rem 0.65rem;
+    font-size: 0.75rem;
+  }
+
+  .persona2-tarjeta {
+    padding: 1rem;
+  }
+}
