@@ -16,12 +16,9 @@ import { renderizarP28CrearTema } from './pantallas/p28CrearTema.js';
 import { renderizarAutenticacion } from './componentes/autenticacion.js';
 import { escaparHtml } from './utilidades/formato.js';
 
+localStorage.removeItem('workconnect-cuentas');
+
 // Estado global de la aplicación en JavaScript puro
-const rolesPermitidos = ['visitante', 'candidato', 'empresa', 'administrador'];
-const rolGuardado = sessionStorage.getItem('workconnect-rol');
-const rolInicial = rolesPermitidos.includes(rolGuardado) ? rolGuardado : 'visitante';
-const sesionGuardada = sessionStorage.getItem('workconnect-sesion');
-const usuarioInicial = sesionGuardada ? JSON.parse(sesionGuardada) : null;
 const accesoSolicitado = new URLSearchParams(window.location.search).get('acceso') === 'login';
 const destinosCuentaPermitidos = {
   P07: { pantalla: 'P07', rol: 'candidato' },
@@ -36,17 +33,12 @@ const destinoSolicitado = destinosCuentaPermitidos[
 
 const estadoAplicacion = {
   pantallaActual:
-    accesoSolicitado && !usuarioInicial
-      ? 'AUTH_LOGIN'
-      : rolInicial === 'administrador'
-        ? 'P11'
-        : 'P01',
+    accesoSolicitado ? 'AUTH_LOGIN' : 'P01',
   vacanteSeleccionada: null,
-  rolActual: rolInicial,
-  usuarioActual: usuarioInicial,
+  rolActual: 'visitante',
+  usuarioActual: null,
   pantallaPendiente: null,
-  destinoCuentaPendiente:
-    accesoSolicitado && !usuarioInicial ? destinoSolicitado || null : null,
+  destinoCuentaPendiente: accesoSolicitado ? destinoSolicitado || null : null,
   datos: null,
   temporizadorNotificacion: null
 };
@@ -117,6 +109,23 @@ function redireccionarDestinoCuenta(destino) {
   window.location.href = `/persona2.html${consulta}#${destino.pantalla}`;
 }
 
+function redireccionarAlPortalSegunRol(usuario) {
+  const destinos = {
+    candidato: { pantalla: 'P07', rol: 'candidato' },
+    empresa: { pantalla: 'P08', rol: 'empresa' }
+  };
+  const destino = destinos[usuario.rol];
+  if (destino) {
+    redireccionarDestinoCuenta(destino);
+    return true;
+  }
+
+  estadoAplicacion.destinoCuentaPendiente = null;
+  estadoAplicacion.pantallaPendiente = null;
+  estadoAplicacion.pantallaActual = usuario.rol === 'administrador' ? 'P11' : 'P01';
+  return false;
+}
+
 async function solicitarApi(ruta, opciones = {}) {
   const respuesta = await fetch(ruta, {
     headers: { 'Content-Type': 'application/json' },
@@ -126,6 +135,7 @@ async function solicitarApi(ruta, opciones = {}) {
   const cuerpo = await respuesta.json().catch(() => ({}));
   if (!respuesta.ok) {
     const error = new Error(cuerpo.error || 'Error al comunicarse con el servidor.');
+    error.status = respuesta.status;
     error.requiereConfiguracion = Boolean(cuerpo.requiereConfiguracion);
     error.urlSupabase = cuerpo.urlSupabase || '';
     throw error;
@@ -135,6 +145,20 @@ async function solicitarApi(ruta, opciones = {}) {
 }
 
 function cambiarPantalla(nuevaPantalla, idVacante = null, nuevoRol = estadoAplicacion.rolActual) {
+  if (
+    ['AUTH_LOGIN', 'AUTH_REGISTRO'].includes(nuevaPantalla) &&
+    estadoAplicacion.usuarioActual
+  ) {
+    const destinoPendiente = estadoAplicacion.destinoCuentaPendiente;
+    if (destinoPendiente?.rol === estadoAplicacion.usuarioActual.rol) {
+      estadoAplicacion.destinoCuentaPendiente = null;
+      redireccionarDestinoCuenta(destinoPendiente);
+      return;
+    }
+    if (!redireccionarAlPortalSegunRol(estadoAplicacion.usuarioActual)) renderizarInterfaz();
+    return;
+  }
+
   const pantallasProtegidas = ['P28', 'P11', 'P12', 'P13', 'P14', 'P15', 'P16', 'P19'];
   const permisos = {
     P28: ['candidato', 'empresa'],
@@ -161,8 +185,9 @@ function cambiarPantalla(nuevaPantalla, idVacante = null, nuevoRol = estadoAplic
     return;
   }
   if (nuevaPantalla === 'CERRAR_SESION') {
-    sessionStorage.removeItem('workconnect-sesion');
-    sessionStorage.removeItem('workconnect-rol');
+    solicitarApi('/api/auth/logout', { method: 'POST' }).catch((error) => {
+      mostrarNotificacion(error.message || 'No se pudo cerrar completamente la sesión.');
+    });
     estadoAplicacion.usuarioActual = null;
     estadoAplicacion.rolActual = 'visitante';
     estadoAplicacion.pantallaActual = 'P01';
@@ -173,7 +198,6 @@ function cambiarPantalla(nuevaPantalla, idVacante = null, nuevoRol = estadoAplic
   if (estadoAplicacion.usuarioActual) {
     estadoAplicacion.rolActual = estadoAplicacion.usuarioActual.rol;
   }
-  sessionStorage.setItem('workconnect-rol', estadoAplicacion.rolActual);
   estadoAplicacion.pantallaActual = nuevaPantalla;
   estadoAplicacion.vacanteSeleccionada = idVacante;
   renderizarInterfaz();
@@ -320,7 +344,6 @@ const accionesPanel = {
 function completarAutenticacion(cuenta) {
   estadoAplicacion.usuarioActual = cuenta;
   estadoAplicacion.rolActual = cuenta.rol;
-  sessionStorage.setItem('workconnect-rol', cuenta.rol);
 
   if (estadoAplicacion.destinoCuentaPendiente) {
     const destino = estadoAplicacion.destinoCuentaPendiente;
@@ -468,6 +491,34 @@ async function iniciarAplicacion() {
     cambiarPantalla,
     estadoAplicacion.rolActual
   );
+
+  try {
+    const sesion = await solicitarApi('/api/auth/sesion');
+    if (sesion.autenticado) {
+      estadoAplicacion.usuarioActual = sesion.usuario;
+      estadoAplicacion.rolActual = sesion.usuario.rol;
+      if (['AUTH_LOGIN', 'AUTH_REGISTRO'].includes(estadoAplicacion.pantallaActual)) {
+        const destinoPendiente = estadoAplicacion.destinoCuentaPendiente;
+        if (destinoPendiente?.rol === sesion.usuario.rol) {
+          estadoAplicacion.destinoCuentaPendiente = null;
+          redireccionarDestinoCuenta(destinoPendiente);
+          return;
+        }
+        if (redireccionarAlPortalSegunRol(sesion.usuario)) return;
+      }
+    }
+  } catch (error) {
+    if (error.status !== 401) {
+      estadoAplicacion.datos = datosPublicosVacios();
+      renderizarInterfaz();
+      contenedorContenido.innerHTML = `
+        <div class="tarjeta-estado-carga" style="color:#be123c;">
+          No se pudo verificar la sesión. Intenta nuevamente.
+        </div>
+      `;
+      return;
+    }
+  }
 
   try {
     estadoAplicacion.datos = await solicitarApi('/api/datos');
