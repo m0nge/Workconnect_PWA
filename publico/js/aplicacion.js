@@ -22,13 +22,31 @@ const rolGuardado = sessionStorage.getItem('workconnect-rol');
 const rolInicial = rolesPermitidos.includes(rolGuardado) ? rolGuardado : 'visitante';
 const sesionGuardada = sessionStorage.getItem('workconnect-sesion');
 const usuarioInicial = sesionGuardada ? JSON.parse(sesionGuardada) : null;
+const accesoSolicitado = new URLSearchParams(window.location.search).get('acceso') === 'login';
+const destinosCuentaPermitidos = {
+  P07: { pantalla: 'P07', rol: 'candidato' },
+  POSTULACIONES_CANDIDATO: { pantalla: 'P07', rol: 'candidato', seccion: 'postulaciones' },
+  P08: { pantalla: 'P08', rol: 'empresa' },
+  P09: { pantalla: 'P09', rol: 'empresa' },
+  P10: { pantalla: 'P10', rol: 'empresa' }
+};
+const destinoSolicitado = destinosCuentaPermitidos[
+  new URLSearchParams(window.location.search).get('destino')
+];
 
 const estadoAplicacion = {
-  pantallaActual: rolInicial === 'administrador' ? 'P11' : 'P01',
+  pantallaActual:
+    accesoSolicitado && !usuarioInicial
+      ? 'AUTH_LOGIN'
+      : rolInicial === 'administrador'
+        ? 'P11'
+        : 'P01',
   vacanteSeleccionada: null,
   rolActual: rolInicial,
   usuarioActual: usuarioInicial,
   pantallaPendiente: null,
+  destinoCuentaPendiente:
+    accesoSolicitado && !usuarioInicial ? destinoSolicitado || null : null,
   datos: null,
   temporizadorNotificacion: null
 };
@@ -46,6 +64,13 @@ document.querySelectorAll('[data-pie-pantalla]').forEach((enlace) => {
   });
 });
 
+document.querySelectorAll('[data-pie-cuenta]').forEach((enlace) => {
+  enlace.addEventListener('click', (evento) => {
+    evento.preventDefault();
+    navegarASeccionCuenta(enlace.dataset.pieCuenta);
+  });
+});
+
 function mostrarNotificacion(mensaje) {
   if (!notificacionElemento || !notificacionTexto) return;
   notificacionTexto.textContent = mensaje;
@@ -58,6 +83,38 @@ function mostrarNotificacion(mensaje) {
   estadoAplicacion.temporizadorNotificacion = setTimeout(() => {
     notificacionElemento.classList.add('oculto');
   }, 3200);
+}
+
+function navegarASeccionCuenta(pantalla) {
+  const destino = pantalla === 'POSTULACIONES_CANDIDATO'
+    ? { pantalla: 'P07', rol: 'candidato', seccion: 'postulaciones' }
+    : { pantalla, rol: { P07: 'candidato', P08: 'empresa', P09: 'empresa', P10: 'empresa' }[pantalla] };
+  const rolRequerido = destino.rol;
+  if (!rolRequerido) {
+    mostrarNotificacion('No se pudo identificar la sección solicitada.');
+    return;
+  }
+
+  if (!estadoAplicacion.usuarioActual) {
+    estadoAplicacion.pantallaPendiente = null;
+    estadoAplicacion.destinoCuentaPendiente = destino;
+    estadoAplicacion.pantallaActual = 'AUTH_LOGIN';
+    renderizarInterfaz();
+    return;
+  }
+
+  if (estadoAplicacion.usuarioActual.rol !== rolRequerido) {
+    const nombreRol = rolRequerido === 'candidato' ? 'candidato' : 'empresa';
+    mostrarNotificacion(`Esta sección es para cuentas de ${nombreRol}. Ingresa con el rol correcto.`);
+    return;
+  }
+
+  redireccionarDestinoCuenta(destino);
+}
+
+function redireccionarDestinoCuenta(destino) {
+  const consulta = destino.seccion ? `?seccion=${encodeURIComponent(destino.seccion)}` : '';
+  window.location.href = `/persona2.html${consulta}#${destino.pantalla}`;
 }
 
 async function solicitarApi(ruta, opciones = {}) {
@@ -260,6 +317,31 @@ const accionesPanel = {
   }
 };
 
+function completarAutenticacion(cuenta) {
+  estadoAplicacion.usuarioActual = cuenta;
+  estadoAplicacion.rolActual = cuenta.rol;
+  sessionStorage.setItem('workconnect-rol', cuenta.rol);
+
+  if (estadoAplicacion.destinoCuentaPendiente) {
+    const destino = estadoAplicacion.destinoCuentaPendiente;
+    estadoAplicacion.destinoCuentaPendiente = null;
+    if (cuenta.rol !== destino.rol) {
+      estadoAplicacion.pantallaActual = 'P01';
+      renderizarInterfaz();
+      mostrarNotificacion(
+        `Tu cuenta es de ${cuenta.rol === 'candidato' ? 'candidato' : 'empresa'} y no puede abrir esta sección.`
+      );
+      return;
+    }
+    redireccionarDestinoCuenta(destino);
+    return;
+  }
+
+  estadoAplicacion.pantallaActual = estadoAplicacion.pantallaPendiente || 'P01';
+  estadoAplicacion.pantallaPendiente = null;
+  renderizarInterfaz();
+}
+
 function renderizarInterfaz() {
   if (!estadoAplicacion.datos) return;
 
@@ -276,7 +358,8 @@ function renderizarInterfaz() {
     contenedorEncabezado,
     cambiarPantalla,
     estadoAplicacion.rolActual,
-    estadoAplicacion.usuarioActual
+    estadoAplicacion.usuarioActual,
+    navegarASeccionCuenta
   );
   renderizarMenuLateral(
     contenedorMenuLateral,
@@ -291,13 +374,7 @@ function renderizarInterfaz() {
       renderizarAutenticacion(
         contenedorContenido,
         'login',
-        (cuenta) => {
-          estadoAplicacion.usuarioActual = cuenta;
-          estadoAplicacion.rolActual = cuenta.rol;
-          estadoAplicacion.pantallaActual = estadoAplicacion.pantallaPendiente || 'P01';
-          estadoAplicacion.pantallaPendiente = null;
-          renderizarInterfaz();
-        },
+        completarAutenticacion,
         () => cambiarPantalla('P01')
       );
       break;
@@ -305,13 +382,7 @@ function renderizarInterfaz() {
       renderizarAutenticacion(
         contenedorContenido,
         'registro',
-        (cuenta) => {
-          estadoAplicacion.usuarioActual = cuenta;
-          estadoAplicacion.rolActual = cuenta.rol;
-          estadoAplicacion.pantallaActual = estadoAplicacion.pantallaPendiente || 'P01';
-          estadoAplicacion.pantallaPendiente = null;
-          renderizarInterfaz();
-        },
+        completarAutenticacion,
         () => cambiarPantalla('P01')
       );
       break;

@@ -1,7 +1,84 @@
 const contenido = document.querySelector('#persona2-contenido');
 const navegacion = document.querySelector('.persona2-navegacion');
 const estadosPostulacion = ['Nueva', 'En revisión', 'Entrevista', 'Contratada', 'Rechazada'];
+const rolesPorPantalla = {
+  P07: 'candidato',
+  P08: 'empresa',
+  P09: 'empresa',
+  P10: 'empresa'
+};
 let secuenciaBorrador = 0;
+
+function leerSesionActual() {
+  const sesionGuardada = sessionStorage.getItem('workconnect-sesion');
+  if (!sesionGuardada) return null;
+
+  try {
+    const sesion = JSON.parse(sesionGuardada);
+    return sesion && typeof sesion.rol === 'string' ? sesion : null;
+  } catch {
+    sessionStorage.removeItem('workconnect-sesion');
+    sessionStorage.removeItem('workconnect-rol');
+    return null;
+  }
+}
+
+function actualizarNavegacion(rol, pantalla) {
+  const opciones =
+    rol === 'candidato'
+      ? [
+          { href: '#P07', pantalla: 'P07', etiqueta: 'Perfil candidato' },
+          {
+            href: '/persona2.html?seccion=postulaciones#P07',
+            pantalla: 'P07',
+            seccion: 'postulaciones',
+            etiqueta: 'Mis postulaciones'
+          }
+        ]
+      : rol === 'empresa'
+        ? [
+            { href: '#P08', pantalla: 'P08', etiqueta: 'Empresa' },
+            { href: '#P09', pantalla: 'P09', etiqueta: 'Publicar vacante' },
+            { href: '#P10', pantalla: 'P10', etiqueta: 'Postulaciones recibidas' }
+          ]
+        : [];
+  const seccionActual = new URLSearchParams(window.location.search).get('seccion');
+
+  navegacion.innerHTML = opciones
+    .map(
+      (opcion) => `<a
+        href="${opcion.href}"
+        data-pantalla="${opcion.pantalla}"
+        ${opcion.seccion ? `data-seccion="${opcion.seccion}"` : ''}
+        ${opcion.pantalla === pantalla && (opcion.seccion || '') === (seccionActual || '') ? 'class="activo" aria-current="page"' : ''}
+      >${opcion.etiqueta}</a>`
+    )
+    .join('');
+  navegacion.hidden = opciones.length === 0;
+}
+
+function irAInicioSesion(pantalla) {
+  const seccionSolicitada = new URLSearchParams(window.location.search).get('seccion');
+  const destino =
+    pantalla === 'P07' && seccionSolicitada === 'postulaciones'
+      ? 'POSTULACIONES_CANDIDATO'
+      : pantalla;
+  window.location.replace(`/?acceso=login&destino=${encodeURIComponent(destino)}`);
+}
+
+function renderizarAccesoDenegado(rolRequerido, rolActual) {
+  const nombresRol = {
+    candidato: 'candidato',
+    empresa: 'empresa',
+    administrador: 'administrador'
+  };
+  const mensajeRol = nombresRol[rolActual] || 'visitante';
+  return `<section class="persona2-tarjeta" role="alert">
+    <h2>Sección no disponible para esta cuenta</h2>
+    <p>Esta sección es para cuentas de ${rolRequerido}. Tu sesión actual corresponde a ${mensajeRol}.</p>
+    <a class="boton boton-primario persona2-enlace-boton" href="/">Volver al portal</a>
+  </section>`;
+}
 
 function escaparHtml(valor) {
   return String(valor ?? '').replace(/[&<>"']/g, (caracter) => {
@@ -31,105 +108,8 @@ function campo(etiqueta, id, tipo = 'text', opciones = {}) {
   </div>`;
 }
 
-function avisoAccion() {
-  return '<p class="persona2-mensaje" role="status">No se guardó ni envió información: falta una sesión autenticada y una API autorizada para este módulo.</p>';
-}
-
-function renderizarAcceso() {
-  return `<div class="persona2-contenedor">
-    <section class="persona2-tarjeta">
-      <h2>Tu próximo paso empieza aquí</h2>
-      <p>Inicia sesión o crea una cuenta de candidato o empresa. Esta pantalla valida los campos, pero el proyecto aún no tiene un proveedor de autenticación configurado.</p>
-      <div class="persona2-navegacion" role="tablist" aria-label="Acceso">
-        <a href="#P06" role="tab" data-acceso="entrar" aria-selected="true">Iniciar sesión</a>
-        <a href="#P06" role="tab" data-acceso="crear" aria-selected="false">Crear cuenta</a>
-      </div>
-      <div id="persona2-formulario-acceso"></div>
-    </section>
-  </div>`;
-}
-
-function formularioAcceso(tipo) {
-  if (tipo === 'crear') {
-    return `<form class="persona2-formulario" data-formulario="registro">
-      <div class="persona2-campos">
-        ${campo('Nombre completo o nombre comercial', 'registro-nombre', 'text', { requerido: true, atributo: 'minlength="2" autocomplete="name"' })}
-        ${campo('Correo electrónico', 'registro-correo', 'email', { requerido: true, atributo: 'autocomplete="email"' })}
-      </div>
-      <div class="persona2-campo">
-        <label for="registro-rol">Tipo de cuenta *</label>
-        <select id="registro-rol" name="rol" required>
-          <option value="">Selecciona un perfil</option>
-          <option value="Candidato/a">Candidato/a</option>
-          <option value="Empresa">Empresa</option>
-        </select>
-      </div>
-      <div class="persona2-campos">
-        ${campo('Contraseña', 'registro-clave', 'password', { requerido: true, atributo: 'minlength="8" autocomplete="new-password"' })}
-        ${campo('Confirmar contraseña', 'registro-confirmacion', 'password', { requerido: true, atributo: 'minlength="8" autocomplete="new-password"' })}
-      </div>
-      <label class="persona2-opcion"><input id="registro-terminos" type="checkbox" required /> Acepto los términos y condiciones *</label>
-      <div class="persona2-acciones"><button class="boton boton-primario" type="submit">Crear cuenta</button></div>
-      <div data-mensaje-formulario></div>
-    </form>`;
-  }
-
-  return `<form class="persona2-formulario" data-formulario="acceso">
-    <div class="persona2-campos">
-      ${campo('Correo electrónico', 'acceso-correo', 'email', { requerido: true, atributo: 'autocomplete="email"' })}
-      ${campo('Contraseña', 'acceso-clave', 'password', { requerido: true, atributo: 'autocomplete="current-password"' })}
-    </div>
-    <div class="persona2-campo">
-      <label for="acceso-rol">Tipo de cuenta</label>
-      <select id="acceso-rol" name="rol" required>
-        <option value="Candidato/a">Candidato/a</option>
-        <option value="Empresa">Empresa</option>
-      </select>
-    </div>
-    <div class="persona2-acciones"><button class="boton boton-primario" type="submit">Iniciar sesión</button></div>
-    <div data-mensaje-formulario></div>
-  </form>`;
-}
-
-function enlazarAcceso() {
-  const formulario = document.querySelector('#persona2-formulario-acceso');
-  formulario.innerHTML = formularioAcceso('entrar');
-
-  contenido.querySelectorAll('[data-acceso]').forEach((pestana) => {
-    pestana.addEventListener('click', (evento) => {
-      evento.preventDefault();
-      const tipo = pestana.getAttribute('data-acceso');
-      formulario.innerHTML = formularioAcceso(tipo);
-      contenido.querySelectorAll('[data-acceso]').forEach((elemento) => {
-        elemento.setAttribute('aria-selected', String(elemento === pestana));
-      });
-      enlazarFormularioAcceso();
-    });
-  });
-
-  enlazarFormularioAcceso();
-}
-
-function enlazarFormularioAcceso() {
-  const form = contenido.querySelector('[data-formulario]');
-  const confirmarClave = () => {
-    const confirmacion = form.querySelector('#registro-confirmacion');
-    const clave = form.querySelector('#registro-clave');
-    if (!confirmacion || !clave) return;
-    confirmacion.setCustomValidity(
-      confirmacion.value && confirmacion.value !== clave.value
-        ? 'Las contraseñas no coinciden.'
-        : ''
-    );
-  };
-  form.querySelector('#registro-confirmacion')?.addEventListener('input', confirmarClave);
-  form.querySelector('#registro-clave')?.addEventListener('input', confirmarClave);
-  form.addEventListener('submit', (evento) => {
-    evento.preventDefault();
-    confirmarClave();
-    if (!form.reportValidity()) return;
-    form.querySelector('[data-mensaje-formulario]').innerHTML = avisoAccion();
-  });
+function avisoNoPersistido(mensaje) {
+  return `<span class="persona2-aviso-accion" role="note">${mensaje}</span>`;
 }
 
 function renderizarPerfilCandidato() {
@@ -148,8 +128,10 @@ function renderizarPerfilCandidato() {
           ${campo('Profesión o título profesional', 'perfil-titulo')}
           ${campo('Resumen profesional', 'perfil-resumen', 'textarea', { completo: true })}
         </div>
-        <div class="persona2-acciones"><button class="boton boton-primario" type="submit">Guardar perfil</button></div>
-        <div data-mensaje-formulario></div>
+        <div class="persona2-acciones">
+          <button class="boton boton-primario" type="submit">Guardar perfil</button>
+          ${avisoNoPersistido('Este perfil todavía no se guarda en la base de datos.')}
+        </div>
       </form>
     </section>
     <section class="persona2-tarjeta">
@@ -162,7 +144,10 @@ function renderizarPerfilCandidato() {
           ${campo('Fecha de inicio', 'experiencia-fecha-inicio', 'date', { requerido: true })}
           ${campo('Fecha de fin (opcional)', 'experiencia-fecha-fin', 'date')}
         </div>
-        <div class="persona2-acciones"><button class="boton" type="submit">Agregar experiencia</button></div>
+        <div class="persona2-acciones">
+          <button class="boton" type="submit">Agregar experiencia</button>
+          ${avisoNoPersistido('Solo se agrega a este borrador temporal; no se guarda.')}
+        </div>
       </form>
       <ul class="persona2-lista" data-lista-items="experiencia"><li class="persona2-vacio">Aún no agregas experiencia.</li></ul>
     </section>
@@ -177,7 +162,10 @@ function renderizarPerfilCandidato() {
           ${campo('Año de inicio', 'estudio-anio-inicio', 'number', { requerido: true, atributo: 'min="1900" step="1"' })}
           ${campo('Año de finalización (opcional)', 'estudio-anio-fin', 'number', { atributo: 'min="1900" step="1"' })}
         </div>
-        <div class="persona2-acciones"><button class="boton" type="submit">Agregar estudio</button></div>
+        <div class="persona2-acciones">
+          <button class="boton" type="submit">Agregar estudio</button>
+          ${avisoNoPersistido('Solo se agrega a este borrador temporal; no se guarda.')}
+        </div>
       </form>
       <ul class="persona2-lista" data-lista-items="estudios"><li class="persona2-vacio">Aún no agregas estudios.</li></ul>
     </section>
@@ -186,21 +174,24 @@ function renderizarPerfilCandidato() {
       <p>Las habilidades que agregues aquí son borradores locales; no se guardan.</p>
       <form class="persona2-formulario" data-lista="habilidades">
         ${campo('Habilidad', 'habilidad-nombre', 'text', { requerido: true })}
-        <div class="persona2-acciones"><button class="boton" type="submit">Registrar habilidad</button></div>
+        <div class="persona2-acciones">
+          <button class="boton" type="submit">Registrar habilidad</button>
+          ${avisoNoPersistido('Solo se agrega a este borrador temporal; no se guarda.')}
+        </div>
       </form>
       <ul class="persona2-lista" data-lista-items="habilidades"><li class="persona2-vacio">Aún no agregas habilidades.</li></ul>
     </section>
     <section class="persona2-tarjeta">
       <h3>Currículum</h3>
-      <p>No se encontró una configuración de almacenamiento. Elegir un archivo solo muestra su nombre; no lo carga.</p>
+      <p>Seleccionar el archivo solo lo muestra en este navegador; no se carga ni se guarda.</p>
       <div class="persona2-campo"><label for="perfil-cv">Seleccionar archivo PDF (máximo 5 MB)</label><input id="perfil-cv" type="file" accept="application/pdf,.pdf" /></div>
       <p id="perfil-cv-mensaje" class="persona2-ayuda" aria-live="polite">Ningún currículum cargado.</p>
+      ${avisoNoPersistido('La carga de currículum aún no está conectada.')}
     </section>
-    <section class="persona2-tarjeta">
-      <h3>Postulaciones y alertas laborales</h3>
-      <p>No hay una sesión ni datos de postulaciones disponibles para consultar.</p>
-      <div class="persona2-vacio">Las postulaciones guardadas y su historial aparecerán cuando exista una conexión autenticada.</div>
-      <p>La tabla existente no tiene un campo de ubicación; esta pantalla usa los filtros disponibles en el esquema.</p>
+    <section id="postulaciones-candidato" class="persona2-tarjeta" tabindex="-1" aria-labelledby="titulo-postulaciones-candidato">
+      <h3 id="titulo-postulaciones-candidato">Postulaciones y alertas laborales</h3>
+      <p>La consulta de postulaciones del candidato todavía no está conectada.</p>
+      <div class="persona2-vacio">El historial aparecerá cuando exista una conexión autenticada a la base de datos.</div>
       <form class="persona2-formulario" data-formulario="alertas">
         <div class="persona2-campos">
           ${campo('Nombre de la alerta', 'alerta-nombre', 'text', { requerido: true })}
@@ -218,8 +209,10 @@ function renderizarPerfilCandidato() {
           ${campo('Frecuencia', 'alerta-frecuencia', 'text', { atributo: 'value="Semanal"' })}
         </div>
         <label class="persona2-opcion"><input id="alerta-activa" type="checkbox" checked /> Alerta activa</label>
-        <div class="persona2-acciones"><button class="boton" type="submit">Configurar alerta</button></div>
-        <div data-mensaje-formulario></div>
+        <div class="persona2-acciones">
+          <button class="boton" type="submit">Configurar alerta</button>
+          ${avisoNoPersistido('Esta alerta todavía no se guarda ni envía.')}
+        </div>
       </form>
     </section>
     <section class="persona2-tarjeta">
@@ -241,11 +234,7 @@ function enlazarPerfilCandidato() {
     porcentaje.textContent = `${valor}%`;
   };
   formPerfil.addEventListener('input', actualizarProgreso);
-  formPerfil.addEventListener('submit', (evento) => {
-    evento.preventDefault();
-    if (!formPerfil.reportValidity()) return;
-    formPerfil.querySelector('[data-mensaje-formulario]').innerHTML = avisoAccion();
-  });
+  formPerfil.addEventListener('submit', (evento) => evento.preventDefault());
 
   const validarRangos = (form) => {
     const tipo = form.getAttribute('data-lista');
@@ -362,7 +351,6 @@ function enlazarPerfilCandidato() {
 
   contenido.querySelector('[data-formulario="alertas"]').addEventListener('submit', (evento) => {
     evento.preventDefault();
-    evento.currentTarget.querySelector('[data-mensaje-formulario]').innerHTML = avisoAccion();
   });
 }
 
@@ -397,10 +385,13 @@ function renderizarEmpresa() {
         <div class="persona2-campo">
           <label for="empresa-logo">Logotipo</label>
           <input id="empresa-logo" type="file" accept="image/png,image/jpeg,image/webp" />
-          <span class="persona2-ayuda">Vista previa local; no hay almacenamiento conectado.</span>
+          ${avisoNoPersistido('La vista previa del logotipo es local; no se carga.')}
+          <span id="empresa-logo-mensaje" class="persona2-error-inline" role="status"></span>
         </div>
-        <div class="persona2-acciones"><button class="boton boton-primario" type="submit">Guardar perfil de empresa</button></div>
-        <div data-mensaje-formulario></div>
+        <div class="persona2-acciones">
+          <button class="boton boton-primario" type="submit">Guardar perfil de empresa</button>
+          ${avisoNoPersistido('El perfil de empresa todavía no se guarda en la base de datos.')}
+        </div>
       </form>
     </section>
     <section class="persona2-tarjeta">
@@ -448,21 +439,22 @@ function enlazarEmpresa() {
       descripcion || 'La descripción de la empresa aparecerá aquí.';
   };
   controles.forEach((id) => contenido.querySelector(`#${id}`).addEventListener('input', actualizarPrevia));
-  formulario.addEventListener('submit', (evento) => {
-    evento.preventDefault();
-    if (!formulario.reportValidity()) return;
-    formulario.querySelector('[data-mensaje-formulario]').innerHTML = avisoAccion();
-  });
+  formulario.addEventListener('submit', (evento) => evento.preventDefault());
 
   contenido.querySelector('#empresa-logo').addEventListener('change', (evento) => {
     const archivo = evento.target.files[0];
     const imagen = contenido.querySelector('#empresa-logo-previa');
-    if (!archivo) return;
-    if (!['image/png', 'image/jpeg', 'image/webp'].includes(archivo.type) || archivo.size > 2 * 1024 * 1024) {
-      evento.target.value = '';
-      mostrarMensaje('Selecciona una imagen PNG, JPG o WebP de máximo 2 MB.');
+    const mensaje = contenido.querySelector('#empresa-logo-mensaje');
+    if (!archivo) {
+      mensaje.textContent = '';
       return;
     }
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(archivo.type) || archivo.size > 2 * 1024 * 1024) {
+      evento.target.value = '';
+      mensaje.textContent = 'Selecciona una imagen PNG, JPG o WebP de máximo 2 MB.';
+      return;
+    }
+    mensaje.textContent = '';
     if (imagen.dataset.urlPrevia) URL.revokeObjectURL(imagen.dataset.urlPrevia);
     const url = URL.createObjectURL(archivo);
     imagen.dataset.urlPrevia = url;
@@ -502,8 +494,8 @@ function renderizarVacante() {
         <div class="persona2-acciones">
           <button class="boton boton-primario" type="submit">Enviar a revisión</button>
           <button class="boton" type="reset">Cancelar</button>
+          ${avisoNoPersistido('La vacante todavía no se crea ni se envía a revisión.')}
         </div>
-        <div data-mensaje-formulario></div>
       </form>
     </section>
   </div>`;
@@ -526,11 +518,9 @@ function enlazarVacante() {
     evento.preventDefault();
     validarSalario();
     if (!formulario.reportValidity()) return;
-    formulario.querySelector('[data-mensaje-formulario]').innerHTML = avisoAccion();
   });
   formulario.addEventListener('reset', () => {
     maximo.setCustomValidity('');
-    formulario.querySelector('[data-mensaje-formulario]').replaceChildren();
   });
 }
 
@@ -538,7 +528,7 @@ function renderizarPostulaciones() {
   return `<div class="persona2-contenedor">
     <section class="persona2-tarjeta">
       <h2>Postulaciones recibidas</h2>
-      <p>Los estados corresponden a los valores usados por el dashboard. No se consultan postulaciones mientras no exista una sesión de empresa autorizada.</p>
+      <p>Esta tabla todavía no consulta postulaciones de una empresa.</p>
       <div class="persona2-estadisticas">
         ${estadosPostulacion.map((estado) => `<div class="persona2-estadistica"><strong>—</strong><span>${escaparHtml(estado)}</span></div>`).join('')}
       </div>
@@ -552,28 +542,36 @@ function renderizarPostulaciones() {
       <div class="persona2-desplazamiento">
         <table class="persona2-tabla">
           <thead><tr><th>CANDIDATO</th><th>PUESTO</th><th>FECHA</th><th>ESTADO</th><th>PERFIL</th></tr></thead>
-          <tbody><tr><td colspan="5" class="persona2-vacio">No hay postulaciones disponibles. Conecta una API autenticada para consultar datos reales.</td></tr></tbody>
+          <tbody><tr><td colspan="5" class="persona2-vacio">Los datos aparecerán cuando se conecte una consulta autenticada a la base de datos.</td></tr></tbody>
         </table>
       </div>
     </section>
   </div>`;
 }
 
-function mostrarMensaje(mensaje) {
-  const nodo = document.createElement('p');
-  nodo.className = 'persona2-mensaje';
-  nodo.setAttribute('role', 'status');
-  nodo.textContent = mensaje;
-  contenido.prepend(nodo);
-  window.setTimeout(() => nodo.remove(), 5000);
-}
-
 function renderizarPantalla() {
-  const pantalla = /^#P(06|07|08|09|10)$/.test(window.location.hash)
+  if (window.location.hash === '#P06') {
+    window.location.replace('/?acceso=login');
+    return;
+  }
+
+  const pantalla = /^#P(07|08|09|10)$/.test(window.location.hash)
     ? window.location.hash.slice(1)
-    : 'P06';
+    : 'P07';
+  const sesion = leerSesionActual();
+  if (!sesion) {
+    irAInicioSesion(pantalla);
+    return;
+  }
+
+  actualizarNavegacion(sesion.rol, pantalla);
+  const rolRequerido = rolesPorPantalla[pantalla];
+  if (sesion.rol !== rolRequerido) {
+    contenido.innerHTML = renderizarAccesoDenegado(rolRequerido, sesion.rol);
+    return;
+  }
+
   const pantallas = {
-    P06: [renderizarAcceso, enlazarAcceso],
     P07: [renderizarPerfilCandidato, enlazarPerfilCandidato],
     P08: [renderizarEmpresa, enlazarEmpresa],
     P09: [renderizarVacante, enlazarVacante],
@@ -581,14 +579,14 @@ function renderizarPantalla() {
   };
   const [render, enlazar] = pantallas[pantalla];
   contenido.innerHTML = render();
-  navegacion.querySelectorAll('[data-pantalla]').forEach((enlace) => {
-    const activo = enlace.getAttribute('data-pantalla') === pantalla;
-    enlace.classList.toggle('activo', activo);
-    if (activo) enlace.setAttribute('aria-current', 'page');
-    else enlace.removeAttribute('aria-current');
-  });
   if (enlazar) enlazar();
+  if (pantalla === 'P07' && new URLSearchParams(window.location.search).get('seccion') === 'postulaciones') {
+    const postulacionesCandidato = contenido.querySelector('#postulaciones-candidato');
+    postulacionesCandidato?.scrollIntoView({ block: 'start' });
+    postulacionesCandidato?.focus({ preventScroll: true });
+  }
 }
 
 renderizarPantalla();
 window.addEventListener('hashchange', renderizarPantalla);
+window.addEventListener('pageshow', renderizarPantalla);

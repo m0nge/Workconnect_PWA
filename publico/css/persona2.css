@@ -1,11 +1,14 @@
 .persona2-encabezado {
   max-width: 80rem;
+  min-width: 0;
+  gap: 0.75rem;
 }
 
 .persona2-marca {
   display: inline-flex;
   align-items: center;
   gap: 0.65rem;
+  min-width: 0;
   color: var(--color-carbon);
   text-decoration: none;
 }
@@ -32,8 +35,52 @@
   font-weight: 800;
 }
 
+.persona2-volver {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.55rem 0.85rem;
+  border: 1px solid var(--color-vino);
+  border-radius: var(--radio-pequeno);
+  background: var(--color-vino);
+  color: var(--color-blanco);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.persona2-volver svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.persona2-volver:hover {
+  border-color: var(--color-vino-oscuro);
+  background: var(--color-vino-oscuro);
+  color: var(--color-blanco);
+}
+
+.persona2-volver:focus-visible {
+  outline: 3px solid var(--color-vino);
+  outline-offset: 3px;
+}
+
 .persona2-principal {
-  max-width: 64rem;
+  max-width: 80rem;
+  margin: 0 auto;
+  min-width: 0;
+}
+
+.persona2-principal .area-contenido {
+  margin-left: 0;
+}
+
+.persona2-principal > * {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .persona2-introduccion {
@@ -42,19 +89,26 @@
 
 .persona2-navegacion {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   margin-bottom: 1rem;
-  overflow-x: auto;
   border-bottom: 1px solid var(--color-borde);
 }
 
+.persona2-navegacion[hidden] {
+  display: none;
+}
+
 .persona2-navegacion a {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  min-width: 0;
   padding: 0.75rem 0.65rem;
   border-bottom: 2px solid transparent;
   color: var(--color-texto-secundario);
   font-size: 0.78rem;
   font-weight: 600;
+  overflow-wrap: anywhere;
+  text-align: center;
   text-decoration: none;
 }
 
@@ -64,28 +118,35 @@
   color: var(--color-vino);
 }
 
-.persona2-aviso,
-.persona2-mensaje {
-  margin: 0 0 1.25rem;
-  padding: 0.85rem 1rem;
-  border: 1px solid var(--color-ambar-borde);
-  border-radius: var(--radio-mediano);
-  background: var(--color-ambar-fondo);
-  color: #78350f;
-  font-size: 0.83rem;
+.persona2-navegacion a:focus-visible {
+  border-radius: var(--radio-pequeno);
+  outline: 2px solid var(--color-vino);
+  outline-offset: 2px;
 }
 
-.persona2-mensaje {
+.persona2-aviso-accion {
   margin: 0;
+  color: var(--color-texto-atenuado);
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+.persona2-error-inline {
+  color: var(--color-vino);
+  font-size: 0.78rem;
 }
 
 .persona2-contenedor {
   display: flex;
+  width: 100%;
+  min-width: 0;
   flex-direction: column;
   gap: 1rem;
 }
 
 .persona2-tarjeta {
+  width: 100%;
+  min-width: 0;
   padding: 1.25rem;
   border: 1px solid var(--color-borde);
   border-radius: var(--radio-mediano);
@@ -116,6 +177,8 @@
 .persona2-formulario,
 .persona2-campos {
   display: grid;
+  min-width: 0;
+  max-width: 100%;
   gap: 1rem;
 }
 
@@ -126,6 +189,8 @@
 
 .persona2-campo {
   display: flex;
+  min-width: 0;
+  max-width: 100%;
   flex-direction: column;
   gap: 0.35rem;
 }
@@ -145,6 +210,8 @@
 .persona2-campo select,
 .persona2-campo textarea {
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
   min-height: 2.7rem;
   padding: 0.65rem 0.75rem;
   border: 1px solid var(--color-borde);
@@ -217,6 +284,11 @@
   justify-content: space-between;
   gap: 0.75rem;
   align-items: center;
+}
+
+.persona2-lista li > span:first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .persona2-lista button {
@@ -293,7 +365,13 @@
 }
 
 .persona2-desplazamiento {
+  min-width: 0;
+  max-width: 100%;
   overflow-x: auto;
+}
+
+.persona2-tabla {
+  min-width: 42rem;
 }
 
 .persona2-estadisticas {
@@ -321,9 +399,21 @@
 }
 
 @media (max-width: 639px) {
-  .persona2-encabezado .boton {
-    padding: 0.55rem 0.65rem;
+  .persona2-encabezado {
+    height: auto;
+    min-height: 4rem;
+    flex-wrap: wrap;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+
+  .persona2-volver {
+    padding: 0.5rem 0.65rem;
     font-size: 0.75rem;
+  }
+
+  .persona2-navegacion a {
+    flex: 1 1 calc(50% - 0.5rem);
   }
 
   .persona2-tarjeta {
