@@ -413,15 +413,10 @@ textarea {
 
 .perfil-usuario-publico {
   display: flex;
-  align-items: center;
-  gap: 0.45rem;
+  flex-direction: column;
+  align-items: flex-start;
   color: var(--color-texto);
   font-size: 0.8rem;
-}
-
-.perfil-usuario-publico > span:last-child {
-  display: flex;
-  flex-direction: column;
 }
 
 .perfil-usuario-publico small {
@@ -2475,5 +2470,106 @@ textarea {
   .pie-identidad {
     grid-column: 1 / -1;
     width: auto;
+  }
+}
+
+.menu-usuario-contenedor {
+  position: relative;
+}
+
+.perfil-usuario-trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.25rem 0.4rem;
+  border: 1px solid transparent;
+  border-radius: var(--radio-pequeno);
+  background: transparent;
+  color: var(--color-texto);
+  cursor: pointer;
+  text-align: left;
+}
+
+.perfil-usuario-trigger:hover,
+.perfil-usuario-trigger[aria-expanded='true'] {
+  border-color: var(--color-borde);
+  background: var(--color-blanco);
+}
+
+.perfil-usuario-trigger:focus-visible,
+.menu-usuario button:focus-visible {
+  outline: 3px solid var(--color-vino);
+  outline-offset: 2px;
+}
+
+.menu-usuario {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 13rem;
+  padding: 0.35rem;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio-mediano);
+  background: var(--color-blanco);
+  box-shadow: 0 0.75rem 1.5rem rgb(15 23 42 / 14%);
+}
+
+.menu-usuario[hidden] {
+  display: none;
+}
+
+.menu-usuario button {
+  padding: 0.65rem 0.75rem;
+  border: 0;
+  border-radius: var(--radio-pequeno);
+  background: transparent;
+  color: var(--color-texto);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.menu-usuario button:hover {
+  background: var(--color-borde-suave);
+}
+
+.menu-usuario .opcion-cerrar-sesion {
+  margin-top: 0.25rem;
+  border-top: 1px solid var(--color-borde);
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  color: var(--color-vino);
+}
+
+@media (max-width: 767px) {
+  .zona-usuario-encabezado {
+    gap: 0.35rem;
+  }
+
+  .perfil-usuario-trigger {
+    gap: 0.35rem;
+    padding: 0.2rem;
+  }
+
+  .perfil-usuario-publico {
+    max-width: 7rem;
+    overflow: hidden;
+  }
+
+  .perfil-usuario-publico strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .menu-usuario {
+    position: fixed;
+    top: 4.25rem;
+    right: 0.75rem;
+    left: auto;
+    min-width: min(16rem, calc(100vw - 1.5rem));
   }
 }

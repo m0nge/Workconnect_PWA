@@ -7,7 +7,7 @@
       name="description"
       content="Interfaces de candidatos y empresas de WorkConnect, portal de empleo de El Salvador."
     />
-    <title>WorkConnect - Candidatos y empresas</title>
+    <title>WorkConnect - Perfiles y vacantes</title>
     <link rel="stylesheet" href="/css/estilos.css" />
     <link rel="stylesheet" href="/css/persona2.css" />
   </head>
@@ -15,36 +15,32 @@
     <div class="aplicacion-raiz">
       <header class="encabezado">
         <div class="encabezado-interior persona2-encabezado">
-          <a class="persona2-marca" href="#P06" aria-label="WorkConnect, inicio del módulo">
+          <a class="persona2-marca" href="/" aria-label="WorkConnect, volver al portal">
             <span class="persona2-logo" aria-hidden="true">W</span>
             <span><strong>WorkConnect</strong><small>Talento y oportunidades</small></span>
           </a>
-          <a class="boton" href="/">Panel administrativo</a>
+          <a class="persona2-volver" href="/" aria-label="Volver al portal">
+            <svg aria-hidden="true" focusable="false" viewBox="0 0 20 20" fill="none">
+              <path d="M8.25 4.5 2.75 10l5.5 5.5M3.5 10h13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            <span>Volver al portal</span>
+          </a>
         </div>
       </header>
 
       <main class="contenedor-principal persona2-principal">
         <div class="persona2-introduccion">
-          <span class="codigo-pantalla">PERSONA 2 · P06–P10</span>
           <h1 class="titulo-pantalla">Candidatos y empresas</h1>
           <p class="subtitulo-pantalla">
-            Acceso, perfiles, vacantes y postulaciones de WorkConnect.
+            Perfiles, vacantes y postulaciones de WorkConnect.
           </p>
         </div>
 
-        <nav class="persona2-navegacion" aria-label="Pantallas de candidatos y empresas">
-          <a href="#P06" data-pantalla="P06">P06 · Acceso</a>
-          <a href="#P07" data-pantalla="P07">P07 · Perfil candidato</a>
-          <a href="#P08" data-pantalla="P08">P08 · Empresa</a>
-          <a href="#P09" data-pantalla="P09">P09 · Publicar vacante</a>
-          <a href="#P10" data-pantalla="P10">P10 · Postulaciones</a>
-        </nav>
-
-        <aside class="persona2-aviso" role="status">
-          <strong>Integración pendiente:</strong> este módulo todavía no tiene autenticación ni
-          autorización de usuario. Los formularios no envían ni guardan datos; los archivos solo
-          se previsualizan en este navegador. No uses información real.
-        </aside>
+        <nav
+          class="persona2-navegacion"
+          aria-label="Secciones de tu cuenta"
+          hidden
+        ></nav>
 
         <div id="persona2-contenido" class="area-contenido" aria-live="polite"></div>
       </main>
@@ -52,7 +48,7 @@
       <footer class="pie-pagina">
         <div class="pie-pagina-contenido">
           <p class="pie-marca">WorkConnect © 2026 · Portal de Empleo de El Salvador</p>
-          <p class="pie-detalle">Módulo de candidatos y empresas · P06 a P10</p>
+          <p class="pie-detalle">Perfiles, vacantes y postulaciones</p>
         </div>
       </footer>
     </div>

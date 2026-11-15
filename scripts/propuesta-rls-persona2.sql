@@ -23,6 +23,8 @@ BEGIN
       ('usuarios', 'email'),
       ('usuarios', 'rol'),
       ('usuarios', 'estado'),
+      ('usuarios', 'telefono'),
+      ('usuarios', 'ubicacion'),
       ('empresas', 'id'),
       ('empresas', 'usuario_id'),
       ('empresas', 'nombre_comercial'),
@@ -192,6 +194,16 @@ BEGIN
     RAISE EXCEPTION 'Se encontraron politicas RLS existentes; revise su alcance y combine las propuestas manualmente.';
   END IF;
 
+  IF EXISTS (
+    SELECT 1
+    FROM public.empresas
+    WHERE usuario_id IS NOT NULL
+    GROUP BY usuario_id
+    HAVING count(*) > 1
+  ) THEN
+    RAISE EXCEPTION 'Hay varias empresas vinculadas a un usuario; resuelva los duplicados antes de agregar la restriccion de propiedad.';
+  END IF;
+
   IF to_regprocedure('public.workconnect_usuario_id_actual()') IS NOT NULL
     OR to_regprocedure('public.workconnect_rol_actual()') IS NOT NULL
     OR to_regprocedure('public.workconnect_perfil_es_propio(uuid)') IS NOT NULL
@@ -213,6 +225,10 @@ BEGIN
   END IF;
 END;
 $preflight$;
+
+CREATE UNIQUE INDEX IF NOT EXISTS workconnect_empresas_usuario_uidx
+  ON public.empresas (usuario_id)
+  WHERE usuario_id IS NOT NULL;
 
 CREATE FUNCTION public.workconnect_usuario_id_actual()
 RETURNS uuid
@@ -357,9 +373,10 @@ REVOKE ALL PRIVILEGES ON TABLE public.usuarios FROM PUBLIC, anon, authenticated;
 REVOKE SELECT (auth_uid, email, password_hash, rol, estado)
   ON TABLE public.usuarios FROM PUBLIC, anon, authenticated;
 GRANT ALL PRIVILEGES ON TABLE public.usuarios TO service_role;
-GRANT SELECT (id, nombre)
+GRANT SELECT (id, nombre, telefono, ubicacion)
   ON TABLE public.usuarios TO authenticated;
-GRANT UPDATE (nombre) ON TABLE public.usuarios TO authenticated;
+GRANT UPDATE (nombre, telefono, ubicacion)
+  ON TABLE public.usuarios TO authenticated;
 
 CREATE POLICY workconnect_usuarios_select_propio
   ON public.usuarios
