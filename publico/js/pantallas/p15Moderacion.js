@@ -134,7 +134,6 @@ export function renderizarP15Moderacion(contenedor, elementos, acciones) {
   contenedor.innerHTML = `
     <div class="pila-vertical">
       <div class="cabecera-pantalla">
-        <span class="codigo-pantalla">P15 ADMINISTRACIÓN</span>
         <h1 class="titulo-pantalla">Moderación</h1>
         <p class="subtitulo-pantalla">
           Aprueba, oculta o elimina foros, comentarios, valoraciones y reportes.

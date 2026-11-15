@@ -96,7 +96,6 @@ export function renderizarP16VerificacionEmpresas(contenedor, solicitudes, accio
   contenedor.innerHTML = `
     <div class="pila-vertical">
       <div class="cabecera-pantalla">
-        <span class="codigo-pantalla">P16 ADMINISTRACIÓN</span>
         <h1 class="titulo-pantalla">Verificación y aprobación de empresas</h1>
         <p class="subtitulo-pantalla">
           Aprueba o devuelve las empresas registradas. Las aprobadas quedan con el sello «Verificada» y se muestran destacadas en los resultados de búsqueda.

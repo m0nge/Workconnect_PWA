@@ -15,7 +15,6 @@ export function renderizarP14Vacantes(contenedor, vacantes, acciones) {
   contenedor.innerHTML = `
     <div class="pila-vertical">
       <div class="cabecera-pantalla">
-        <span class="codigo-pantalla">P14 ADMINISTRACIÓN</span>
         <h1 class="titulo-pantalla">Vacantes</h1>
         <p class="subtitulo-pantalla">
           Aprueba las nuevas publicaciones, edítalas o desactívalas.
