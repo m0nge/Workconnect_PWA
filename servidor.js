@@ -524,7 +524,7 @@ aplicacion.get('/api/candidato/perfil', conManejoErrores(async (solicitud, respu
     contexto.supabase.from('estudios_candidatos').select('id, carrera_programa, institucion, nivel_academico, anio_inicio, anio_fin').eq('candidato_id', candidatoId).order('anio_inicio', { ascending: false }),
     contexto.supabase.from('habilidades_candidatos').select('id, habilidad, nivel_dominio').eq('candidato_id', candidatoId).order('habilidad'),
     contexto.supabase.from('alertas_laborales').select('id, nombre_alerta, sector, modalidad, salario_minimo, frecuencia, activa').eq('candidato_id', candidatoId).order('nombre_alerta'),
-    contexto.supabase.from('postulaciones').select('id, estado, creado_en, vacante:vacantes!inner(titulo, modalidad)').eq('candidato_id', candidatoId).order('creado_en', { ascending: false })
+    contexto.supabase.from('postulaciones').select('id, estado, creado_en, vacante:vacantes!inner(id, titulo, modalidad)').eq('candidato_id', candidatoId).order('creado_en', { ascending: false })
   ]);
   const errores = [experiencias.error, estudios.error, habilidades.error, alertas.error, postulaciones.error].filter(Boolean);
   if (errores.length) return respuesta.status(500).json({ error: 'No se pudieron cargar todos los datos del perfil.' });
@@ -734,6 +734,64 @@ aplicacion.put('/api/candidato/perfil', conManejoErrores(async (solicitud, respu
     }
   }
   return respuesta.json({ guardado: true });
+}));
+
+
+const esUuidValoracion = v => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+aplicacion.get('/api/candidato/postulaciones/:vacanteId', conManejoErrores(async (req, res) => {
+  const ctx = await obtenerCandidatoAutenticado(req, res); if (!ctx) return;
+  if (!esUuidValoracion(req.params.vacanteId)) return res.status(400).json({error:'Vacante no válida.'});
+  const {data,error} = await ctx.supabase.from('postulaciones').select('id').eq('candidato_id',ctx.perfil.id).eq('vacante_id',req.params.vacanteId).limit(1);
+  if (error) return res.status(500).json({error:'No se pudo consultar tu postulación.'});
+  return res.json({postulado:data.length > 0});
+}));
+aplicacion.get('/api/valoraciones-empresa/:id', conManejoErrores(async (req,res) => {
+  if (!esUuidValoracion(req.params.id)) return res.status(400).json({error:'Empresa no válida.'});
+  const db=obtenerClienteOError(res); if (!db) return;
+  const {data,error}=await db.from('valoraciones_empresas').select('calificacion, comentario').eq('empresa_id',req.params.id).eq('estado','Aprobada').order('creado_en',{ascending:false});
+  if(error) return res.status(500).json({error:'No se pudieron cargar las valoraciones.'});
+  return res.json({valoraciones:data || []});
+}));
+aplicacion.post('/api/candidato/valoraciones', conManejoErrores(async (req,res) => {
+  const ctx=await obtenerCandidatoAutenticado(req,res); if(!ctx) return;
+  const {empresa_id,calificacion,comentario}=req.body || {}; const texto=typeof comentario === 'string' ? comentario.trim() : '';
+  if (!esUuidValoracion(empresa_id) || !Number.isInteger(calificacion) || calificacion<1 || calificacion>5 || texto.length<3 || texto.length>2000) return res.status(400).json({error:'Selecciona de 1 a 5 estrellas y escribe un comentario de 3 a 2000 caracteres.'});
+  const empresa=await ctx.supabase.from('empresas').select('id').eq('id',empresa_id).maybeSingle();
+  if(empresa.error) return res.status(500).json({error:'No se pudo comprobar la empresa.'});
+  if(!empresa.data) return res.status(404).json({error:'No se encontró la empresa.'});
+  const {error}=await ctx.supabase.from('valoraciones_empresas').insert({empresa_id,candidato_id:ctx.perfil.id,calificacion,comentario:texto,estado:'Pendiente'});
+  if(error) return res.status(500).json({error:'No se pudo guardar la valoración.'});
+  return res.status(201).json({estado:'Pendiente'});
+}));
+
+aplicacion.post('/api/candidato/postulaciones', conManejoErrores(async (solicitud, respuesta) => {
+  const contexto = await obtenerCandidatoAutenticado(solicitud, respuesta);
+  if (!contexto) return;
+  const vacanteId = solicitud.body?.vacante_id;
+  if (typeof vacanteId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(vacanteId)) {
+    return respuesta.status(400).json({ error: 'La vacante seleccionada no es válida.' });
+  }
+  if (!contexto.perfil.curriculum_url) {
+    return respuesta.status(400).json({ error: 'Primero guarda tu currículum PDF en Mi perfil para postularte.' });
+  }
+  const { data: vacante, error: errorVacante } = await contexto.supabase
+    .from('vacantes').select('id, estado, fecha_limite').eq('id', vacanteId).maybeSingle();
+  if (errorVacante) return respuesta.status(500).json({ error: 'No se pudo comprobar la vacante.' });
+  if (!vacante || vacante.estado !== 'Activa') return respuesta.status(404).json({ error: 'Esta vacante no está disponible.' });
+  const hoy = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/El_Salvador', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  if (vacante.fecha_limite && vacante.fecha_limite < hoy) return respuesta.status(400).json({ error: 'El plazo de esta vacante ya finalizó.' });
+  const { data: existente, error: errorConsulta } = await contexto.supabase
+    .from('postulaciones').select('id').eq('candidato_id', contexto.perfil.id).eq('vacante_id', vacanteId).limit(1);
+  if (errorConsulta) return respuesta.status(500).json({ error: 'No se pudo comprobar si ya te postulaste.' });
+  if (existente.length) return respuesta.status(409).json({ error: 'Ya te postulaste a esta vacante. Puedes revisarla en Mis postulaciones.' });
+  const { data, error } = await contexto.supabase.from('postulaciones').insert({
+    vacante_id: vacanteId,
+    candidato_id: contexto.perfil.id,
+    curriculum_url: contexto.perfil.curriculum_url,
+    estado: 'Nueva'
+  }).select('id, estado, creado_en').single();
+  if (error) return respuesta.status(500).json({ error: 'No se pudo guardar la postulación. Intenta nuevamente.' });
+  return respuesta.status(201).json(data);
 }));
 
 aplicacion.post('/api/candidato/:tipo', conManejoErrores(async (solicitud, respuesta) => {

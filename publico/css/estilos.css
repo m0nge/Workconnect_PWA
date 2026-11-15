@@ -2583,3 +2583,55 @@ textarea {
     min-width: min(16rem, calc(100vw - 1.5rem));
   }
 }
+
+/* Acceso y registro: estilos limitados a la pantalla de autenticación. */
+.modo-autenticacion .menu-lateral-columna { display: none; }
+.modo-autenticacion .area-contenido { margin-left: 0; }
+.auth-contenedor { max-width: 68rem; margin: 0 auto; gap: 1rem; }
+.auth-contenedor > #cancelar-autenticacion { align-self: flex-start; font-size: .8rem; }
+.auth-tarjeta { display: grid; grid-template-columns: 1fr 1fr; min-height: 35rem; overflow: hidden; border: 1px solid var(--color-borde); border-radius: 1rem; background: white; box-shadow: 0 16px 48px rgba(31,36,46,.06); }
+.auth-presentacion { position: relative; display: flex; flex-direction: column; align-items: flex-start; overflow: hidden; padding: clamp(2rem,4vw,3.5rem); background: #202124; color: white; }
+.auth-etiqueta { color: #dfa5b9; font-size: .65rem; font-weight: 700; letter-spacing: .16em; }
+.auth-presentacion h1 { position: relative; z-index: 1; max-width: 25rem; margin: 1.25rem 0; font-family: Georgia, 'Times New Roman', serif; font-size: clamp(2.4rem,3.8vw,3.5rem); line-height: 1.08; letter-spacing: -.035em; }
+.auth-presentacion p { position: relative; z-index: 1; max-width: 23rem; margin: 0; color: #d1d1d5; font-size: .88rem; line-height: 1.8; }
+.auth-firma { display: flex; align-items: center; gap: 1rem; margin-top: auto; padding-top: 4rem; color: #b8b8bf; font-size: .7rem; }
+.auth-firma img { width: 3rem; height: 3rem; object-fit: contain; filter: grayscale(1) brightness(0) invert(.8); }
+.auth-presentacion::after { content: ''; position: absolute; bottom: -3rem; right: -2rem; width: 21rem; height: 21rem; background: url('/multimedia/icono.png') center / contain no-repeat; filter: grayscale(1) brightness(0) invert(1); opacity: .035; transform: rotate(-12deg); pointer-events: none; }
+.auth-formulario-panel { min-width: 0; padding: clamp(1.5rem,3.5vw,3rem); align-self: center; }
+.auth-pestanas { display: flex; gap: .25rem; padding: .3rem; margin-bottom: 2rem; border: 1px solid var(--color-borde); border-radius: .6rem; background: #f7f7f8; }
+.auth-pestana { flex: 1; min-height: 2.7rem; padding: .5rem; border: 1px solid transparent; border-radius: .4rem; background: transparent; color: var(--color-texto-secundario); font-size: .8rem; font-weight: 600; cursor: pointer; }
+.auth-pestana.activa { background: white; border-color: var(--color-borde); color: var(--color-vino); box-shadow: 0 2px 4px #1f242e08; }
+.auth-formulario-panel .titulo-pantalla { margin: 0 0 .5rem; font-size: 1.8rem; }
+.auth-formulario-panel .subtitulo-pantalla { margin: 0 0 1.5rem; font-size: .8rem; line-height: 1.7; }
+.auth-formulario-panel .formulario-publico { display: grid; gap: 1.1rem; }
+.auth-formulario-panel .campo-formulario input, .auth-formulario-panel .campo-formulario select { min-height: 3rem; border-radius: .5rem; font-size: 1rem; font-weight: 400; }
+.auth-formulario-panel .boton-principal { min-height: 3rem; margin-top: .25rem; border-radius: .5rem; transition: background .15s; }
+.auth-formulario-panel .boton-principal:hover { background: var(--color-vino-oscuro); }
+.auth-formulario-panel .boton-principal:disabled { opacity: .65; cursor: wait; }
+.auth-contenedor button:focus-visible { outline: 2px solid var(--color-vino); outline-offset: 3px; }
+.auth-alternativa { margin-top: 1.25rem; text-align: center; color: var(--color-texto-atenuado); font-size: .75rem; }
+.auth-alternativa .auth-cambio { font-size: inherit; font-weight: 700; }
+@media (max-width: 700px) {
+  .auth-tarjeta { grid-template-columns: minmax(0,1fr); min-height: auto; }
+  .auth-presentacion { padding: 2rem 1.5rem; }
+  .auth-presentacion h1 { max-width: 20rem; margin: .8rem 0; font-size: 2.35rem; }
+  .auth-presentacion p { max-width: none; font-size: .8rem; }
+  .auth-firma { display: none; }
+  .auth-formulario-panel { padding: 1.75rem 1.5rem; }
+  .auth-pestanas { margin-bottom: 1.5rem; }
+}
+
+.auth-formulario-panel .campo-formulario input:focus-visible,
+.auth-formulario-panel .campo-formulario select:focus-visible {
+  outline: 2px solid var(--color-vino);
+  outline-offset: 2px;
+}
+.valoracion-estrellas { display:flex; gap:.25rem; border:0; padding:0; margin:1rem 0; }
+.valoracion-estrellas legend { font-weight:600; margin-bottom:.35rem; }
+.valoracion-estrellas label { position:relative; cursor:pointer; color:#a8a0a5; font-size:2rem; line-height:1; }
+.valoracion-estrellas input { position:absolute; opacity:0; }
+.valoracion-estrellas label:has(input:checked), .valoracion-estrellas label:has(~ label input:checked) { color:#80143c; }
+.valoracion-estrellas label:has(input:focus-visible) { outline:2px solid #80143c; outline-offset:2px; }
+.valoracion-lectura { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
+#formulario-valoracion:not([hidden]) { margin-top:1rem; }
+#formulario-valoracion textarea { width:100%; }

@@ -5,23 +5,43 @@ export function renderizarAutenticacion(contenedor, tipo, alCompletar, alCancela
   contenedor.innerHTML = `
     <div class="pila-vertical auth-contenedor">
       <button type="button" class="enlace-accion-vino" id="cancelar-autenticacion">← Volver al portal</button>
-      <section class="tarjeta tarjeta-espaciado auth-tarjeta">
-        <h1 class="titulo-pantalla">${esRegistro ? 'Crear cuenta' : 'Iniciar sesión'}</h1>
-        <p class="subtitulo-pantalla">Para acceder a esta sección debes iniciar sesión o crear una cuenta.</p>
+      <section class="auth-tarjeta" aria-label="Acceso a WorkConnect">
+        <div class="auth-presentacion">
+          <span class="auth-etiqueta">WORKCONNECT · ACCESO</span>
+          <h1>Tu próximo paso empieza aquí</h1>
+          <p>Crea tu cuenta o inicia sesión para encontrar nuevas oportunidades como candidato o conectar con el talento que tu empresa necesita.</p>
+          <div class="auth-firma" aria-hidden="true"><img src="/multimedia/icono.png" alt="" />Conectando talento<br />con oportunidades.</div>
+        </div>
+        <div class="auth-formulario-panel">
+        <nav class="auth-pestanas" aria-label="Opciones de acceso">
+          <button type="button" class="auth-pestana ${!esRegistro ? 'activa' : ''}" data-auth-tipo="login" ${!esRegistro ? 'aria-current="page"' : ''}>Iniciar sesión</button>
+          <button type="button" class="auth-pestana ${esRegistro ? 'activa' : ''}" data-auth-tipo="registro" ${esRegistro ? 'aria-current="page"' : ''}>Crear cuenta</button>
+        </nav>
+        <h2 class="titulo-pantalla">${esRegistro ? 'Crear cuenta' : 'Iniciar sesión'}</h2>
+        <p class="subtitulo-pantalla">${esRegistro ? 'Únete a WorkConnect y conecta con nuevas oportunidades.' : 'Bienvenido de nuevo. Ingresa los datos de tu cuenta.'}</p>
         <form id="formulario-autenticacion" class="formulario-publico">
-          ${esRegistro ? '<label class="campo-formulario"><span>Nombre completo *</span><input id="auth-nombre" type="text" minlength="3" maxlength="80" required /></label>' : ''}
-          <label class="campo-formulario"><span>Correo electrónico *</span><input id="auth-correo" type="email" maxlength="120" required /></label>
-          <label class="campo-formulario"><span>Contraseña *</span><input id="auth-contrasena" type="password" minlength="6" maxlength="80" required /></label>
+          ${esRegistro ? '<label class="campo-formulario"><span>Nombre completo *</span><input id="auth-nombre" autocomplete="name" type="text" minlength="3" maxlength="80" required /></label>' : ''}
+          <label class="campo-formulario"><span>Correo electrónico *</span><input id="auth-correo" autocomplete="email" placeholder="nombre@correo.com" type="email" maxlength="120" required /></label>
+          <label class="campo-formulario"><span>Contraseña *</span><input id="auth-contrasena" autocomplete="${esRegistro ? 'new-password' : 'current-password'}" type="password" minlength="6" maxlength="80" required /></label>
           ${esRegistro ? '<label class="campo-formulario"><span>Tipo de cuenta *</span><select id="auth-rol" required><option value="">Selecciona una opción</option><option value="candidato">Candidato</option><option value="empresa">Empresa</option></select></label>' : ''}
           <p id="mensaje-autenticacion" class="alerta-error-formulario oculto" role="status"></p>
-          <button class="boton-principal ancho-completo" type="submit">${esRegistro ? 'Crear cuenta' : 'Ingresar'}</button>
+          <button class="boton-principal ancho-completo" type="submit">${esRegistro ? 'Crear cuenta' : 'Iniciar sesión'}</button>
         </form>
-        <button type="button" class="enlace-accion-vino auth-cambio">${esRegistro ? 'Ya tengo una cuenta' : 'Crear una cuenta'}</button>
+        <div class="auth-alternativa">${esRegistro ? '¿Ya tienes una cuenta?' : '¿Aún no tienes cuenta?'} <button type="button" class="enlace-accion-vino auth-cambio">${esRegistro ? 'Inicia sesión' : 'Regístrate'}</button></div>
+        </div>
       </section>
     </div>
   `;
 
   contenedor.querySelector('#cancelar-autenticacion').addEventListener('click', alCancelar);
+  contenedor.querySelectorAll('[data-auth-tipo]').forEach((pestana) => {
+    pestana.addEventListener('click', () => {
+      if (pestana.dataset.authTipo !== (esRegistro ? 'registro' : 'login')) {
+        renderizarAutenticacion(contenedor, pestana.dataset.authTipo, alCompletar, alCancelar);
+        contenedor.querySelector('.auth-pestana.activa').focus();
+      }
+    });
+  });
   contenedor.querySelector('.auth-cambio').addEventListener('click', () => {
     renderizarAutenticacion(contenedor, esRegistro ? 'login' : 'registro', alCompletar, alCancelar);
   });

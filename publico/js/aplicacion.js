@@ -19,7 +19,10 @@ import { escaparHtml } from './utilidades/formato.js';
 localStorage.removeItem('workconnect-cuentas');
 
 // Estado global de la aplicación en JavaScript puro
-const accesoSolicitado = new URLSearchParams(window.location.search).get('acceso') === 'login';
+const parametrosIniciales = new URLSearchParams(window.location.search);
+const accesoSolicitado = parametrosIniciales.get('acceso') === 'login';
+const vacanteSolicitada = parametrosIniciales.get('vacante');
+const idVacanteInicial = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(vacanteSolicitada || '') ? vacanteSolicitada : null;
 const destinosCuentaPermitidos = {
   P07: { pantalla: 'P07', rol: 'candidato' },
   POSTULACIONES_CANDIDATO: { pantalla: 'P07', rol: 'candidato', seccion: 'postulaciones' },
@@ -33,8 +36,8 @@ const destinoSolicitado = destinosCuentaPermitidos[
 
 const estadoAplicacion = {
   pantallaActual:
-    accesoSolicitado ? 'AUTH_LOGIN' : 'P01',
-  vacanteSeleccionada: null,
+    accesoSolicitado ? 'AUTH_LOGIN' : idVacanteInicial ? 'P03' : 'P01',
+  vacanteSeleccionada: idVacanteInicial,
   rolActual: 'visitante',
   usuarioActual: null,
   pantallaPendiente: null,
@@ -377,6 +380,7 @@ function renderizarInterfaz() {
     Boolean(estadoAplicacion.usuarioActual) && !['AUTH_LOGIN', 'AUTH_REGISTRO'].includes(estadoAplicacion.pantallaActual)
   );
   document.body.classList.toggle('modo-inicio', estadoAplicacion.pantallaActual === 'P01');
+  document.body.classList.toggle('modo-autenticacion', ['AUTH_LOGIN', 'AUTH_REGISTRO'].includes(estadoAplicacion.pantallaActual));
   renderizarEncabezado(
     contenedorEncabezado,
     cambiarPantalla,
@@ -430,7 +434,7 @@ function renderizarInterfaz() {
       renderizarP02Resultados(contenedorContenido, estadoAplicacion.datos, '', '', cambiarPantalla);
       break;
     case 'P03':
-      renderizarP03Detalle(contenedorContenido, estadoAplicacion.datos, estadoAplicacion.vacanteSeleccionada, cambiarPantalla, mostrarNotificacion);
+      renderizarP03Detalle(contenedorContenido, estadoAplicacion.datos, estadoAplicacion.vacanteSeleccionada, cambiarPantalla, mostrarNotificacion, estadoAplicacion.usuarioActual);
       break;
     case 'P04':
       renderizarP04Recursos(contenedorContenido, estadoAplicacion.datos);
