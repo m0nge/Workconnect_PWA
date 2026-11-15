@@ -6,7 +6,6 @@ export function renderizarMenuLateral(
   rolActual = 'visitante'
 ) {
   const elementos = [
-    { id: 'P01', etiqueta: 'Inicio', descripcion: 'Buscar empleo', roles: ['visitante', 'candidato', 'empresa'] },
     { id: 'P02', etiqueta: 'Resultados', descripcion: 'Buscar vacantes', roles: ['visitante', 'candidato', 'empresa'] },
     { id: 'P04', etiqueta: 'Recursos', descripcion: 'Consejos y tutoriales', roles: ['visitante', 'candidato', 'empresa'] },
     { id: 'P05', etiqueta: 'Foros', descripcion: 'Comunidad laboral', roles: ['visitante', 'candidato', 'empresa'] },
