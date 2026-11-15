@@ -1,46 +1,52 @@
-// Componente del menú lateral de navegación administrativa (P11 a P16 y P19)
-
 export function renderizarMenuLateral(
   contenedor,
   pantallaActual,
   conteosPendientes,
-  alSeleccionarPantalla
+  alSeleccionarPantalla,
+  rolActual = 'visitante'
 ) {
   const elementos = [
-    { id: 'P11', clave: 'P11', etiqueta: 'Dashboard', descripcion: 'Métricas generales' },
-    { id: 'P12', clave: 'P12', etiqueta: 'Usuarios', descripcion: 'Gestión de cuentas' },
+    { id: 'P01', etiqueta: 'Inicio', descripcion: 'Buscar empleo', roles: ['visitante', 'candidato', 'empresa'] },
+    { id: 'P02', etiqueta: 'Resultados', descripcion: 'Buscar vacantes', roles: ['visitante', 'candidato', 'empresa'] },
+    { id: 'P04', etiqueta: 'Recursos', descripcion: 'Consejos y tutoriales', roles: ['visitante', 'candidato', 'empresa'] },
+    { id: 'P05', etiqueta: 'Foros', descripcion: 'Comunidad laboral', roles: ['visitante', 'candidato', 'empresa'] },
+    { id: 'P17', etiqueta: 'Publicados', descripcion: 'Catálogo de recursos', roles: ['visitante', 'candidato', 'empresa'] },
+    { id: 'P28', etiqueta: 'Crear tema', descripcion: 'Abrir discusión', roles: ['candidato', 'empresa'] },
+    { id: 'P11', etiqueta: 'Dashboard', descripcion: 'Métricas generales', roles: ['administrador'] },
+    { id: 'P12', etiqueta: 'Usuarios', descripcion: 'Gestión de cuentas', roles: ['administrador'] },
     {
       id: 'P13',
-      clave: 'P13',
       etiqueta: 'Empresas',
       descripcion: 'Directorio empresarial',
+      roles: ['administrador'],
       pendiente: conteosPendientes.empresas
     },
     {
       id: 'P14',
-      clave: 'P14',
       etiqueta: 'Vacantes',
       descripcion: 'Ofertas publicadas',
+      roles: ['administrador'],
       pendiente: conteosPendientes.vacantes
     },
     {
       id: 'P15',
-      clave: 'P15',
       etiqueta: 'Moderación',
       descripcion: 'Foros y reportes',
+      roles: ['administrador'],
       pendiente: conteosPendientes.moderacion
     },
     {
       id: 'P16',
-      clave: 'P16',
       etiqueta: 'Verificación Empresas',
       descripcion: 'Revisión documental',
+      roles: ['administrador'],
       pendiente: conteosPendientes.verificaciones
     },
-    { id: 'P19', clave: 'P19', etiqueta: 'Crear Recurso', descripcion: 'Publicar artículos' }
+    { id: 'P19', etiqueta: 'Crear Recurso', descripcion: 'Publicar artículos', roles: ['administrador'] }
   ];
 
   const htmlElementos = elementos
+    .filter((item) => item.roles.includes(rolActual))
     .map((item) => {
       const esActivo = pantallaActual === item.id;
       const insignia =
@@ -55,7 +61,6 @@ export function renderizarMenuLateral(
           data-pantalla="${item.id}"
         >
           <div class="boton-menu-izquierda">
-            <span class="menu-clave">${item.clave}</span>
             <div class="menu-textos">
               <span class="menu-etiqueta">${item.etiqueta}</span>
               <span class="menu-descripcion">${item.descripcion}</span>
@@ -70,8 +75,8 @@ export function renderizarMenuLateral(
   contenedor.innerHTML = `
     <div class="tarjeta-menu-lateral">
       <div class="menu-lateral-cabecera">
-        <span>ADMINISTRACIÓN</span>
-        <span class="menu-lateral-subetiqueta">PERSONA 3</span>
+        <span>${rolActual === 'administrador' ? 'ADMINISTRACIÓN' : 'MI PORTAL'}</span>
+        <span class="menu-lateral-subetiqueta">${rolActual}</span>
       </div>
 
       <nav class="lista-menu-lateral" aria-label="Menú de administración">
