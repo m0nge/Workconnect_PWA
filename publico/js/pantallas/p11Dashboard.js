@@ -84,7 +84,6 @@ export function renderizarP11Dashboard(contenedor, datos, alNavegar) {
   contenedor.innerHTML = `
     <div class="pila-vertical">
       <div class="cabecera-pantalla">
-        <span class="codigo-pantalla">P11 ADMINISTRACIÓN</span>
         <h1 class="titulo-pantalla">Dashboard</h1>
         <p class="subtitulo-pantalla">Resumen en tiempo real conectado a la base de datos Supabase</p>
       </div>
