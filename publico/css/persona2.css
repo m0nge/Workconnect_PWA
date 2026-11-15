@@ -256,6 +256,33 @@
   margin-top: 1rem;
 }
 
+#perfil-cv-guardar,
+#perfil-cv-descargar {
+  border-color: var(--color-vino);
+  background-color: var(--color-vino);
+  color: var(--color-blanco);
+}
+
+.persona2-formulario[data-lista="experiencia"] button[type="submit"],
+.persona2-formulario[data-lista="estudios"] button[type="submit"],
+.persona2-formulario[data-lista="habilidades"] button[type="submit"],
+.persona2-formulario[data-lista="alertas"] button[type="submit"] {
+  border-color: var(--color-vino);
+  background-color: var(--color-vino);
+  color: var(--color-blanco);
+}
+
+#perfil-cv-guardar:hover,
+#perfil-cv-descargar:hover,
+.persona2-formulario[data-lista="experiencia"] button[type="submit"]:hover,
+.persona2-formulario[data-lista="estudios"] button[type="submit"]:hover,
+.persona2-formulario[data-lista="habilidades"] button[type="submit"]:hover,
+.persona2-formulario[data-lista="alertas"] button[type="submit"]:hover {
+  border-color: var(--color-vino-oscuro);
+  background-color: var(--color-vino-oscuro);
+  color: var(--color-blanco);
+}
+
 .persona2-enlace-boton {
   display: inline-flex;
   align-items: center;

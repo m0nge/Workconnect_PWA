@@ -1,3 +1,5 @@
+localStorage.removeItem('workconnect-cuentas');
+
 const contenido = document.querySelector('#persona2-contenido');
 const navegacion = document.querySelector('.persona2-navegacion');
 const estadosPostulacion = ['Nueva', 'En revisión', 'Entrevista', 'Contratada', 'Rechazada'];
@@ -7,20 +9,17 @@ const rolesPorPantalla = {
   P09: 'empresa',
   P10: 'empresa'
 };
-let secuenciaBorrador = 0;
+let secuenciaPantalla = 0;
 
-function leerSesionActual() {
-  const sesionGuardada = sessionStorage.getItem('workconnect-sesion');
-  if (!sesionGuardada) return null;
-
-  try {
-    const sesion = JSON.parse(sesionGuardada);
-    return sesion && typeof sesion.rol === 'string' ? sesion : null;
-  } catch {
-    sessionStorage.removeItem('workconnect-sesion');
-    sessionStorage.removeItem('workconnect-rol');
-    return null;
+async function leerSesionActual() {
+  const respuesta = await fetch('/api/auth/sesion', { cache: 'no-store' });
+  const resultado = await respuesta.json().catch(() => ({}));
+  if (!respuesta.ok) {
+    const error = new Error(resultado.error || 'No se pudo verificar la sesión.');
+    error.status = respuesta.status;
+    throw error;
   }
+  return resultado.autenticado ? resultado.usuario : null;
 }
 
 function actualizarNavegacion(rol, pantalla) {
@@ -97,10 +96,11 @@ function campo(etiqueta, id, tipo = 'text', opciones = {}) {
   const requerido = opciones.requerido ? 'required' : '';
   const atributo = opciones.atributo || '';
   const etiquetaClase = opciones.completo ? ' completo' : '';
+  const nombre = opciones.nombre || id;
   const control =
     tipo === 'textarea'
-      ? `<textarea id="${id}" name="${id}" ${requerido} ${atributo}></textarea>`
-      : `<input id="${id}" name="${id}" type="${tipo}" ${requerido} ${atributo} />`;
+      ? `<textarea id="${id}" name="${nombre}" ${requerido} ${atributo}></textarea>`
+      : `<input id="${id}" name="${nombre}" type="${tipo}" ${requerido} ${atributo} />`;
 
   return `<div class="persona2-campo${etiquetaClase}">
     <label for="${id}">${etiqueta}${opciones.requerido ? ' *' : ''}</label>
@@ -112,137 +112,320 @@ function avisoNoPersistido(mensaje) {
   return `<span class="persona2-aviso-accion" role="note">${mensaje}</span>`;
 }
 
+function estadoAccion(id) {
+  return `<span id="${id}" class="persona2-aviso-accion" role="status" aria-live="polite"></span>`;
+}
+
 function renderizarPerfilCandidato() {
   return `<div class="persona2-contenedor">
     <section class="persona2-tarjeta">
       <h2>Mi perfil candidato</h2>
-      <p>Completa tus datos personales y profesionales. El progreso se calcula solo con los campos de este formulario y no representa un perfil guardado.</p>
+      <p>Tu nombre y correo provienen de la cuenta autenticada. Actualiza aquí tus datos personales y profesionales.</p>
       <div class="persona2-avance"><strong>Avance del formulario</strong><span id="perfil-porcentaje">0%</span></div>
       <progress id="perfil-progreso" class="persona2-progreso" max="100" value="0">0%</progress>
       <form class="persona2-formulario" data-formulario="perfil">
         <div class="persona2-campos">
-          ${campo('Nombre completo', 'perfil-nombre', 'text', { requerido: true, atributo: 'autocomplete="name"' })}
-          ${campo('Correo electrónico', 'perfil-correo', 'email', { requerido: true, atributo: 'autocomplete="email"' })}
-          ${campo('Teléfono', 'perfil-telefono', 'tel', { atributo: 'autocomplete="tel"' })}
-          ${campo('Ubicación (municipio y departamento)', 'perfil-ubicacion')}
-          ${campo('Profesión o título profesional', 'perfil-titulo')}
-          ${campo('Resumen profesional', 'perfil-resumen', 'textarea', { completo: true })}
+          ${campo('Nombre completo', 'perfil-nombre', 'text', { requerido: true, atributo: 'autocomplete="name" readonly' })}
+          ${campo('Correo electrónico', 'perfil-correo', 'email', { requerido: true, atributo: 'autocomplete="email" readonly' })}
+          ${campo('Teléfono', 'perfil-telefono', 'tel', { nombre: 'telefono', atributo: 'autocomplete="tel"' })}
+          ${campo('Ubicación (municipio y departamento)', 'perfil-ubicacion', 'text', { nombre: 'ubicacion' })}
+          ${campo('Profesión o título profesional', 'perfil-titulo', 'text', { nombre: 'titulo_profesional' })}
+          ${campo('Resumen profesional', 'perfil-resumen', 'textarea', { nombre: 'resumen_laboral', completo: true })}
         </div>
         <div class="persona2-acciones">
           <button class="boton boton-primario" type="submit">Guardar perfil</button>
-          ${avisoNoPersistido('Este perfil todavía no se guarda en la base de datos.')}
+          ${estadoAccion('perfil-estado')}
         </div>
       </form>
     </section>
     <section class="persona2-tarjeta">
       <h3>Experiencia laboral</h3>
-      <p>Los elementos de esta lista son borradores locales y no se guardan en la base.</p>
       <form class="persona2-formulario" data-lista="experiencia">
         <div class="persona2-campos">
-          ${campo('Puesto', 'experiencia-puesto', 'text', { requerido: true })}
-          ${campo('Empresa', 'experiencia-empresa', 'text', { requerido: true })}
-          ${campo('Fecha de inicio', 'experiencia-fecha-inicio', 'date', { requerido: true })}
-          ${campo('Fecha de fin (opcional)', 'experiencia-fecha-fin', 'date')}
+          ${campo('Puesto', 'experiencia-puesto', 'text', { nombre: 'puesto', requerido: true })}
+          ${campo('Empresa', 'experiencia-empresa', 'text', { nombre: 'empresa', requerido: true })}
+          ${campo('Fecha de inicio', 'experiencia-fecha-inicio', 'date', { nombre: 'fecha_inicio', requerido: true })}
+          ${campo('Fecha de fin (opcional)', 'experiencia-fecha-fin', 'date', { nombre: 'fecha_fin' })}
+          ${campo('Descripción (opcional)', 'experiencia-descripcion', 'textarea', { nombre: 'descripcion', completo: true })}
         </div>
+        <label class="persona2-opcion"><input id="experiencia-actual" name="es_trabajo_actual" type="checkbox" value="true" /> Trabajo actual</label>
         <div class="persona2-acciones">
           <button class="boton" type="submit">Agregar experiencia</button>
-          ${avisoNoPersistido('Solo se agrega a este borrador temporal; no se guarda.')}
+          ${estadoAccion('experiencia-estado')}
         </div>
       </form>
       <ul class="persona2-lista" data-lista-items="experiencia"><li class="persona2-vacio">Aún no agregas experiencia.</li></ul>
     </section>
     <section class="persona2-tarjeta">
       <h3>Estudios</h3>
-      <p>Los datos requeridos corresponden a carrera/programa, institución, nivel académico y año de inicio. Estos elementos son borradores locales.</p>
       <form class="persona2-formulario" data-lista="estudios">
         <div class="persona2-campos">
-          ${campo('Carrera o programa', 'estudio-programa', 'text', { requerido: true })}
-          ${campo('Institución', 'estudio-institucion', 'text', { requerido: true })}
-          ${campo('Nivel académico', 'estudio-nivel', 'text', { requerido: true })}
-          ${campo('Año de inicio', 'estudio-anio-inicio', 'number', { requerido: true, atributo: 'min="1900" step="1"' })}
-          ${campo('Año de finalización (opcional)', 'estudio-anio-fin', 'number', { atributo: 'min="1900" step="1"' })}
+          ${campo('Carrera o programa', 'estudio-programa', 'text', { nombre: 'carrera_programa', requerido: true })}
+          ${campo('Institución', 'estudio-institucion', 'text', { nombre: 'institucion', requerido: true })}
+          ${campo('Nivel académico', 'estudio-nivel', 'text', { nombre: 'nivel_academico', requerido: true })}
+          ${campo('Año de inicio', 'estudio-anio-inicio', 'number', { nombre: 'anio_inicio', requerido: true, atributo: 'min="1900" step="1"' })}
+          ${campo('Año de finalización (opcional)', 'estudio-anio-fin', 'number', { nombre: 'anio_fin', atributo: 'min="1900" step="1"' })}
         </div>
         <div class="persona2-acciones">
           <button class="boton" type="submit">Agregar estudio</button>
-          ${avisoNoPersistido('Solo se agrega a este borrador temporal; no se guarda.')}
+          ${estadoAccion('estudios-estado')}
         </div>
       </form>
       <ul class="persona2-lista" data-lista-items="estudios"><li class="persona2-vacio">Aún no agregas estudios.</li></ul>
     </section>
     <section class="persona2-tarjeta">
       <h3>Habilidades</h3>
-      <p>Las habilidades que agregues aquí son borradores locales; no se guardan.</p>
       <form class="persona2-formulario" data-lista="habilidades">
-        ${campo('Habilidad', 'habilidad-nombre', 'text', { requerido: true })}
+        ${campo('Habilidad', 'habilidad-nombre', 'text', { nombre: 'habilidad', requerido: true })}
+        <div class="persona2-campo">
+          <label for="habilidad-nivel">Nivel de dominio</label>
+          <select id="habilidad-nivel" name="nivel_dominio">
+            <option>Básico</option><option selected>Intermedio</option><option>Avanzado</option>
+          </select>
+        </div>
         <div class="persona2-acciones">
           <button class="boton" type="submit">Registrar habilidad</button>
-          ${avisoNoPersistido('Solo se agrega a este borrador temporal; no se guarda.')}
+          ${estadoAccion('habilidades-estado')}
         </div>
       </form>
       <ul class="persona2-lista" data-lista-items="habilidades"><li class="persona2-vacio">Aún no agregas habilidades.</li></ul>
     </section>
     <section class="persona2-tarjeta">
       <h3>Currículum</h3>
-      <p>Seleccionar el archivo solo lo muestra en este navegador; no se carga ni se guarda.</p>
+      <p>Guarda tu currículum como un archivo PDF privado de máximo 5 MB.</p>
       <div class="persona2-campo"><label for="perfil-cv">Seleccionar archivo PDF (máximo 5 MB)</label><input id="perfil-cv" type="file" accept="application/pdf,.pdf" /></div>
       <p id="perfil-cv-mensaje" class="persona2-ayuda" aria-live="polite">Ningún currículum cargado.</p>
-      ${avisoNoPersistido('La carga de currículum aún no está conectada.')}
+      <div class="persona2-acciones">
+        <button id="perfil-cv-guardar" class="boton" type="button">Guardar currículum</button>
+        <a id="perfil-cv-descargar" href="/api/candidato/curriculum" hidden>Descargar currículum</a>
+      </div>
     </section>
     <section id="postulaciones-candidato" class="persona2-tarjeta" tabindex="-1" aria-labelledby="titulo-postulaciones-candidato">
-      <h3 id="titulo-postulaciones-candidato">Postulaciones y alertas laborales</h3>
-      <p>La consulta de postulaciones del candidato todavía no está conectada.</p>
-      <div class="persona2-vacio">El historial aparecerá cuando exista una conexión autenticada a la base de datos.</div>
-      <form class="persona2-formulario" data-formulario="alertas">
+      <h3 id="titulo-postulaciones-candidato">Mis postulaciones</h3>
+      <ul class="persona2-lista" id="postulaciones-candidato-lista"><li class="persona2-vacio">Cargando postulaciones...</li></ul>
+    </section>
+    <section class="persona2-tarjeta">
+      <h3>Alertas laborales</h3>
+      <p>Guarda preferencias de búsqueda. Las alertas no envían correos.</p>
+      <form class="persona2-formulario" data-formulario="alertas" data-lista="alertas">
         <div class="persona2-campos">
-          ${campo('Nombre de la alerta', 'alerta-nombre', 'text', { requerido: true })}
-          ${campo('Sector', 'alerta-sector', 'text', { requerido: true })}
+          ${campo('Nombre de la alerta', 'alerta-nombre', 'text', { nombre: 'nombre_alerta', requerido: true })}
+          ${campo('Sector', 'alerta-sector', 'text', { nombre: 'sector', requerido: true })}
           <div class="persona2-campo">
             <label for="alerta-modalidad">Modalidad (opcional)</label>
-            <select id="alerta-modalidad" name="alerta-modalidad">
+            <select id="alerta-modalidad" name="modalidad">
               <option value="">Cualquier modalidad</option>
               <option value="Presencial">Presencial</option>
               <option value="Híbrido">Híbrido</option>
               <option value="Remoto">Remoto</option>
             </select>
           </div>
-          ${campo('Salario mínimo (USD, opcional)', 'alerta-salario-minimo', 'number', { atributo: 'min="0" step="0.01"' })}
-          ${campo('Frecuencia', 'alerta-frecuencia', 'text', { atributo: 'value="Semanal"' })}
+          ${campo('Salario mínimo (USD, opcional)', 'alerta-salario-minimo', 'number', { nombre: 'salario_minimo', atributo: 'min="0" step="0.01"' })}
+          <div class="persona2-campo">
+            <label for="alerta-frecuencia">Frecuencia</label>
+            <select id="alerta-frecuencia" name="frecuencia">
+              <option>Diaria</option><option selected>Semanal</option><option>Mensual</option>
+            </select>
+          </div>
         </div>
-        <label class="persona2-opcion"><input id="alerta-activa" type="checkbox" checked /> Alerta activa</label>
+        <label class="persona2-opcion"><input id="alerta-activa" name="activa" type="checkbox" value="true" checked /> Alerta activa</label>
         <div class="persona2-acciones">
           <button class="boton" type="submit">Configurar alerta</button>
-          ${avisoNoPersistido('Esta alerta todavía no se guarda ni envía.')}
+          ${estadoAccion('alertas-estado')}
         </div>
       </form>
+      <ul class="persona2-lista" data-lista-items="alertas"><li class="persona2-vacio">Cargando alertas...</li></ul>
     </section>
     <section class="persona2-tarjeta">
       <h3>Estadísticas del perfil</h3>
-      <p>No hay datos de cuenta con los que calcular estadísticas.</p>
+      <div id="perfil-estadisticas" class="persona2-estadisticas"></div>
     </section>
   </div>`;
 }
 
+async function solicitarApiCandidato(ruta, opciones = {}) {
+  const respuesta = await fetch(`/api/candidato${ruta}`, {
+    headers: { 'Content-Type': 'application/json' },
+    ...opciones
+  });
+  const resultado = await respuesta.json().catch(() => ({}));
+  if (!respuesta.ok) throw new Error(resultado.error || 'No se pudo guardar la información.');
+  return resultado;
+}
+
+function mostrarEstadoAccion(id, mensaje, error = false) {
+  const elemento = contenido.querySelector(`#${id}`);
+  if (!elemento) return;
+  elemento.textContent = mensaje;
+  elemento.classList.toggle('persona2-error-inline', error);
+}
+
+function etiquetaRegistro(tipo, registro) {
+  if (tipo === 'experiencia') {
+    return `${registro.puesto} · ${registro.empresa}${registro.es_trabajo_actual ? ' · Actual' : ''}`;
+  }
+  if (tipo === 'estudios') {
+    return `${registro.carrera_programa} · ${registro.institucion} · ${registro.nivel_academico}`;
+  }
+  if (tipo === 'habilidades') return `${registro.habilidad} · ${registro.nivel_dominio || 'Intermedio'}`;
+  return `${registro.nombre_alerta} · ${registro.sector} · ${registro.activa ? 'Activa' : 'Inactiva'}`;
+}
+
+function tipoApiCandidato(tipo) {
+  return tipo === 'experiencia' ? 'experiencias' : tipo;
+}
+
+function renderizarListaCandidato(tipo, registros) {
+  const lista = contenido.querySelector(`[data-lista-items="${tipo}"]`);
+  lista.replaceChildren();
+  if (!registros.length) {
+    const vacio = document.createElement('li');
+    vacio.className = 'persona2-vacio';
+    vacio.textContent = 'Aún no hay elementos guardados.';
+    lista.append(vacio);
+    return;
+  }
+
+  for (const registro of registros) {
+    const elemento = document.createElement('li');
+    elemento.dataset.id = registro.id;
+    const etiqueta = document.createElement('span');
+    etiqueta.textContent = etiquetaRegistro(tipo, registro);
+    const acciones = document.createElement('span');
+    const editar = document.createElement('button');
+    editar.type = 'button';
+    editar.textContent = 'Editar';
+    editar.addEventListener('click', () => {
+      const formulario = contenido.querySelector(`[data-lista="${tipo}"]`);
+      for (const [clave, valor] of Object.entries(registro)) {
+        const entrada = formulario.elements.namedItem(clave);
+        if (!entrada) continue;
+        if (entrada.type === 'checkbox') entrada.checked = Boolean(valor);
+        else entrada.value = valor ?? '';
+      }
+        if (tipo === 'experiencia') {
+          const fechaFin = formulario.querySelector('[name="fecha_fin"]');
+          fechaFin.disabled = Boolean(registro.es_trabajo_actual);
+        }
+      formulario.dataset.editando = registro.id;
+      formulario.querySelector('[type="submit"]').textContent = 'Guardar cambios';
+      formulario.querySelector('[type="submit"]').scrollIntoView({ block: 'nearest' });
+    });
+    const eliminar = document.createElement('button');
+    eliminar.type = 'button';
+    eliminar.textContent = 'Eliminar';
+    eliminar.addEventListener('click', async () => {
+      try {
+        await solicitarApiCandidato(
+          `/${tipoApiCandidato(tipo)}/${encodeURIComponent(registro.id)}`,
+          { method: 'DELETE' }
+        );
+        await cargarPerfilCandidato();
+        mostrarEstadoAccion(`${tipo}-estado`, 'Elemento eliminado.');
+      } catch (error) {
+        mostrarEstadoAccion(`${tipo}-estado`, error.message, true);
+      }
+    });
+    acciones.append(editar, eliminar);
+    elemento.append(etiqueta, acciones);
+    lista.append(elemento);
+  }
+}
+
+async function cargarPerfilCandidato() {
+  const datos = await solicitarApiCandidato('/perfil');
+  const formulario = contenido.querySelector('[data-formulario="perfil"]');
+  for (const [campoId, valor] of Object.entries({
+    'perfil-nombre': datos.perfil.nombre,
+    'perfil-correo': datos.perfil.email,
+    'perfil-telefono': datos.perfil.telefono,
+    'perfil-ubicacion': datos.perfil.ubicacion,
+    'perfil-titulo': datos.perfil.titulo_profesional,
+    'perfil-resumen': datos.perfil.resumen_laboral
+  })) {
+    contenido.querySelector(`#${campoId}`).value = valor || '';
+  }
+  const curriculumGuardado = Boolean(datos.perfil.curriculum_nombre);
+  contenido.querySelector('#perfil-cv-mensaje').textContent = curriculumGuardado
+    ? `Currículum guardado: ${datos.perfil.curriculum_nombre}.`
+    : 'Ningún currículum cargado.';
+  const enlaceCurriculum = contenido.querySelector('#perfil-cv-descargar');
+  enlaceCurriculum.classList.toggle('boton', curriculumGuardado);
+  enlaceCurriculum.hidden = !curriculumGuardado;
+
+  for (const [tipo, propiedad] of [
+    ['experiencia', 'experiencias'],
+    ['estudios', 'estudios'],
+    ['habilidades', 'habilidades'],
+    ['alertas', 'alertas']
+  ]) {
+    renderizarListaCandidato(tipo, datos[propiedad] || []);
+  }
+  contenido.querySelector('#perfil-estadisticas').innerHTML = [
+    ['experiencias', datos.experiencias.length],
+    ['estudios', datos.estudios.length],
+    ['habilidades', datos.habilidades.length],
+    ['alertas guardadas', datos.alertas.length],
+    ['postulaciones', datos.postulaciones.length]
+  ]
+    .map(
+      ([etiqueta, total]) =>
+        `<div class="persona2-estadistica"><strong>${total}</strong><span>${etiqueta}</span></div>`
+    )
+    .join('');
+  const postulaciones = contenido.querySelector('#postulaciones-candidato-lista');
+  postulaciones.replaceChildren();
+  if (!datos.postulaciones.length) {
+    const vacio = document.createElement('li');
+    vacio.className = 'persona2-vacio';
+    vacio.textContent = 'Aún no tienes postulaciones.';
+    postulaciones.append(vacio);
+  } else {
+    for (const postulacion of datos.postulaciones) {
+      const elemento = document.createElement('li');
+      elemento.textContent = `${postulacion.vacante.titulo} · ${postulacion.estado}`;
+      postulaciones.append(elemento);
+    }
+  }
+  const total = [...formulario.querySelectorAll('input:not([readonly]), textarea')];
+  const llenos = total.filter((entrada) => entrada.value.trim()).length;
+  const valor = total.length ? Math.round((llenos / total.length) * 100) : 0;
+  contenido.querySelector('#perfil-progreso').value = valor;
+  contenido.querySelector('#perfil-porcentaje').textContent = `${valor}%`;
+}
+
 function enlazarPerfilCandidato() {
   const formPerfil = contenido.querySelector('[data-formulario="perfil"]');
-  const progreso = contenido.querySelector('#perfil-progreso');
-  const porcentaje = contenido.querySelector('#perfil-porcentaje');
-  const camposPerfil = [...formPerfil.querySelectorAll('input, textarea')];
   const actualizarProgreso = () => {
-    const llenos = camposPerfil.filter((elemento) => elemento.value.trim()).length;
-    const valor = Math.round((llenos / camposPerfil.length) * 100);
-    progreso.value = valor;
-    porcentaje.textContent = `${valor}%`;
+    const campos = [...formPerfil.querySelectorAll('input:not([readonly]), textarea')];
+    const llenos = campos.filter((elemento) => elemento.value.trim()).length;
+    const valor = campos.length ? Math.round((llenos / campos.length) * 100) : 0;
+    contenido.querySelector('#perfil-progreso').value = valor;
+    contenido.querySelector('#perfil-porcentaje').textContent = `${valor}%`;
   };
   formPerfil.addEventListener('input', actualizarProgreso);
-  formPerfil.addEventListener('submit', (evento) => evento.preventDefault());
+  formPerfil.addEventListener('submit', async (evento) => {
+    evento.preventDefault();
+    const boton = formPerfil.querySelector('[type="submit"]');
+    boton.disabled = true;
+    try {
+      const datos = Object.fromEntries(new FormData(formPerfil).entries());
+      await solicitarApiCandidato('/perfil', { method: 'PUT', body: JSON.stringify(datos) });
+      mostrarEstadoAccion('perfil-estado', 'Perfil guardado correctamente.');
+    } catch (error) {
+      mostrarEstadoAccion('perfil-estado', error.message, true);
+    } finally {
+      boton.disabled = false;
+    }
+  });
 
   const validarRangos = (form) => {
     const tipo = form.getAttribute('data-lista');
     const inicio = form.querySelector(
-      tipo === 'experiencia' ? '#experiencia-fecha-inicio' : '#estudio-anio-inicio'
+      tipo === 'experiencia' ? '[name="fecha_inicio"]' : '[name="anio_inicio"]'
     );
     const fin = form.querySelector(
-      tipo === 'experiencia' ? '#experiencia-fecha-fin' : '#estudio-anio-fin'
+      tipo === 'experiencia' ? '[name="fecha_fin"]' : '[name="anio_fin"]'
     );
     if (!inicio || !fin) return;
     const finAnterior =
@@ -262,95 +445,111 @@ function enlazarPerfilCandidato() {
     form.querySelectorAll('input').forEach((entrada) => {
       entrada.addEventListener('input', () => validarRangos(form));
     });
-    form.addEventListener('submit', (evento) => {
+    form.addEventListener('submit', async (evento) => {
       evento.preventDefault();
-      validarRangos(form);
+      if (form.dataset.lista !== 'habilidades' && form.dataset.lista !== 'alertas') validarRangos(form);
       if (!form.reportValidity()) return;
       const tipo = form.getAttribute('data-lista');
-      const controles = [...form.querySelectorAll('input, select, textarea')];
-      const valores = controles.map((elemento) => elemento.value.trim());
-      const etiqueta = valores.filter(Boolean).join(' · ');
-      const lista = contenido.querySelector(`[data-lista-items="${tipo}"]`);
-      if (lista.querySelector('.persona2-vacio')) lista.innerHTML = '';
-      const idEdicion = form.dataset.editando;
-      const elemento = idEdicion
-        ? [...lista.children].find((item) => item.dataset.id === idEdicion)
-        : null;
-      if (elemento) {
-        elemento.querySelector('[data-etiqueta]').textContent = etiqueta;
-        elemento.dataset.valores = JSON.stringify(valores);
-      } else {
-        const nuevoElemento = document.createElement('li');
-        const id = `borrador-${++secuenciaBorrador}`;
-        nuevoElemento.dataset.id = id;
-        nuevoElemento.dataset.valores = JSON.stringify(valores);
-        const botonEditar =
-          tipo === 'habilidades'
-            ? ''
-            : `<button type="button" data-editar aria-label="Editar ${escaparHtml(etiqueta)}">Editar</button>`;
-        nuevoElemento.innerHTML = `
-          <span data-etiqueta>${escaparHtml(etiqueta)}</span>
-          <span>
-            ${botonEditar}
-            <button type="button" data-eliminar aria-label="Eliminar ${escaparHtml(etiqueta)}">Eliminar</button>
-          </span>
-        `;
-        nuevoElemento.querySelector('[data-editar]')?.addEventListener('click', () => {
-          const entradas = form.querySelectorAll('input, select, textarea');
-          JSON.parse(nuevoElemento.dataset.valores).forEach((valor, indice) => {
-            entradas[indice].value = valor;
-          });
-          form.dataset.editando = id;
-          form.querySelector('[type="submit"]').textContent = 'Guardar cambios';
-          entradas[0].focus();
-        });
-        nuevoElemento.querySelector('[data-eliminar]').addEventListener('click', () => {
-          if (form.dataset.editando === id) {
-            delete form.dataset.editando;
-            form.reset();
-            form.querySelector('[type="submit"]').textContent =
-              tipo === 'experiencia'
-                ? 'Agregar experiencia'
-                : tipo === 'estudios'
-                  ? 'Agregar estudio'
-                  : 'Registrar habilidad';
-          }
-          nuevoElemento.remove();
-          if (!lista.children.length) {
-            const vacio = document.createElement('li');
-            vacio.className = 'persona2-vacio';
-            vacio.textContent = 'No hay elementos en este borrador.';
-            lista.append(vacio);
-          }
-        });
-        lista.append(nuevoElemento);
+      const boton = form.querySelector('[type="submit"]');
+      const registro = Object.fromEntries(new FormData(form).entries());
+      for (const casilla of form.querySelectorAll('input[type="checkbox"]')) {
+        registro[casilla.name] = casilla.checked;
       }
-      delete form.dataset.editando;
-      form.querySelector('[type="submit"]').textContent =
-        tipo === 'experiencia'
-          ? 'Agregar experiencia'
-          : tipo === 'estudios'
-            ? 'Agregar estudio'
-            : 'Registrar habilidad';
-      form.reset();
+      if (tipo === 'experiencia' && !registro.es_trabajo_actual) registro.es_trabajo_actual = false;
+      if (tipo === 'alertas' && !registro.activa) registro.activa = false;
+      boton.disabled = true;
+      try {
+        const id = form.dataset.editando;
+        const tipoApi = tipoApiCandidato(tipo);
+        await solicitarApiCandidato(
+          id ? `/${tipoApi}/${encodeURIComponent(id)}` : `/${tipoApi}`,
+          { method: id ? 'PUT' : 'POST', body: JSON.stringify(registro) }
+        );
+        delete form.dataset.editando;
+        form.reset();
+        if (tipo === 'experiencia') {
+          form.querySelector('[name="fecha_fin"]').disabled = false;
+        }
+        boton.textContent =
+          tipo === 'experiencia' ? 'Agregar experiencia' :
+          tipo === 'estudios' ? 'Agregar estudio' :
+          tipo === 'habilidades' ? 'Registrar habilidad' : 'Configurar alerta';
+        await cargarPerfilCandidato();
+        mostrarEstadoAccion(`${tipo}-estado`, 'Información guardada correctamente.');
+      } catch (error) {
+        mostrarEstadoAccion(`${tipo}-estado`, error.message, true);
+      } finally {
+        boton.disabled = false;
+      }
     });
   });
 
-  contenido.querySelector('#perfil-cv').addEventListener('change', (evento) => {
+  const selectorCurriculum = contenido.querySelector('#perfil-cv');
+  const estadoCurriculum = contenido.querySelector('#perfil-cv-mensaje');
+  const enlaceCurriculum = contenido.querySelector('#perfil-cv-descargar');
+  const botonCurriculum = contenido.querySelector('#perfil-cv-guardar');
+  selectorCurriculum.addEventListener('change', (evento) => {
     const archivo = evento.target.files[0];
-    const mensaje = contenido.querySelector('#perfil-cv-mensaje');
     if (!archivo) {
-      mensaje.textContent = 'Ningún currículum cargado.';
+      return;
     } else if (archivo.type !== 'application/pdf' || archivo.size > 5 * 1024 * 1024) {
       evento.target.value = '';
-      mensaje.textContent = 'Selecciona un archivo PDF de máximo 5 MB.';
+      estadoCurriculum.textContent = 'Selecciona un archivo PDF de máximo 5 MB.';
+      estadoCurriculum.classList.add('persona2-error-inline');
     } else {
-      mensaje.textContent = `Archivo seleccionado localmente: ${archivo.name}. Aún no se ha cargado.`;
+      estadoCurriculum.textContent = `${archivo.name} seleccionado. Presiona “Guardar currículum” para almacenarlo.`;
+      estadoCurriculum.classList.remove('persona2-error-inline');
+    }
+  });
+  botonCurriculum.addEventListener('click', async () => {
+    const archivo = selectorCurriculum.files[0];
+    if (!archivo) {
+      estadoCurriculum.textContent = 'Selecciona primero un archivo PDF.';
+      estadoCurriculum.classList.add('persona2-error-inline');
+      return;
+    }
+    if (archivo.type !== 'application/pdf' || archivo.size > 5 * 1024 * 1024) {
+      estadoCurriculum.textContent = 'Selecciona un archivo PDF de máximo 5 MB.';
+      estadoCurriculum.classList.add('persona2-error-inline');
+      return;
+    }
+
+    botonCurriculum.disabled = true;
+    estadoCurriculum.textContent = 'Guardando currículum…';
+    estadoCurriculum.classList.remove('persona2-error-inline');
+    try {
+      const respuesta = await fetch('/api/candidato/curriculum', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/pdf',
+          'X-File-Name': encodeURIComponent(archivo.name)
+        },
+        body: archivo
+      });
+      const resultado = await respuesta.json().catch(() => ({}));
+      if (!respuesta.ok) throw new Error(resultado.error || 'No se pudo guardar el currículum.');
+      selectorCurriculum.value = '';
+      estadoCurriculum.textContent = `Currículum guardado: ${resultado.curriculum_nombre}.`;
+      enlaceCurriculum.classList.add('boton');
+      enlaceCurriculum.hidden = false;
+    } catch (error) {
+      estadoCurriculum.textContent = error.message || 'No se pudo guardar el currículum.';
+      estadoCurriculum.classList.add('persona2-error-inline');
+    } finally {
+      botonCurriculum.disabled = false;
     }
   });
 
-  contenido.querySelector('[data-formulario="alertas"]').addEventListener('submit', (evento) => {
-    evento.preventDefault();
+  contenido.querySelector('#experiencia-actual').addEventListener('change', (evento) => {
+    const fechaFin = contenido.querySelector('#experiencia-fecha-fin');
+    if (evento.target.checked) fechaFin.value = '';
+    fechaFin.disabled = evento.target.checked;
+  });
+  cargarPerfilCandidato().catch((error) => {
+    contenido.querySelectorAll('.persona2-vacio').forEach((elemento) => {
+      elemento.textContent = 'No se pudo cargar la información. Intenta de nuevo.';
+    });
+    mostrarEstadoAccion('perfil-estado', error.message, true);
   });
 }
 
@@ -549,7 +748,8 @@ function renderizarPostulaciones() {
   </div>`;
 }
 
-function renderizarPantalla() {
+async function renderizarPantalla() {
+  const secuenciaActual = ++secuenciaPantalla;
   if (window.location.hash === '#P06') {
     window.location.replace('/?acceso=login');
     return;
@@ -558,7 +758,19 @@ function renderizarPantalla() {
   const pantalla = /^#P(07|08|09|10)$/.test(window.location.hash)
     ? window.location.hash.slice(1)
     : 'P07';
-  const sesion = leerSesionActual();
+  let sesion;
+  try {
+    sesion = await leerSesionActual();
+  } catch (error) {
+    if (secuenciaActual !== secuenciaPantalla) return;
+    if (error.status === 401) {
+      irAInicioSesion(pantalla);
+      return;
+    }
+    contenido.innerHTML = `<section class="persona2-tarjeta" role="alert">No se pudo verificar la sesión. Intenta de nuevo.</section>`;
+    return;
+  }
+  if (secuenciaActual !== secuenciaPantalla) return;
   if (!sesion) {
     irAInicioSesion(pantalla);
     return;

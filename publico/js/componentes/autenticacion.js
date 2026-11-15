@@ -13,7 +13,7 @@ export function renderizarAutenticacion(contenedor, tipo, alCompletar, alCancela
           <label class="campo-formulario"><span>Correo electrónico *</span><input id="auth-correo" type="email" maxlength="120" required /></label>
           <label class="campo-formulario"><span>Contraseña *</span><input id="auth-contrasena" type="password" minlength="6" maxlength="80" required /></label>
           ${esRegistro ? '<label class="campo-formulario"><span>Tipo de cuenta *</span><select id="auth-rol" required><option value="">Selecciona una opción</option><option value="candidato">Candidato</option><option value="empresa">Empresa</option></select></label>' : ''}
-          <p id="mensaje-autenticacion" class="alerta-error-formulario oculto"></p>
+          <p id="mensaje-autenticacion" class="alerta-error-formulario oculto" role="status"></p>
           <button class="boton-principal ancho-completo" type="submit">${esRegistro ? 'Crear cuenta' : 'Ingresar'}</button>
         </form>
         <button type="button" class="enlace-accion-vino auth-cambio">${esRegistro ? 'Ya tengo una cuenta' : 'Crear una cuenta'}</button>
@@ -25,12 +25,10 @@ export function renderizarAutenticacion(contenedor, tipo, alCompletar, alCancela
   contenedor.querySelector('.auth-cambio').addEventListener('click', () => {
     renderizarAutenticacion(contenedor, esRegistro ? 'login' : 'registro', alCompletar, alCancelar);
   });
-  contenedor.querySelector('#formulario-autenticacion').addEventListener('submit', (evento) => {
+  contenedor.querySelector('#formulario-autenticacion').addEventListener('submit', async (evento) => {
     evento.preventDefault();
     const correo = contenedor.querySelector('#auth-correo').value.trim().toLowerCase();
     const contrasena = contenedor.querySelector('#auth-contrasena').value;
-    const cuentas = JSON.parse(localStorage.getItem('workconnect-cuentas') || '[]');
-    let cuenta;
 
     if (esRegistro) {
       const nombre = contenedor.querySelector('#auth-nombre').value.trim();
@@ -51,31 +49,56 @@ export function renderizarAutenticacion(contenedor, tipo, alCompletar, alCancela
         mostrarError('Selecciona un tipo de cuenta válido.');
         return;
       }
-      if (cuentas.some((item) => item.correo === correo)) {
-        mostrarError('Este correo ya tiene una cuenta.');
-        return;
-      }
-      cuenta = { nombre, correo, contrasena, rol };
-      localStorage.setItem('workconnect-cuentas', JSON.stringify([...cuentas, cuenta]));
-    } else {
-      if (!validarCorreo(correo) || !validarTexto(contrasena, 6, 80)) {
-        mostrarError('Escribe un correo válido y una contraseña de 6 a 80 caracteres.');
-        return;
-      }
-      cuenta = cuentas.find((item) => item.correo === correo && item.contrasena === contrasena);
-      if (!cuenta) {
-        mostrarError('Correo o contraseña incorrectos. Si no tienes cuenta, regístrate.');
-        return;
-      }
     }
 
-    sessionStorage.setItem('workconnect-sesion', JSON.stringify(cuenta));
-    alCompletar(cuenta);
+    if (!validarCorreo(correo) || !validarTexto(contrasena, 6, 80)) {
+      mostrarError('Escribe un correo válido y una contraseña de 6 a 80 caracteres.');
+      return;
+    }
+
+    const boton = contenedor.querySelector('#formulario-autenticacion button[type="submit"]');
+    boton.disabled = true;
+    try {
+      const respuesta = await fetch(esRegistro ? '/api/auth/registro' : '/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(
+          esRegistro
+            ? {
+                nombre: contenedor.querySelector('#auth-nombre').value.trim(),
+                email: correo,
+                password: contrasena,
+                rol: contenedor.querySelector('#auth-rol').value
+              }
+            : { email: correo, password: contrasena }
+        )
+      });
+      const resultado = await respuesta.json().catch(() => ({}));
+      if (!respuesta.ok) throw new Error(resultado.error || 'No se pudo completar la autenticación.');
+
+      if (resultado.confirmacionRequerida) {
+        mostrarExito('Cuenta creada. Confirma tu correo para poder iniciar sesión.');
+        return;
+      }
+      alCompletar(resultado.usuario);
+    } catch (error) {
+      mostrarError(error.message || 'No se pudo completar la autenticación. Intenta de nuevo.');
+    } finally {
+      boton.disabled = false;
+    }
   });
 
   function mostrarError(mensaje) {
     const elemento = contenedor.querySelector('#mensaje-autenticacion');
     elemento.textContent = mensaje;
+    elemento.className = 'alerta-error-formulario';
+    elemento.classList.remove('oculto');
+  }
+
+  function mostrarExito(mensaje) {
+    const elemento = contenedor.querySelector('#mensaje-autenticacion');
+    elemento.textContent = mensaje;
+    elemento.className = 'alerta-exito-formulario';
     elemento.classList.remove('oculto');
   }
 }
