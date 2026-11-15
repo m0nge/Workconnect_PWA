@@ -10,7 +10,6 @@ export function renderizarP13Empresas(contenedor, empresas, acciones) {
   contenedor.innerHTML = `
     <div class="pila-vertical">
       <div class="cabecera-pantalla">
-        <span class="codigo-pantalla">P13 ADMINISTRACIÓN</span>
         <h1 class="titulo-pantalla">Empresas</h1>
         <p class="subtitulo-pantalla">
           Revisa la información de cada empresa y gestiona su verificación.

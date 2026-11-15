@@ -11,7 +11,6 @@ export function renderizarP12Usuarios(contenedor, usuarios, acciones) {
   contenedor.innerHTML = `
     <div class="pila-vertical">
       <div class="cabecera-pantalla">
-        <span class="codigo-pantalla">P12 ADMINISTRACIÓN</span>
         <h1 class="titulo-pantalla">Usuarios</h1>
         <p class="subtitulo-pantalla">
           Busca cuentas, revisa sus datos y activa o desactiva el acceso.
