@@ -143,7 +143,7 @@ const accionesPanel = {
     estadoAplicacion.datos.usuarios = estadoAplicacion.datos.usuarios.map((u) =>
       u.id === guardado.id ? guardado : u
     );
-    mostrarNotificacion(`Usuario "${guardado.nombre}" actualizado en Supabase.`);
+    mostrarNotificacion(`Usuario "${guardado.nombre}" actualizado.`);
     renderizarInterfaz();
   },
 
@@ -178,7 +178,7 @@ const accionesPanel = {
     estadoAplicacion.datos.vacantes = estadoAplicacion.datos.vacantes.map((v) =>
       v.id === guardada.id ? guardada : v
     );
-    mostrarNotificacion(`Vacante "${guardada.titulo}" actualizada en Supabase.`);
+    mostrarNotificacion(`Vacante "${guardada.titulo}" actualizada.`);
     renderizarInterfaz();
   },
 
@@ -213,7 +213,7 @@ const accionesPanel = {
     estadoAplicacion.datos.elementosModeracion = estadoAplicacion.datos.elementosModeracion.filter(
       (m) => m.id !== id
     );
-    mostrarNotificacion('Elemento eliminado de Supabase.');
+    mostrarNotificacion('Elemento eliminado.');
     renderizarInterfaz();
   },
 
@@ -248,7 +248,7 @@ const accionesPanel = {
       body: JSON.stringify(nuevoRecurso)
     });
     estadoAplicacion.datos.recursosLaborales.unshift(creado);
-    mostrarNotificacion(`Recurso "${creado.titulo}" guardado en Supabase.`);
+    mostrarNotificacion(`Recurso "${creado.titulo}" guardado.`);
     renderizarInterfaz();
   }
 };
@@ -383,13 +383,13 @@ async function iniciarAplicacion() {
     estadoAplicacion.datos = datosPublicosVacios();
     renderizarInterfaz();
     if (error.requiereConfiguracion) {
-      mostrarNotificacion('Configura Supabase para cargar vacantes y recursos reales.');
+      mostrarNotificacion('No se pudieron cargar los datos. Intenta nuevamente.');
       return;
     }
 
     contenedorContenido.innerHTML = `
       <div class="tarjeta-estado-carga" style="color:#be123c;">
-        Error al cargar los datos desde Supabase: ${escaparHtml(error.message)}
+        No se pudieron cargar los datos. Intenta nuevamente.
       </div>
     `;
   }

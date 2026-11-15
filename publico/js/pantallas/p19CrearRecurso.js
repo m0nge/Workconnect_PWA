@@ -19,7 +19,6 @@ export function renderizarP19CrearRecurso(contenedor, recursos, acciones) {
   contenedor.innerHTML = `
     <div class="pila-vertical">
       <div class="cabecera-pantalla">
-        <span class="codigo-pantalla">P19 ADMINISTRACIÓN / RECURSOS LABORALES</span>
         <h1 class="titulo-pantalla">Crear recurso laboral</h1>
         <p class="subtitulo-pantalla">
           Formulario para redactar, categorizar y publicar artículos, consejos y tutoriales en el portal público.

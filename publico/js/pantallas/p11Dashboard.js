@@ -85,7 +85,7 @@ export function renderizarP11Dashboard(contenedor, datos, alNavegar) {
     <div class="pila-vertical">
       <div class="cabecera-pantalla">
         <h1 class="titulo-pantalla">Dashboard</h1>
-        <p class="subtitulo-pantalla">Resumen en tiempo real conectado a la base de datos Supabase</p>
+        <p class="subtitulo-pantalla">Resumen general de WorkConnect</p>
       </div>
 
       <div class="cuadricula-indicadores">

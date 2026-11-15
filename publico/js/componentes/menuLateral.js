@@ -83,12 +83,6 @@ export function renderizarMenuLateral(
         ${htmlElementos}
       </nav>
 
-      <div class="menu-lateral-pie">
-        <p class="menu-pie-titulo">WorkConnect Admin</p>
-        <p class="menu-pie-texto">
-          Conectado en tiempo real a Supabase (PostgreSQL).
-        </p>
-      </div>
     </div>
   `;
 
