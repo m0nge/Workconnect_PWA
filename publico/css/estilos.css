@@ -94,6 +94,269 @@ textarea {
   }
 }
 
+.portada-publica {
+  background: #202124 !important;
+  color: var(--color-blanco);
+  border: none;
+  border-radius: 0;
+  padding: clamp(1.75rem, 4vw, 3.25rem);
+}
+
+.portada-publica .titulo-pantalla {
+  color: var(--color-blanco) !important;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(2rem, 4vw, 3.25rem);
+  line-height: 1.05;
+  max-width: 42rem;
+}
+
+.portada-publica .titulo-pantalla em {
+  color: #e8a4b9 !important;
+  font-style: italic;
+}
+
+.modo-publico .perfil-admin-encabezado {
+  display: none;
+}
+
+.modo-publico .disposicion-panel {
+  display: flex;
+}
+
+.modo-publico .contenedor-principal {
+  max-width: 80rem;
+  padding-top: 1.25rem;
+  padding-bottom: 2rem;
+}
+
+.modo-publico .menu-lateral-columna {
+  display: block;
+}
+
+.modo-publico .titulo-pantalla {
+  font-family: Georgia, 'Times New Roman', serif;
+}
+
+.modo-publico .cabecera-pantalla {
+  margin-bottom: 0.5rem;
+}
+
+.acciones-publicas-encabezado {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.selector-rol {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--color-texto-atenuado);
+  font-size: 0.7rem;
+}
+
+.selector-rol select {
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio-pequeno);
+  padding: 0.4rem;
+  color: var(--color-texto);
+  background: var(--color-blanco);
+}
+
+.modo-publico .boton-ingresar,
+.modo-publico .boton-registrarse {
+  display: flex;
+}
+
+.boton-ingresar,
+.boton-registrarse {
+  display: none;
+}
+
+.boton-encabezado {
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio-pequeno);
+  padding: 0.45rem 0.75rem;
+  background: var(--color-blanco);
+  color: var(--color-texto);
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.boton-registrarse {
+  background: var(--color-vino);
+  border-color: var(--color-vino);
+  color: var(--color-blanco);
+}
+
+  .formulario-busqueda-publica,
+  .resultados-publicos,
+  .detalle-empleo-publico {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .formulario-busqueda-publica {
+    grid-template-columns: 1.5fr 1fr auto;
+    align-items: end;
+    margin-top: 1rem;
+  }
+
+  .campo-formulario {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    color: var(--color-texto-secundario);
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+
+  .campo-formulario input,
+  .campo-formulario select,
+  .campo-formulario textarea {
+    width: 100%;
+    border: 1px solid var(--color-borde);
+    border-radius: var(--radio-pequeno);
+    padding: 0.7rem 0.75rem;
+    color: var(--color-texto);
+    background: var(--color-blanco);
+  }
+
+  .campo-formulario input:focus,
+  .campo-formulario select:focus,
+  .campo-formulario textarea:focus {
+    outline: 2px solid var(--color-vino-suave);
+    border-color: var(--color-vino);
+  }
+
+  .boton-principal,
+  .boton-secundario {
+    border-radius: var(--radio-pequeno);
+    padding: 0.7rem 1rem;
+    cursor: pointer;
+    font-weight: 600;
+  }
+
+  .boton-principal {
+    border: 1px solid var(--color-vino);
+    background: var(--color-vino);
+    color: var(--color-blanco);
+  }
+
+  .boton-secundario {
+    border: 1px solid var(--color-borde);
+    background: var(--color-blanco);
+    color: var(--color-vino);
+  }
+
+  .ancho-completo {
+    width: 100%;
+  }
+
+  .lista-tarjetas-publicas,
+  .cuadricula-recursos,
+  .filtros-recursos {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .tarjeta-vacante-publica,
+  .tarjeta-foro-publico {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem;
+  }
+
+  .titulo-tarjeta {
+    margin: 0.5rem 0 0.25rem;
+    font-size: 1rem;
+    color: var(--color-texto);
+  }
+
+  .texto-secundario {
+    margin: 0;
+    color: var(--color-texto-atenuado);
+    font-size: 0.8rem;
+  }
+
+  .datos-vacante-publica {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    color: var(--color-texto-secundario);
+    font-size: 0.8rem;
+  }
+
+  .resultados-publicos {
+    grid-template-columns: minmax(210px, 0.35fr) minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .detalle-empleo-publico {
+    grid-template-columns: minmax(0, 1fr) minmax(230px, 0.35fr);
+    align-items: start;
+  }
+
+  .lista-detalle-empleo {
+    padding-left: 1.25rem;
+    color: var(--color-texto-secundario);
+  }
+
+  .filtros-recursos {
+    grid-template-columns: 1fr 240px;
+  }
+
+  .cuadricula-recursos {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .modo-publico .tarjeta,
+  .modo-publico .tarjeta-kpi {
+    box-shadow: 0 1px 5px rgba(15, 23, 42, 0.08);
+  }
+
+  .tarjeta-recurso-publico {
+    padding: 1rem;
+  }
+
+  .formulario-publico {
+    display: grid;
+    gap: 1rem;
+    max-width: 760px;
+  }
+
+  .acciones-formulario {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+  }
+
+  @media (max-width: 767px) {
+    .menu-lateral-columna {
+      position: static;
+      width: 100%;
+    }
+
+    .area-contenido {
+      margin-left: 0;
+    }
+
+    .formulario-busqueda-publica,
+    .resultados-publicos,
+    .detalle-empleo-publico,
+    .filtros-recursos,
+    .cuadricula-recursos {
+      grid-template-columns: 1fr;
+    }
+
+    .tarjeta-vacante-publica,
+    .tarjeta-foro-publico {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+  }
 .disposicion-panel {
   display: flex;
   flex-direction: column;
@@ -104,6 +367,19 @@ textarea {
 @media (min-width: 768px) {
   .disposicion-panel {
     flex-direction: row;
+  }
+
+  .menu-lateral-columna {
+    position: fixed;
+    top: 5.25rem;
+    left: max(1rem, calc((100vw - 80rem) / 2));
+    width: 15rem;
+    max-height: calc(100vh - 6.25rem);
+    overflow-y: auto;
+  }
+
+  .area-contenido {
+    margin-left: 16.5rem;
   }
 }
 
