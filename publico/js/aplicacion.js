@@ -7,11 +7,28 @@ import { renderizarP14Vacantes } from './pantallas/p14Vacantes.js';
 import { renderizarP15Moderacion } from './pantallas/p15Moderacion.js';
 import { renderizarP16VerificacionEmpresas } from './pantallas/p16VerificacionEmpresas.js';
 import { renderizarP19CrearRecurso } from './pantallas/p19CrearRecurso.js';
+import { renderizarP01Inicio } from './pantallas/p01Inicio.js';
+import { renderizarP02Resultados } from './pantallas/p02Resultados.js';
+import { renderizarP03Detalle } from './pantallas/p03Detalle.js';
+import { renderizarP04Recursos } from './pantallas/p04Recursos.js';
+import { renderizarP05Foros } from './pantallas/p05Foros.js';
+import { renderizarP28CrearTema } from './pantallas/p28CrearTema.js';
+import { renderizarAutenticacion } from './componentes/autenticacion.js';
 import { escaparHtml } from './utilidades/formato.js';
 
 // Estado global de la aplicación en JavaScript puro
+const rolesPermitidos = ['visitante', 'candidato', 'empresa', 'administrador'];
+const rolGuardado = sessionStorage.getItem('workconnect-rol');
+const rolInicial = rolesPermitidos.includes(rolGuardado) ? rolGuardado : 'visitante';
+const sesionGuardada = sessionStorage.getItem('workconnect-sesion');
+const usuarioInicial = sesionGuardada ? JSON.parse(sesionGuardada) : null;
+
 const estadoAplicacion = {
-  pantallaActual: 'P11',
+  pantallaActual: rolInicial === 'administrador' ? 'P11' : 'P01',
+  vacanteSeleccionada: null,
+  rolActual: rolInicial,
+  usuarioActual: usuarioInicial,
+  pantallaPendiente: null,
   datos: null,
   temporizadorNotificacion: null
 };
@@ -53,9 +70,58 @@ async function solicitarApi(ruta, opciones = {}) {
   return cuerpo;
 }
 
-function cambiarPantalla(nuevaPantalla) {
+function cambiarPantalla(nuevaPantalla, idVacante = null, nuevoRol = estadoAplicacion.rolActual) {
+  const pantallasProtegidas = ['P28', 'P11', 'P12', 'P13', 'P14', 'P15', 'P16', 'P19'];
+  const permisos = {
+    P28: ['candidato', 'empresa'],
+    P11: ['administrador'],
+    P12: ['administrador'],
+    P13: ['administrador'],
+    P14: ['administrador'],
+    P15: ['administrador'],
+    P16: ['administrador'],
+    P19: ['administrador']
+  };
+  if (pantallasProtegidas.includes(nuevaPantalla) && !estadoAplicacion.usuarioActual) {
+    estadoAplicacion.pantallaPendiente = nuevaPantalla;
+    estadoAplicacion.pantallaActual = 'AUTH_LOGIN';
+    renderizarInterfaz();
+    return;
+  }
+  if (
+    permisos[nuevaPantalla] &&
+    estadoAplicacion.usuarioActual &&
+    !permisos[nuevaPantalla].includes(estadoAplicacion.usuarioActual.rol)
+  ) {
+    mostrarNotificacion('Tu cuenta no tiene permisos para acceder a esta sección.');
+    return;
+  }
+  if (nuevaPantalla === 'CERRAR_SESION') {
+    sessionStorage.removeItem('workconnect-sesion');
+    sessionStorage.removeItem('workconnect-rol');
+    estadoAplicacion.usuarioActual = null;
+    estadoAplicacion.rolActual = 'visitante';
+    estadoAplicacion.pantallaActual = 'P01';
+    renderizarInterfaz();
+    return;
+  }
+  estadoAplicacion.rolActual = nuevoRol;
+  if (estadoAplicacion.usuarioActual) {
+    estadoAplicacion.rolActual = estadoAplicacion.usuarioActual.rol;
+  }
+  sessionStorage.setItem('workconnect-rol', estadoAplicacion.rolActual);
   estadoAplicacion.pantallaActual = nuevaPantalla;
+  estadoAplicacion.vacanteSeleccionada = idVacante;
   renderizarInterfaz();
+}
+
+function datosPublicosVacios() {
+  return {
+    usuarios: [], empresas: [], vacantes: [], elementosModeracion: [], solicitudesVerificacion: [],
+    recursosLaborales: [], estadisticasDashboard: {
+      totalPostulaciones: 0, contrataciones: 0, postulacionesPorMes: [], postulacionesPorEstado: [], vacantesPorSector: []
+    }
+  };
 }
 
 function calcularPendientes(datos) {
@@ -190,15 +256,78 @@ const accionesPanel = {
 function renderizarInterfaz() {
   if (!estadoAplicacion.datos) return;
 
-  renderizarEncabezado(contenedorEncabezado, cambiarPantalla);
+  document.body.classList.toggle(
+    'modo-publico',
+    !['P11', 'P12', 'P13', 'P14', 'P15', 'P16', 'P19'].includes(estadoAplicacion.pantallaActual)
+  );
+  document.body.classList.toggle(
+    'modo-autenticado',
+    Boolean(estadoAplicacion.usuarioActual) && !['AUTH_LOGIN', 'AUTH_REGISTRO'].includes(estadoAplicacion.pantallaActual)
+  );
+  renderizarEncabezado(
+    contenedorEncabezado,
+    cambiarPantalla,
+    estadoAplicacion.rolActual,
+    estadoAplicacion.usuarioActual
+  );
   renderizarMenuLateral(
     contenedorMenuLateral,
     estadoAplicacion.pantallaActual,
     calcularPendientes(estadoAplicacion.datos),
-    cambiarPantalla
+    cambiarPantalla,
+    estadoAplicacion.rolActual
   );
 
   switch (estadoAplicacion.pantallaActual) {
+    case 'AUTH_LOGIN':
+      renderizarAutenticacion(
+        contenedorContenido,
+        'login',
+        (cuenta) => {
+          estadoAplicacion.usuarioActual = cuenta;
+          estadoAplicacion.rolActual = cuenta.rol;
+          estadoAplicacion.pantallaActual = estadoAplicacion.pantallaPendiente || 'P01';
+          estadoAplicacion.pantallaPendiente = null;
+          renderizarInterfaz();
+        },
+        () => cambiarPantalla('P01')
+      );
+      break;
+    case 'AUTH_REGISTRO':
+      renderizarAutenticacion(
+        contenedorContenido,
+        'registro',
+        (cuenta) => {
+          estadoAplicacion.usuarioActual = cuenta;
+          estadoAplicacion.rolActual = cuenta.rol;
+          estadoAplicacion.pantallaActual = estadoAplicacion.pantallaPendiente || 'P01';
+          estadoAplicacion.pantallaPendiente = null;
+          renderizarInterfaz();
+        },
+        () => cambiarPantalla('P01')
+      );
+      break;
+    case 'P01':
+      renderizarP01Inicio(contenedorContenido, estadoAplicacion.datos, cambiarPantalla, (termino, ubicacion) => renderizarP02Resultados(contenedorContenido, estadoAplicacion.datos, termino, ubicacion, cambiarPantalla));
+      break;
+    case 'P02':
+      renderizarP02Resultados(contenedorContenido, estadoAplicacion.datos, '', '', cambiarPantalla);
+      break;
+    case 'P03':
+      renderizarP03Detalle(contenedorContenido, estadoAplicacion.datos, estadoAplicacion.vacanteSeleccionada, cambiarPantalla, mostrarNotificacion);
+      break;
+    case 'P04':
+      renderizarP04Recursos(contenedorContenido, estadoAplicacion.datos);
+      break;
+    case 'P05':
+      renderizarP05Foros(contenedorContenido, cambiarPantalla);
+      break;
+    case 'P17':
+      renderizarP04Recursos(contenedorContenido, estadoAplicacion.datos, 'Recursos laborales publicados');
+      break;
+    case 'P28':
+      renderizarP28CrearTema(contenedorContenido, cambiarPantalla, mostrarNotificacion);
+      break;
     case 'P11':
       renderizarP11Dashboard(contenedorContenido, estadoAplicacion.datos, cambiarPantalla);
       break;
@@ -238,38 +367,23 @@ function renderizarInterfaz() {
 }
 
 async function iniciarAplicacion() {
-  renderizarEncabezado(contenedorEncabezado, cambiarPantalla);
+  renderizarEncabezado(contenedorEncabezado, cambiarPantalla, estadoAplicacion.rolActual);
   renderizarMenuLateral(
     contenedorMenuLateral,
     estadoAplicacion.pantallaActual,
     { empresas: 0, vacantes: 0, moderacion: 0, verificaciones: 0 },
-    cambiarPantalla
+    cambiarPantalla,
+    estadoAplicacion.rolActual
   );
 
   try {
     estadoAplicacion.datos = await solicitarApi('/api/datos');
     renderizarInterfaz();
   } catch (error) {
+    estadoAplicacion.datos = datosPublicosVacios();
+    renderizarInterfaz();
     if (error.requiereConfiguracion) {
-      contenedorContenido.innerHTML = `
-        <div class="tarjeta tarjeta-espaciado pila-compacta">
-          <div>
-            <span class="codigo-pantalla">CONEXIÓN SUPABASE</span>
-            <h2 class="titulo-pantalla" style="font-size:1.25rem;">Configura las variables de entorno</h2>
-            <p class="subtitulo-pantalla">
-              El servidor Node.js apunta al proyecto <strong>${escaparHtml(error.urlSupabase)}</strong>,
-              pero falta la variable de entorno <code class="texto-mono">SUPABASE_SERVICE_ROLE_KEY</code>.
-            </p>
-          </div>
-          <div class="caja-dato-modal" style="background:#f8fafc; padding:0.875rem;">
-            <p style="margin:0; font-size:0.75rem; color:#334155;">
-              1. Configura <code class="texto-mono">SUPABASE_SERVICE_ROLE_KEY</code> en el archivo <code class="texto-mono">.env</code> local o en las variables de entorno de tu servidor.<br />
-              2. Opcionalmente define <code class="texto-mono">SUPABASE_URL</code> con <code class="texto-mono">https://nrglhwctftjfvflopppo.supabase.co</code>.<br />
-              3. Reinicia o recarga la aplicación para consultar tus tablas.
-            </p>
-          </div>
-        </div>
-      `;
+      mostrarNotificacion('Configura Supabase para cargar vacantes y recursos reales.');
       return;
     }
 
