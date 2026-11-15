@@ -10,18 +10,7 @@ export function renderizarEncabezado(contenedor, alCambiarPantalla, rolActual = 
           class="boton-marca"
           title="Ir al inicio"
         >
-          <div class="caja-logo">
-            <svg class="icono-logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M4 8l3 8 3-6 3 6 3-8" />
-              <circle cx="12" cy="5" r="1.5" fill="currentColor" />
-            </svg>
-          </div>
-          <div class="marca-textos">
-            <span class="marca-nombre">
-              Work<span class="marca-nombre-acento">Connect</span>
-            </span>
-            <span class="marca-lema">Portal de Empleo · El Salvador</span>
-          </div>
+          <img class="logo-marca" src="/multimedia/logo.png" alt="WorkConnect" />
         </button>
       </div>
 

@@ -641,6 +641,13 @@ textarea {
   transition: background-color 0.15s ease;
 }
 
+.logo-marca {
+  width: 10.5rem;
+  height: 2.5rem;
+  object-fit: contain;
+  object-position: left center;
+}
+
 .boton-marca:hover .caja-logo {
   background-color: var(--color-vino-oscuro);
 }
