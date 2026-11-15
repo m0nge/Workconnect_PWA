@@ -1,4 +1,4 @@
-import { escaparHtml, iconoBusquedaSvg } from '../utilidades/formato.js';
+import { escaparHtml, iconoBusquedaSvg, validarCorreo, validarTexto, valorEnLista } from '../utilidades/formato.js';
 import { abrirModal } from '../componentes/modal.js';
 
 const estadoFiltrosUsuarios = {
@@ -83,8 +83,8 @@ export function renderizarP12Usuarios(contenedor, usuarios, acciones) {
     const texto = estadoFiltrosUsuarios.terminoBusqueda.trim().toLowerCase();
     const filtrados = usuarios.filter((usuario) => {
       const coincideTexto =
-        usuario.nombre.toLowerCase().includes(texto) ||
-        usuario.correo.toLowerCase().includes(texto);
+        String(usuario.nombre || '').toLowerCase().includes(texto) ||
+        String(usuario.correo || '').toLowerCase().includes(texto);
       const coincideRol =
         estadoFiltrosUsuarios.filtroRol === 'Todos los roles' ||
         usuario.rol === estadoFiltrosUsuarios.filtroRol;
@@ -335,8 +335,14 @@ function abrirModalEditarUsuario(usuario, alActualizarUsuario) {
         const nombreLimpio = campoNombre.value.trim();
         const correoLimpio = campoCorreo.value.trim();
 
-        if (!nombreLimpio || !correoLimpio) {
-          cajaError.textContent = 'Por favor complete el nombre y correo del usuario.';
+        if (!validarTexto(nombreLimpio, 3, 80) || !validarCorreo(correoLimpio)) {
+          cajaError.textContent = 'El nombre debe tener entre 3 y 80 caracteres y el correo debe ser válido.';
+          cajaError.classList.remove('oculto');
+          return;
+        }
+
+        if (!valorEnLista(campoRol.value, ['Candidato/a', 'Empresa', 'Administración/a'])) {
+          cajaError.textContent = 'Selecciona un rol válido.';
           cajaError.classList.remove('oculto');
           return;
         }

@@ -73,9 +73,9 @@ export function renderizarP13Empresas(contenedor, empresas, acciones) {
     const texto = estadoFiltrosEmpresas.terminoBusqueda.trim().toLowerCase();
     const filtradas = empresas.filter((empresa) => {
       const coincideTexto =
-        empresa.nombreComercial.toLowerCase().includes(texto) ||
-        empresa.sector.toLowerCase().includes(texto) ||
-        empresa.ubicacion.toLowerCase().includes(texto);
+        String(empresa.nombreComercial || '').toLowerCase().includes(texto) ||
+        String(empresa.sector || '').toLowerCase().includes(texto) ||
+        String(empresa.ubicacion || '').toLowerCase().includes(texto);
       const coincideEstado =
         estadoFiltrosEmpresas.filtroEstado === 'Todos los estados' ||
         empresa.estado === estadoFiltrosEmpresas.filtroEstado;

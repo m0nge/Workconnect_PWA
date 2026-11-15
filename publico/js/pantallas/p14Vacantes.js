@@ -1,4 +1,10 @@
-import { escaparHtml, iconoBusquedaSvg } from '../utilidades/formato.js';
+import {
+  escaparHtml,
+  iconoBusquedaSvg,
+  validarNumero,
+  validarTexto,
+  valorEnLista
+} from '../utilidades/formato.js';
 import { abrirModal } from '../componentes/modal.js';
 
 const estadoFiltrosVacantes = {
@@ -86,9 +92,9 @@ export function renderizarP14Vacantes(contenedor, vacantes, acciones) {
       }
 
       return (
-        vacante.titulo.toLowerCase().includes(texto) ||
-        vacante.empresa.toLowerCase().includes(texto) ||
-        vacante.municipio.toLowerCase().includes(texto)
+        String(vacante.titulo || '').toLowerCase().includes(texto) ||
+        String(vacante.empresa || '').toLowerCase().includes(texto) ||
+        String(vacante.municipio || '').toLowerCase().includes(texto)
       );
     });
 
@@ -313,6 +319,8 @@ function abrirModalEditarVacante(vacante, alActualizarVacante) {
             type="text"
             class="campo-texto"
             value="${escaparHtml(vacante.titulo)}"
+            minlength="3"
+            maxlength="120"
             required
           />
         </div>
@@ -325,6 +333,8 @@ function abrirModalEditarVacante(vacante, alActualizarVacante) {
               type="number"
               class="campo-texto"
               value="${vacante.salarioMin}"
+              min="1"
+              max="1000000"
               required
             />
           </div>
@@ -335,6 +345,8 @@ function abrirModalEditarVacante(vacante, alActualizarVacante) {
               type="number"
               class="campo-texto"
               value="${vacante.salarioMax}"
+              min="1"
+              max="1000000"
               required
             />
           </div>
@@ -361,7 +373,7 @@ function abrirModalEditarVacante(vacante, alActualizarVacante) {
 
         <div>
           <label class="etiqueta-campo" for="campo-descripcion-vacante">Descripción del puesto</label>
-          <textarea id="campo-descripcion-vacante" rows="3" class="campo-area">${escaparHtml(vacante.descripcion)}</textarea>
+          <textarea id="campo-descripcion-vacante" rows="3" class="campo-area" minlength="20" maxlength="4000" required>${escaparHtml(vacante.descripcion)}</textarea>
         </div>
 
         <div class="pie-modal derecha">
@@ -391,14 +403,36 @@ function abrirModalEditarVacante(vacante, alActualizarVacante) {
         const salarioMinimo = Number(campoSalMin.value);
         const salarioMaximo = Number(campoSalMax.value);
 
-        if (!tituloLimpio) {
-          cajaError.textContent = 'Por favor ingrese el título del puesto.';
+        if (!validarTexto(tituloLimpio, 3, 120)) {
+          cajaError.textContent = 'El título debe tener entre 3 y 120 caracteres.';
+          cajaError.classList.remove('oculto');
+          return;
+        }
+
+        if (!validarNumero(salarioMinimo, 1, 1000000) || !validarNumero(salarioMaximo, 1, 1000000)) {
+          cajaError.textContent = 'Los salarios deben ser números entre 1 y 1,000,000.';
           cajaError.classList.remove('oculto');
           return;
         }
 
         if (salarioMaximo < salarioMinimo) {
           cajaError.textContent = 'El salario máximo no puede ser menor al salario mínimo.';
+          cajaError.classList.remove('oculto');
+          return;
+        }
+
+        if (
+          !valorEnLista(campoModalidad.value, ['Presencial', 'Híbrido', 'Remoto']) ||
+          !valorEnLista(campoContrato.value, ['Tiempo completo', 'Medio tiempo', 'Servicios profesionales'])
+        ) {
+          cajaError.textContent = 'Selecciona una modalidad y un tipo de contrato válidos.';
+          cajaError.classList.remove('oculto');
+          return;
+        }
+
+        const descripcionLimpia = campoDescripcion.value.trim();
+        if (!validarTexto(descripcionLimpia, 20, 4000)) {
+          cajaError.textContent = 'La descripción debe tener entre 20 y 4,000 caracteres.';
           cajaError.classList.remove('oculto');
           return;
         }
@@ -410,7 +444,7 @@ function abrirModalEditarVacante(vacante, alActualizarVacante) {
           salarioMax: salarioMaximo,
           modalidad: campoModalidad.value,
           tipoContrato: campoContrato.value,
-          descripcion: campoDescripcion.value.trim()
+          descripcion: descripcionLimpia
         });
         cerrar();
       });

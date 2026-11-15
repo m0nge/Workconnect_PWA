@@ -10,6 +10,28 @@ export function escaparHtml(valor) {
     .replaceAll("'", '&#39;');
 }
 
+export function textoSeguro(valor) {
+  return String(valor || '').trim();
+}
+
+export function validarTexto(valor, minimo, maximo) {
+  const texto = textoSeguro(valor);
+  return texto.length >= minimo && texto.length <= maximo;
+}
+
+export function validarCorreo(valor) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(textoSeguro(valor));
+}
+
+export function validarNumero(valor, minimo, maximo) {
+  const numero = Number(valor);
+  return Number.isFinite(numero) && numero >= minimo && numero <= maximo;
+}
+
+export function valorEnLista(valor, opciones) {
+  return opciones.includes(valor);
+}
+
 export function iconoBusquedaSvg() {
   return `
     <svg class="icono-lupa" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">

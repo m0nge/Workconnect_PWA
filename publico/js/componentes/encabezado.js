@@ -1,6 +1,15 @@
 // Componente del encabezado superior de WorkConnect
 
 export function renderizarEncabezado(contenedor, alCambiarPantalla, rolActual = 'visitante', usuario = null) {
+  const inicialesUsuario = usuario
+    ? usuario.nombre
+        .split(/\s+/)
+        .slice(0, 2)
+        .map((parte) => parte[0])
+        .join('')
+        .toUpperCase()
+    : '';
+  const etiquetaRol = rolActual === 'candidato' ? 'Candidato' : rolActual === 'empresa' ? 'Empresa' : 'Visitante';
   contenedor.innerHTML = `
     <div class="encabezado-interior">
       <div style="display:flex; align-items:center; gap:0.75rem;">
@@ -23,7 +32,7 @@ export function renderizarEncabezado(contenedor, alCambiarPantalla, rolActual = 
 
       <div class="zona-usuario-encabezado">
         <div class="acciones-publicas-encabezado">
-          ${usuario ? `<span class="usuario-encabezado">${usuario.nombre}</span><button type="button" class="boton-encabezado boton-cerrar-sesion">Cerrar sesión</button>` : '<button type="button" class="boton-encabezado boton-ingresar">Ingresar</button><button type="button" class="boton-encabezado boton-registrarse">Registrarse</button>'}
+          ${usuario ? `<div class="perfil-usuario-publico"><span class="avatar-circular">${inicialesUsuario}</span><span><strong>${usuario.nombre}</strong><small>${etiquetaRol}</small></span></div><button type="button" class="boton-encabezado boton-cerrar-sesion">Cerrar sesión</button>` : '<button type="button" class="boton-encabezado boton-ingresar">Ingresar</button><button type="button" class="boton-encabezado boton-registrarse">Registrarse</button>'}
         </div>
         <div class="perfil-admin-encabezado">
           <div class="avatar-circular">AW</div>

@@ -38,6 +38,98 @@
   min-width: 0;
 }
 
+.detalle-empleo-publico {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 23rem;
+  gap: 2rem;
+  align-items: start;
+}
+
+.detalle-empleo-principal {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+}
+
+.detalle-empleo-principal .detalle-empleo-cabecera {
+  padding-top: 0.5rem;
+}
+
+.detalle-empleo-principal .avatar-cuadrado.grande,
+.detalle-empleo-principal .imagen-empresa {
+  width: 5.75rem;
+  height: 5.75rem;
+  font-size: 1.5rem;
+}
+
+.detalle-valoraciones {
+  margin-top: 2.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--color-borde);
+}
+
+.valoraciones-cabecera {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.valoraciones-resumen {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.valoraciones-resumen strong {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 2.5rem;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.valoraciones-resumen .texto-secundario {
+  display: block;
+  margin-top: 0.15rem;
+}
+
+.estrellas-valoracion {
+  color: var(--color-vino);
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.valoracion-item {
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--color-borde-suave);
+}
+
+.valoracion-item-cabecera {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.valoracion-item p {
+  margin: 0.45rem 0 0.25rem;
+  color: var(--color-texto-secundario);
+}
+
+.valoracion-item small {
+  color: var(--color-texto-atenuado);
+  font-size: 0.75rem;
+}
+
+.estado-verificada {
+  padding: 0.2rem 0.45rem;
+  border-radius: var(--radio-pequeno);
+  background: var(--color-carbon);
+  color: var(--color-blanco);
+  font-size: 0.7rem;
+}
+
 .detalle-empleo-identidad .titulo-pantalla {
   font-size: clamp(1.7rem, 3vw, 2.45rem);
 }
@@ -119,20 +211,120 @@ textarea {
   color: var(--color-blanco);
   border: none;
   border-radius: 0;
-  padding: clamp(1.75rem, 4vw, 3.25rem);
+  padding: clamp(2rem, 5vw, 4rem);
+  overflow: hidden;
+}
+
+.portada-contenido {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.82fr);
+  gap: clamp(2rem, 5vw, 5rem);
+  align-items: center;
+}
+
+.portada-mensaje {
+  max-width: 39rem;
+}
+
+.portada-etiqueta {
+  color: #e8a4b9;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
 }
 
 .portada-publica .titulo-pantalla {
   color: var(--color-blanco) !important;
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: clamp(2rem, 4vw, 3.25rem);
+  font-size: clamp(2.4rem, 5vw, 4.2rem);
   line-height: 1.05;
-  max-width: 42rem;
+  margin-top: 0.65rem;
 }
 
 .portada-publica .titulo-pantalla em {
   color: #e8a4b9 !important;
   font-style: italic;
+}
+
+.portada-descripcion {
+  max-width: 34rem;
+  margin: 1.25rem 0;
+  color: #d7d9df;
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+
+.portada-sectores {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  color: #d7d9df;
+  font-size: 0.8rem;
+}
+
+.portada-sectores button {
+  border: 1px solid #59606d;
+  border-radius: 999px;
+  padding: 0.35rem 0.7rem;
+  background: transparent;
+  color: var(--color-blanco);
+  cursor: pointer;
+  font-size: 0.75rem;
+}
+
+.formulario-busqueda-publica {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin-top: 0;
+  padding: 1.5rem;
+  border-radius: 0.65rem;
+  background: var(--color-blanco);
+  color: var(--color-carbon);
+}
+
+.formulario-busqueda-publica h2 {
+  margin: 0 0 0.35rem;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.35rem;
+}
+
+.formulario-busqueda-acciones {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.35rem;
+}
+
+.formulario-busqueda-acciones .boton-secundario,
+.formulario-busqueda-acciones .boton-principal {
+  padding: 0.6rem 0.75rem;
+  font-size: 0.78rem;
+}
+
+.metricas-portada {
+  position: relative;
+  z-index: 1;
+  margin: -2.25rem 1.5rem 0;
+  padding: 0;
+  gap: 0;
+}
+
+.metricas-portada .tarjeta-kpi {
+  min-height: 7rem;
+  padding: 1.35rem 1.5rem;
+  border-radius: 0;
+  border-right: 0;
+}
+
+.metricas-portada .tarjeta-kpi:first-child {
+  border-radius: var(--radio-mediano) 0 0 var(--radio-mediano);
+}
+
+.metricas-portada .tarjeta-kpi:last-child {
+  border-right: 1px solid var(--color-borde);
+  border-radius: 0 var(--radio-mediano) var(--radio-mediano) 0;
 }
 
 .modo-publico .perfil-admin-encabezado {
@@ -159,6 +351,16 @@ textarea {
 
 .modo-publico .cabecera-pantalla {
   margin-bottom: 0.5rem;
+}
+
+@media (min-width: 768px) {
+  .modo-inicio .menu-lateral-columna {
+    display: none;
+  }
+
+  .modo-inicio .area-contenido {
+    margin-left: 0;
+  }
 }
 
 .acciones-publicas-encabezado {
@@ -209,7 +411,24 @@ textarea {
   color: var(--color-blanco);
 }
 
-  .formulario-busqueda-publica,
+.perfil-usuario-publico {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--color-texto);
+  font-size: 0.8rem;
+}
+
+.perfil-usuario-publico > span:last-child {
+  display: flex;
+  flex-direction: column;
+}
+
+.perfil-usuario-publico small {
+  color: var(--color-texto-atenuado);
+  font-size: 0.65rem;
+}
+
   .resultados-publicos,
   .detalle-empleo-publico {
     display: grid;
@@ -217,9 +436,10 @@ textarea {
   }
 
   .formulario-busqueda-publica {
-    grid-template-columns: 1.5fr 1fr auto;
-    align-items: end;
-    margin-top: 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    margin-top: 0;
   }
 
   .campo-formulario {
@@ -315,7 +535,7 @@ textarea {
   }
 
   .detalle-empleo-publico {
-    grid-template-columns: minmax(0, 1fr) 18rem;
+    grid-template-columns: minmax(0, 1fr) 23rem;
     gap: 1.25rem;
     align-items: start;
   }
@@ -497,6 +717,27 @@ textarea {
   }
 
   @media (max-width: 767px) {
+    .portada-contenido {
+      grid-template-columns: 1fr;
+    }
+
+    .metricas-portada {
+      margin: 0;
+    }
+
+    .metricas-portada .tarjeta-kpi {
+      border-right: 1px solid var(--color-borde);
+      border-radius: 0;
+    }
+
+    .metricas-portada .tarjeta-kpi:first-child {
+      border-radius: var(--radio-mediano) var(--radio-mediano) 0 0;
+    }
+
+    .metricas-portada .tarjeta-kpi:last-child {
+      border-radius: 0 0 var(--radio-mediano) var(--radio-mediano);
+    }
+
     .menu-lateral-columna {
       position: static;
       width: 100%;
@@ -1009,6 +1250,39 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+}
+
+.resultados-publicos .tarjeta-filtro {
+  width: 100%;
+  max-width: 18rem;
+  padding: 1.15rem;
+}
+
+.resultados-publicos .tarjeta-filtro form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.resultados-publicos .tarjeta-filtro .campo-formulario {
+  gap: 0.3rem;
+}
+
+.resultados-publicos .tarjeta-filtro .campo-formulario input,
+.resultados-publicos .tarjeta-filtro .campo-formulario select {
+  min-height: 2.7rem;
+  padding: 0.55rem 0.7rem;
+}
+
+.resultados-publicos .tarjeta-filtro .boton-principal,
+.resultados-publicos .tarjeta-filtro .boton-secundario {
+  min-height: 2.7rem;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.8rem;
+}
+
+.resultados-publicos .tarjeta-filtro .boton-principal {
+  margin-top: 0.2rem;
 }
 
 /* --------------------------------------------------------------------------
@@ -2080,10 +2354,10 @@ textarea {
 }
 
 .pie-pagina {
-  background-color: var(--color-blanco);
+  background-color: #f1f0ef;
   border-top: 1px solid var(--color-borde);
-  margin-top: 3rem;
-  padding: 1.25rem 1rem;
+  margin-top: 4rem;
+  padding: 3.75rem 1rem 1.25rem;
   font-size: 0.75rem;
   color: var(--color-texto-atenuado);
 }
@@ -2092,18 +2366,65 @@ textarea {
   max-width: 80rem;
   margin: 0 auto;
   display: flex;
-  flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 0.5rem;
-  text-align: center;
+  gap: 3rem;
+  text-align: left;
 }
 
-@media (min-width: 640px) {
-  .pie-pagina-contenido {
-    flex-direction: row;
-    text-align: left;
-  }
+.pie-columna {
+  display: flex;
+  min-width: 9rem;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.pie-columna h2 {
+  margin: 0 0 0.45rem;
+  color: var(--color-texto-atenuado);
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+}
+
+.pie-columna a {
+  color: var(--color-texto);
+  text-decoration: none;
+  font-size: 0.82rem;
+}
+
+.pie-columna a:hover {
+  color: var(--color-vino);
+  text-decoration: underline;
+}
+
+.pie-identidad {
+  width: 23rem;
+}
+
+.pie-logo {
+  width: 14rem;
+  height: auto;
+  object-fit: contain;
+  object-position: left center;
+}
+
+.pie-identidad p {
+  max-width: 20rem;
+  margin: 0;
+  color: var(--color-texto-atenuado);
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+
+.pie-pagina-inferior {
+  max-width: 80rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 3rem auto 0;
+  padding-top: 1.5rem;
+  border-top: 1px solid #dedbd8;
+  font-size: 0.72rem;
 }
 
 .pie-marca {
@@ -2116,4 +2437,43 @@ textarea {
   margin: 0;
   font-size: 11px;
   color: var(--color-texto-atenuado);
+}
+
+@media (max-width: 900px) {
+  .detalle-empleo-publico {
+    grid-template-columns: minmax(0, 1fr) 19rem;
+    gap: 1.25rem;
+  }
+
+  .pie-pagina-contenido {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 767px) {
+  .detalle-empleo-publico {
+    display: block;
+  }
+
+  .detalle-empleo-lateral {
+    position: static;
+    margin-top: 2rem;
+  }
+
+  .valoraciones-cabecera,
+  .valoracion-item-cabecera,
+  .pie-pagina-inferior {
+    flex-direction: column;
+  }
+
+  .pie-pagina-contenido {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 2rem 1rem;
+  }
+
+  .pie-identidad {
+    grid-column: 1 / -1;
+    width: auto;
+  }
 }

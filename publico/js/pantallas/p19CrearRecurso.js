@@ -1,4 +1,4 @@
-import { escaparHtml } from '../utilidades/formato.js';
+import { escaparHtml, validarNumero, validarTexto, valorEnLista } from '../utilidades/formato.js';
 
 const estadoRecurso = {
   subpestana: 'Crear',
@@ -151,6 +151,8 @@ export function renderizarP19CrearRecurso(contenedor, recursos, acciones) {
                 id="recurso-titulo"
                 type="text"
                 class="campo-texto"
+                minlength="8"
+                maxlength="160"
                 placeholder="Ej. Cinco hábitos para buscar empleo con constancia"
                 value="${escaparHtml(estadoRecurso.titulo)}"
                 required
@@ -199,6 +201,8 @@ export function renderizarP19CrearRecurso(contenedor, recursos, acciones) {
                 id="recurso-resumen"
                 rows="2"
                 class="campo-area"
+                minlength="20"
+                maxlength="500"
                 placeholder="Escribe una breve síntesis que motive al candidato a abrir el artículo..."
                 required
               >${escaparHtml(estadoRecurso.resumen)}</textarea>
@@ -215,6 +219,8 @@ export function renderizarP19CrearRecurso(contenedor, recursos, acciones) {
                 id="recurso-contenido"
                 rows="5"
                 class="campo-area"
+                minlength="30"
+                maxlength="10000"
                 placeholder="Redacta el contenido informativo completo del recurso, pasos prácticos o recomendaciones..."
                 required
               >${escaparHtml(estadoRecurso.contenido)}</textarea>
@@ -246,6 +252,7 @@ export function renderizarP19CrearRecurso(contenedor, recursos, acciones) {
                 id="recurso-etiquetas"
                 type="text"
                 class="campo-texto"
+                maxlength="300"
                 placeholder="Entrevistas, Salarios, CV, Desarrollo profesional"
                 value="${escaparHtml(estadoRecurso.etiquetas)}"
               />
@@ -421,6 +428,14 @@ export function renderizarP19CrearRecurso(contenedor, recursos, acciones) {
     if (inputPortada && etiquetaPortada) {
       inputPortada.addEventListener('change', (e) => {
         const archivo = e.target.files?.[0];
+        if (archivo && (!archivo.type.startsWith('image/') || archivo.size > 2 * 1024 * 1024)) {
+          e.target.value = '';
+          estadoRecurso.nombreArchivoPortada = '';
+          etiquetaPortada.textContent = '🖼️ Seleccionar portada';
+          cajaError.textContent = 'La portada debe ser una imagen de hasta 2 MB.';
+          cajaError.classList.remove('oculto');
+          return;
+        }
         estadoRecurso.nombreArchivoPortada = archivo ? archivo.name : '';
         etiquetaPortada.textContent = `🖼️ ${estadoRecurso.nombreArchivoPortada || 'Seleccionar portada'}`;
       });
@@ -431,6 +446,15 @@ export function renderizarP19CrearRecurso(contenedor, recursos, acciones) {
     if (inputAdjunto && etiquetaAdjunto) {
       inputAdjunto.addEventListener('change', (e) => {
         const archivo = e.target.files?.[0];
+        const extensionesPermitidas = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+        if (archivo && (!extensionesPermitidas.includes(archivo.type) || archivo.size > 5 * 1024 * 1024)) {
+          e.target.value = '';
+          estadoRecurso.nombreArchivoAdjunto = '';
+          etiquetaAdjunto.textContent = '📎 Adjuntar archivo';
+          cajaError.textContent = 'El adjunto debe ser PDF o Word de hasta 5 MB.';
+          cajaError.classList.remove('oculto');
+          return;
+        }
         estadoRecurso.nombreArchivoAdjunto = archivo ? archivo.name : '';
         etiquetaAdjunto.textContent = `📎 ${estadoRecurso.nombreArchivoAdjunto || 'Adjuntar archivo'}`;
       });
@@ -480,28 +504,37 @@ export function renderizarP19CrearRecurso(contenedor, recursos, acciones) {
       const resumenLimpio = estadoRecurso.resumen.trim();
       const contenidoLimpio = estadoRecurso.contenido.trim();
 
-      if (!tituloLimpio || tituloLimpio.length < 8) {
+      if (!validarTexto(tituloLimpio, 8, 160)) {
         cajaError.textContent = 'El título debe tener al menos 8 caracteres.';
         cajaError.classList.remove('oculto');
         campoTitulo.focus();
         return;
       }
 
-      if (!resumenLimpio || resumenLimpio.length < 20) {
-        cajaError.textContent = 'El resumen debe tener al menos 20 caracteres.';
+      if (!validarTexto(resumenLimpio, 20, 500)) {
+        cajaError.textContent = 'El resumen debe tener entre 20 y 500 caracteres.';
         cajaError.classList.remove('oculto');
         campoResumen.focus();
         return;
       }
 
-      if (!contenidoLimpio || contenidoLimpio.length < 30) {
-        cajaError.textContent = 'El contenido debe tener al menos 30 caracteres.';
+      if (!validarTexto(contenidoLimpio, 30, 10000)) {
+        cajaError.textContent = 'El contenido debe tener entre 30 y 10,000 caracteres.';
         cajaError.classList.remove('oculto');
         campoContenido.focus();
         return;
       }
 
       cajaError.classList.add('oculto');
+
+      if (!valorEnLista(estadoRecurso.categoria, ['Artículo', 'Consejo', 'Tutorial', 'Noticia']) ||
+          !valorEnLista(estadoRecurso.nivelLectura, ['Básico', 'Intermedio', 'Avanzado']) ||
+          !validarNumero(estadoRecurso.tiempoLecturaMin, 1, 60) ||
+          estadoRecurso.audiencia.length === 0) {
+        cajaError.textContent = 'Revisa la categoría, el nivel, el tiempo y la audiencia del recurso.';
+        cajaError.classList.remove('oculto');
+        return;
+      }
 
       await acciones.alCrearRecurso({
         titulo: tituloLimpio,

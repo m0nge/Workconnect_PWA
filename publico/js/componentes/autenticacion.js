@@ -1,3 +1,5 @@
+import { validarCorreo, validarTexto, valorEnLista } from '../utilidades/formato.js';
+
 export function renderizarAutenticacion(contenedor, tipo, alCompletar, alCancelar) {
   const esRegistro = tipo === 'registro';
   contenedor.innerHTML = `
@@ -33,6 +35,22 @@ export function renderizarAutenticacion(contenedor, tipo, alCompletar, alCancela
     if (esRegistro) {
       const nombre = contenedor.querySelector('#auth-nombre').value.trim();
       const rol = contenedor.querySelector('#auth-rol').value;
+      if (!validarTexto(nombre, 3, 80)) {
+        mostrarError('El nombre debe tener entre 3 y 80 caracteres.');
+        return;
+      }
+      if (!validarCorreo(correo)) {
+        mostrarError('Escribe un correo electrónico válido.');
+        return;
+      }
+      if (!validarTexto(contrasena, 6, 80)) {
+        mostrarError('La contraseña debe tener entre 6 y 80 caracteres.');
+        return;
+      }
+      if (!valorEnLista(rol, ['candidato', 'empresa'])) {
+        mostrarError('Selecciona un tipo de cuenta válido.');
+        return;
+      }
       if (cuentas.some((item) => item.correo === correo)) {
         mostrarError('Este correo ya tiene una cuenta.');
         return;
@@ -40,6 +58,10 @@ export function renderizarAutenticacion(contenedor, tipo, alCompletar, alCancela
       cuenta = { nombre, correo, contrasena, rol };
       localStorage.setItem('workconnect-cuentas', JSON.stringify([...cuentas, cuenta]));
     } else {
+      if (!validarCorreo(correo) || !validarTexto(contrasena, 6, 80)) {
+        mostrarError('Escribe un correo válido y una contraseña de 6 a 80 caracteres.');
+        return;
+      }
       cuenta = cuentas.find((item) => item.correo === correo && item.contrasena === contrasena);
       if (!cuenta) {
         mostrarError('Correo o contraseña incorrectos. Si no tienes cuenta, regístrate.');

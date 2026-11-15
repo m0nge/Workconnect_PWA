@@ -39,6 +39,13 @@ const contenedorContenido = document.getElementById('area-contenido');
 const notificacionElemento = document.getElementById('notificacion-flotante');
 const notificacionTexto = document.getElementById('notificacion-texto');
 
+document.querySelectorAll('[data-pie-pantalla]').forEach((enlace) => {
+  enlace.addEventListener('click', (evento) => {
+    evento.preventDefault();
+    cambiarPantalla(enlace.dataset.piePantalla);
+  });
+});
+
 function mostrarNotificacion(mensaje) {
   if (!notificacionElemento || !notificacionTexto) return;
   notificacionTexto.textContent = mensaje;
@@ -264,6 +271,7 @@ function renderizarInterfaz() {
     'modo-autenticado',
     Boolean(estadoAplicacion.usuarioActual) && !['AUTH_LOGIN', 'AUTH_REGISTRO'].includes(estadoAplicacion.pantallaActual)
   );
+  document.body.classList.toggle('modo-inicio', estadoAplicacion.pantallaActual === 'P01');
   renderizarEncabezado(
     contenedorEncabezado,
     cambiarPantalla,
@@ -308,7 +316,21 @@ function renderizarInterfaz() {
       );
       break;
     case 'P01':
-      renderizarP01Inicio(contenedorContenido, estadoAplicacion.datos, cambiarPantalla, (termino, ubicacion) => renderizarP02Resultados(contenedorContenido, estadoAplicacion.datos, termino, ubicacion, cambiarPantalla));
+      renderizarP01Inicio(
+        contenedorContenido,
+        estadoAplicacion.datos,
+        cambiarPantalla,
+        (termino, ubicacion) =>
+          renderizarP02Resultados(
+            contenedorContenido,
+            estadoAplicacion.datos,
+            termino,
+            ubicacion,
+            cambiarPantalla
+          ),
+        estadoAplicacion.rolActual,
+        estadoAplicacion.usuarioActual
+      );
       break;
     case 'P02':
       renderizarP02Resultados(contenedorContenido, estadoAplicacion.datos, '', '', cambiarPantalla);
