@@ -5,11 +5,11 @@ export function renderizarP03Detalle(
   datos,
   idVacante,
   alNavegar,
-  mostrarNotificacion
+  mostrarNotificacion,
+  usuarioActual
 ) {
   const vacante =
-    datos.vacantes.find((item) => item.id === idVacante) ||
-    datos.vacantes.find((item) => item.estado === 'Activa');
+    datos.vacantes.find((item) => String(item.id) === String(idVacante));
 
   if (!vacante) {
     contenedor.innerHTML = `
@@ -111,7 +111,7 @@ export function renderizarP03Detalle(
                   <h2 class="detalle-empleo-titulo">
                     Valoraciones de ${escaparHtml(nombreEmpresa)}
                   </h2>
-                  <div class="valoraciones-resumen">
+                  <div class="valoraciones-resumen" id="resumen-valoraciones">
                     <strong>${calificacion.toFixed(1)}</strong>
                     <div>
                       <span class="estrellas-valoracion">${estrellas}</span>
@@ -125,26 +125,18 @@ export function renderizarP03Detalle(
                   Escribir valoración
                 </button>
               </div>
-              ${
-                valoraciones.length
-                  ? valoraciones
-                      .map(
-                        (valoracion) => `
-                          <article class="valoracion-item">
-                            <div class="valoracion-item-cabecera">
-                              <strong>${escaparHtml(valoracion.autor || 'Usuario')}</strong>
-                              <span class="estrellas-valoracion">
-                                ${'★'.repeat(Math.max(0, Math.min(5, Number(valoracion.calificacion) || 0)))}${'☆'.repeat(5 - Math.max(0, Math.min(5, Number(valoracion.calificacion) || 0)))}
-                              </span>
-                            </div>
-                            <p>${escaparHtml(valoracion.comentario || '')}</p>
-                            <small>${escaparHtml(valoracion.fecha || '')}</small>
-                          </article>
-                        `
-                      )
-                      .join('')
-                  : '<p class="texto-secundario">Aún no hay valoraciones publicadas.</p>'
-              }
+              <div id="lista-valoraciones">Cargando valoraciones...</div>
+              <form id="formulario-valoracion" hidden>
+                <fieldset class="valoracion-estrellas"><legend>Tu calificación *</legend>
+                  <label><input type="radio" name="calificacion" value="1" required><span aria-hidden="true">★</span><span class="valoracion-lectura">1 estrella</span></label>
+                  <label><input type="radio" name="calificacion" value="2"><span aria-hidden="true">★</span><span class="valoracion-lectura">2 estrellas</span></label>
+                  <label><input type="radio" name="calificacion" value="3"><span aria-hidden="true">★</span><span class="valoracion-lectura">3 estrellas</span></label>
+                  <label><input type="radio" name="calificacion" value="4"><span aria-hidden="true">★</span><span class="valoracion-lectura">4 estrellas</span></label>
+                  <label><input type="radio" name="calificacion" value="5"><span aria-hidden="true">★</span><span class="valoracion-lectura">5 estrellas</span></label>
+                </fieldset>
+                <label class="campo-formulario"><span>Tu comentario *</span><textarea name="comentario" required minlength="3" maxlength="2000" rows="4"></textarea></label>
+                <button type="submit" class="boton-principal">Enviar valoración</button><p class="texto-secundario">Tu valoración quedará pendiente de revisión.</p>
+              </form>
             </section>
           </section>
         </main>
@@ -158,7 +150,7 @@ export function renderizarP03Detalle(
               Aplicar a esta vacante
             </button>
             <p class="texto-secundario">
-              Inicia sesión o crea una cuenta para enviar tu postulación.
+              ${!usuarioActual ? 'Inicia sesión o crea una cuenta para enviar tu postulación.' : usuarioActual.rol === 'candidato' ? 'Se enviará el currículum guardado en tu perfil.' : 'Solo las cuentas de candidato pueden postularse.'}
             </p>
             <button class="boton-secundario ancho-completo" type="button" id="reportar-empleo">
               Reportar vacante
@@ -192,15 +184,72 @@ export function renderizarP03Detalle(
     .querySelector('#volver-resultados')
     .addEventListener('click', () => alNavegar('P02'));
 
-  contenedor
-    .querySelector('#aplicar-empleo')
-    .addEventListener('click', () => mostrarNotificacion('Debes iniciar sesión para postularte.'));
+  contenedor.querySelector('#aplicar-empleo').addEventListener('click', async (evento) => {
+    if (!usuarioActual) {
+      mostrarNotificacion('Inicia sesión para postularte.');
+      alNavegar('AUTH_LOGIN');
+      return;
+    }
+    if (usuarioActual.rol !== 'candidato') {
+      mostrarNotificacion('Solo las cuentas de candidato pueden postularse.');
+      return;
+    }
+    const boton = evento.currentTarget;
+    boton.disabled = true;
+    try {
+      const respuesta = await fetch('/api/candidato/postulaciones', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ vacante_id: vacante.id })
+      });
+      const resultado = await respuesta.json().catch(() => ({}));
+      if (respuesta.status === 409) { boton.textContent = 'Postulado'; mostrarNotificacion(resultado.error); return; }
+      if (!respuesta.ok) throw new Error(resultado.error || 'No se pudo enviar la postulación.');
+      mostrarNotificacion('¡Postulación enviada! Puedes verla en Mis postulaciones.');
+      boton.textContent = 'Postulado';
+      return;
+    } catch (error) {
+      mostrarNotificacion(error.message || 'No se pudo enviar la postulación.');
+      boton.disabled = false;
+    }
+  });
 
   contenedor
     .querySelector('#reportar-empleo')
     .addEventListener('click', () => mostrarNotificacion('Gracias. Revisaremos esta publicación.'));
 
-  contenedor
-    .querySelector('#escribir-valoracion')
-    .addEventListener('click', () => mostrarNotificacion('Inicia sesión para escribir una valoración.'));
+  const aplicar = contenedor.querySelector('#aplicar-empleo');
+  if (usuarioActual?.rol === 'candidato') {
+    aplicar.disabled = true;
+    fetch('/api/candidato/postulaciones/' + encodeURIComponent(vacante.id))
+      .then(async r => { if (!r.ok) throw new Error(); return r.json(); })
+      .then(d => { if (d.postulado) aplicar.textContent = 'Postulado'; else aplicar.disabled = false; })
+      .catch(() => { aplicar.disabled = false; mostrarNotificacion('No se pudo verificar tu postulación.'); });
+  }
+  const formulario = contenedor.querySelector('#formulario-valoracion');
+  contenedor.querySelector('#escribir-valoracion').addEventListener('click', () => {
+    if (!usuarioActual) { mostrarNotificacion('Inicia sesión para escribir una valoración.'); alNavegar('AUTH_LOGIN'); return; }
+    if (usuarioActual.rol !== 'candidato') { mostrarNotificacion('Solo las cuentas de candidato pueden valorar empresas.'); return; }
+    formulario.hidden = !formulario.hidden;
+    if (!formulario.hidden) formulario.querySelector('input').focus();
+  });
+  formulario.addEventListener('submit', async evento => {
+    evento.preventDefault(); const boton = formulario.querySelector('button[type="submit"]'); boton.disabled = true;
+    try {
+      const datos = new FormData(formulario);
+      const r = await fetch('/api/candidato/valoraciones', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({empresa_id:vacante.empresaId,calificacion:Number(datos.get('calificacion')),comentario:datos.get('comentario')})});
+      const resultado = await r.json().catch(() => ({})); if(!r.ok) throw new Error(resultado.error || 'No se pudo enviar tu valoración.');
+      formulario.reset(); formulario.hidden = true; mostrarNotificacion('Valoración enviada. Quedó pendiente de revisión.');
+    } catch(error) { mostrarNotificacion(error.message); } finally { boton.disabled = false; }
+  });
+  const lista = contenedor.querySelector('#lista-valoraciones');
+  if (vacante.empresaId) fetch('/api/valoraciones-empresa/' + encodeURIComponent(vacante.empresaId))
+    .then(async r => { if(!r.ok) throw new Error(); return r.json(); })
+    .then(({valoraciones: opiniones}) => {
+      const promedio = opiniones.length ? opiniones.reduce((total,v) => total + v.calificacion,0) / opiniones.length : 0;
+      const estrellas = '★'.repeat(Math.round(promedio)) + '☆'.repeat(5-Math.round(promedio));
+      contenedor.querySelector('#resumen-valoraciones').innerHTML = '<strong>' + promedio.toFixed(1) + '</strong><div><span class="estrellas-valoracion">' + estrellas + '</span><span class="texto-secundario"> ' + opiniones.length + ' valoración(es) publicadas</span></div>';
+      lista.innerHTML = opiniones.length ? opiniones.map(v => '<article class="valoracion-item"><span class="estrellas-valoracion">' + '★'.repeat(v.calificacion) + '☆'.repeat(5-v.calificacion) + '</span><p>' + escaparHtml(v.comentario) + '</p></article>').join('') : '<p class="texto-secundario">Aún no hay valoraciones publicadas.</p>';
+    }).catch(() => { lista.textContent = 'No se pudieron cargar las valoraciones.'; });
+  else lista.textContent = 'Esta vacante no tiene una empresa vinculada.';
 }

@@ -87,7 +87,7 @@ export function renderizarP01Inicio(
     alBuscar(termino, ubicacion);
   });
   contenedor.querySelectorAll('[data-ir]').forEach((boton) => boton.addEventListener('click', () => alNavegar(boton.dataset.ir)));
-  contenedor.querySelectorAll('[data-vacante]').forEach((boton) => boton.addEventListener('click', () => alNavegar('P03', Number(boton.dataset.vacante))));
+  contenedor.querySelectorAll('[data-vacante]').forEach((boton) => boton.addEventListener('click', () => alNavegar('P03', boton.dataset.vacante)));
   contenedor.querySelectorAll('[data-sector]').forEach((boton) => boton.addEventListener('click', () => {
     const termino = boton.dataset.sector;
     alBuscar(termino, '');

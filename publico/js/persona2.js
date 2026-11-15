@@ -383,7 +383,16 @@ async function cargarPerfilCandidato() {
   } else {
     for (const postulacion of datos.postulaciones) {
       const elemento = document.createElement('li');
-      elemento.textContent = `${postulacion.vacante.titulo} · ${postulacion.estado}`;
+      const texto = document.createElement('span');
+      texto.textContent = `${postulacion.vacante.titulo} · ${postulacion.estado}`;
+      elemento.append(texto);
+      if (postulacion.vacante.id) {
+        const enlace = document.createElement('a');
+        enlace.className = 'persona2-ver-detalle';
+        enlace.textContent = 'Ver detalle';
+        enlace.href = '/?vacante=' + encodeURIComponent(postulacion.vacante.id);
+        elemento.append(enlace);
+      }
       postulaciones.append(elemento);
     }
   }

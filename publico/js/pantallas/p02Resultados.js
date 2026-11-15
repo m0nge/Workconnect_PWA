@@ -60,7 +60,7 @@ export function renderizarP02Resultados(contenedor, datos, terminoInicial = '', 
     }).sort((a, b) => orden === 'titulo' ? a.titulo.localeCompare(b.titulo) : 0);
     contenedor.querySelector('#contador-resultados').textContent = `${filtradas.length} vacante(s) encontrada(s)`;
     contenedor.querySelector('#lista-resultados').innerHTML = filtradas.length ? filtradas.map(tarjetaVacante).join('') : '<div class="tarjeta tarjeta-espaciado"><p class="subtitulo-pantalla">No encontramos vacantes con esos filtros.</p></div>';
-    contenedor.querySelectorAll('[data-vacante]').forEach((boton) => boton.addEventListener('click', () => alNavegar('P03', Number(boton.dataset.vacante))));
+    contenedor.querySelectorAll('[data-vacante]').forEach((boton) => boton.addEventListener('click', () => alNavegar('P03', boton.dataset.vacante)));
   };
   contenedor.querySelector('#formulario-filtros').addEventListener('submit', (evento) => { evento.preventDefault(); pintar(); });
   contenedor.querySelector('#limpiar-filtros').addEventListener('click', () => { contenedor.querySelector('#formulario-filtros').reset(); pintar(); });
