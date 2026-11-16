@@ -2934,8 +2934,8 @@ textarea {
 .modo-cuenta .menu-lateral-columna { display: none; }
 .modo-cuenta .area-contenido { margin-left: 0; }
 .acceso-contenedor { width: 100%; margin: 0; }
-.acceso-tarjeta { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); min-height: calc(100vh - 4rem); overflow: hidden; background: var(--color-superficie-secundaria); }
-.acceso-presentacion { position: relative; display: flex; flex-direction: column; align-items: flex-start; overflow: hidden; padding: 4.5rem 3.5rem; background: var(--color-carbon); color: white; }
+.acceso-tarjeta { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); min-height: calc(100vh - 4rem); background: var(--color-superficie-secundaria); }
+.acceso-presentacion { position: sticky; top: calc(4rem + 1px); height: calc(100dvh - 4rem - 1px); align-self: start; display: flex; flex-direction: column; align-items: flex-start; overflow: hidden; padding: clamp(1.5rem, 6vh, 4.5rem) 3.5rem; background: var(--color-carbon); color: white; }
 .acceso-etiqueta { color: var(--color-resaltado); font-size: .65rem; font-weight: 700; letter-spacing: .16em; }
 .acceso-presentacion h1 { position: relative; z-index: 1; max-width: 36rem; margin: 1.25rem 0; font-family: Georgia, 'Times New Roman', serif; font-size: clamp(2.4rem,3.2vw,3.25rem); line-height: 1.08; letter-spacing: -.035em; }
 .acceso-presentacion p { position: relative; z-index: 1; max-width: 27rem; margin: 0; color: var(--color-texto-inverso-suave); font-size: .9rem; line-height: 1.8; }
@@ -2970,7 +2970,7 @@ textarea {
 .acceso-fila-doble { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .85rem; }
 @media (max-width: 700px) {
   .acceso-tarjeta { grid-template-columns: minmax(0,1fr); min-height: auto; }
-  .acceso-presentacion { padding: 2rem 1.5rem; }
+  .acceso-presentacion { position: relative; top: auto; height: auto; min-height: 0; padding: 2rem 1.5rem; }
   .acceso-presentacion h1 { max-width: 20rem; margin: .8rem 0; font-size: 2.35rem; }
   .acceso-presentacion p { max-width: none; font-size: .8rem; }
   .acceso-firma { display: none; }

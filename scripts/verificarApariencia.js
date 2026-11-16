@@ -99,6 +99,19 @@ try {
       }
       if (!lista?.lista) throw new Error(`${vista}: la pantalla no terminó de cargar.`);
       await esperar(150);
+      if (vista === 'registro-empresa') {
+        const desplazamientoCorrecto = await evaluar(`(() => {
+          const panel = document.querySelector('.acceso-presentacion');
+          if (innerWidth <= 700) return getComputedStyle(panel).position !== 'sticky';
+          const antes = panel.getBoundingClientRect().top;
+          window.scrollTo(0, 300);
+          const despues = panel.getBoundingClientRect().top;
+          const correcto = scrollY > 100 && Math.abs(antes - despues) <= 2;
+          window.scrollTo(0, 0);
+          return correcto;
+        })()`);
+        if (!desplazamientoCorrecto) throw new Error('El panel de acceso no permanece visible al bajar por el formulario.');
+      }
       if (vista === 'P08') {
         const filtradoCorrecto = await evaluar(`(() => {
           const entrada = document.querySelector('#buscar-ofertas-empresa');
