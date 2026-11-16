@@ -1242,7 +1242,7 @@ aplicacion.get('/api/datos', async (solicitud, respuesta) => {
       esAdministrador
         ? supabase
             .from('vacantes')
-            .select('*, empresas(nombre_comercial)')
+            .select('*, empresas(nombre_comercial, estado_verificacion)')
             .order('creado_en', { ascending: false })
         : supabase
             .from('vacantes')
@@ -1453,7 +1453,7 @@ aplicacion.put('/api/vacantes/:id', async (solicitud, respuesta) => {
       descripcion: typeof descripcion === 'string' ? descripcion.trim() : undefined
     })
     .eq('id', id)
-    .select('*, empresas(nombre_comercial)')
+    .select('*, empresas(nombre_comercial, estado_verificacion)')
     .single();
 
   if (error) {
@@ -1478,7 +1478,7 @@ aplicacion.patch('/api/vacantes/:id/estado', async (solicitud, respuesta) => {
     .from('vacantes')
     .update({ estado })
     .eq('id', id)
-    .select('*, empresas(nombre_comercial)')
+    .select('*, empresas(nombre_comercial, estado_verificacion)')
     .single();
 
   if (error) {

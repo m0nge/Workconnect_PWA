@@ -41,7 +41,7 @@ async function registrar(tipo, indice) {
   const correo = `${marcador}-${tipo}-${indice}@example.invalid`;
   correos.push(correo);
   const digitos = numeroAleatorio(0, 100000000).toString().padStart(8, '0') + numeroAleatorio(0, 1000000).toString().padStart(6, '0');
-  const datos = { nombre: `Revisión temporal ${tipo} ${indice}`, email: correo, password: crearBytes(18).toString('hex'), rol: tipo,
+  const datos = { nombre: `Revisión temporal ${tipo} ${indice}`, email: correo, password: crearBytes(18).toString('hex'), rol: tipo, estado_verificacion: 'Verificada',
     ...(tipo === 'empresa' ? { sector: 'Servicios', telefono: '2222-3333', departamento: 'San Salvador', municipio: 'San Salvador',
       nit: `${digitos.slice(0, 4)}-${digitos.slice(4, 10)}-${digitos.slice(10, 13)}-${digitos.slice(13)}`, tamano: '1-10 empleados' } : {}) };
   const registro = await solicitar('POST', '/api/auth/registro', datos, null, 201);
@@ -160,11 +160,22 @@ try {
   }
   console.log('Perfil, experiencia, estudios, habilidades y alertas: CRUD y permisos correctos.');
   const perfilEmpresa = (await solicitar('GET', '/api/empresa/perfil', undefined, empresa)).cuerpo.empresa;
-  await solicitar('PUT', '/api/empresa/perfil', { ...perfilEmpresa, descripcion: 'Empresa temporal de verificación de operaciones.' }, empresa);
-  await solicitar('PATCH', `/api/empresas/${perfilEmpresa.id}/estado`, { estado: 'Verificada' }, administracion);
+  comprobar.equal(perfilEmpresa.estado_verificacion, 'Pendiente');
+  await solicitar('PATCH', `/api/empresas/${perfilEmpresa.id}/estado`, { estado: 'Verificada' }, empresa, 403);
+  await solicitar('PUT', '/api/empresa/perfil', { ...perfilEmpresa, estado_verificacion: 'Verificada', descripcion: 'Empresa temporal de verificación de operaciones.' }, empresa);
+  comprobar.equal((await solicitar('GET', '/api/empresa/perfil', undefined, empresa)).cuerpo.empresa.estado_verificacion, 'Pendiente');
+  const datosPublicos = (await solicitar('GET', '/api/datos')).cuerpo;
+  comprobar.equal(datosPublicos.empresas.some((registro) => registro.id === perfilEmpresa.id), false);
+  const datosAdministracion = (await solicitar('GET', '/api/datos', undefined, administracion)).cuerpo;
+  comprobar.ok(datosAdministracion.empresas.some((registro) => registro.id === perfilEmpresa.id && registro.estado === 'Pendiente'));
   const oferta = { titulo: 'Oferta temporal de revisión', sector: 'Servicios', departamento: 'San Salvador', municipio: 'San Salvador', modalidad: 'Presencial', tipo_contrato: 'Tiempo completo', plazas: 1, salario_min: 500, salario_max: 700, descripcion: 'Oferta temporal para comprobar el flujo de datos.', funciones: ['Organizar documentos'], requisitos: ['Experiencia administrativa'], beneficios: ['Capacitación'] };
   const vacante = (await solicitar('POST', '/api/empresa/vacantes', oferta, empresa, 201)).cuerpo.vacante;
   referencias.add(vacante.id);
+  comprobar.equal((await solicitar('GET', '/api/datos')).cuerpo.vacantes.some((registro) => registro.id === vacante.id), false);
+  await solicitar('PATCH', `/api/empresas/${perfilEmpresa.id}/estado`, { estado: 'Verificada' }, administracion);
+  comprobar.equal((await solicitar('GET', '/api/empresa/perfil', undefined, empresa)).cuerpo.empresa.estado_verificacion, 'Verificada');
+  comprobar.ok((await solicitar('GET', '/api/datos')).cuerpo.vacantes.some((registro) => registro.id === vacante.id && registro.empresaVerificada));
+  console.log('Empresas nuevas: pendientes, sin autoaprobación y públicas únicamente después de aprobación administrativa.');
   await solicitar('PUT', `/api/empresa/vacantes/${vacante.id}`, oferta, empresas[1], 404);
   await solicitar('DELETE', `/api/empresa/vacantes/${vacante.id}`, undefined, empresas[1], 404);
   await solicitar('PUT', `/api/empresa/vacantes/${vacante.id}`, { ...oferta, titulo: 'Oferta temporal actualizada' }, empresa);

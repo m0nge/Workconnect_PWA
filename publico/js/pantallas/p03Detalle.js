@@ -173,7 +173,7 @@ export function renderizarP03Detalle(
               </div>
               <div class="fila-resumen">
                 <span>Estado</span>
-                <strong class="estado-verificada">✓ Verificada</strong>
+                <strong class="${vacante.empresaVerificada ? 'estado-verificada' : ''}">${vacante.empresaVerificada ? 'Verificada' : 'Pendiente de aprobación'}</strong>
               </div>
             </div>
         </aside>

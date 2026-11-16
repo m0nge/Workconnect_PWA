@@ -1030,10 +1030,7 @@ function renderizarEmpresa() {
         <div class="mi-perfil-estadistica"><strong id="estadistica-postulaciones-conteo">0</strong><span>Postulaciones recibidas</span></div>
       </div>
       <p id="empresa-previa-verificacion" class="mi-perfil-ayuda" style="margin-top: 1rem;">
-        <span style="display: inline-flex; align-items: center; gap: 0.35rem; color: var(--color-esmeralda); font-weight: 600;">
-          <svg width="16" height="16" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
-          Empresa activa y verificada en WorkConnect
-        </span>
+        Consultando estado de aprobación...
       </p>
       <div class="mi-perfil-acciones">
         <button type="button" class="boton mi-perfil-enlace-boton boton-ir-publicar-vacante">Publicar vacante</button>
@@ -1334,6 +1331,18 @@ async function enlazarEmpresa(alCambiarPantalla = () => {}) {
       establecerValor('empresa-web', emp.sitio_web || '');
       establecerValor('empresa-descripcion', emp.descripcion || '');
 
+      const verificacion = contenido.querySelector('#empresa-previa-verificacion');
+      const estadosEmpresa = {
+        Verificada: 'Empresa aprobada por administración. Tus ofertas pueden aparecer públicamente.',
+        Pendiente: 'Pendiente de aprobación por un administrador. Tus ofertas aún no son visibles al público.',
+        Suspendida: 'Empresa suspendida. Tus ofertas no son visibles al público. Contacta con administración.'
+      };
+      if (verificacion) {
+        const estado = Object.hasOwn(estadosEmpresa, emp.estado_verificacion) ? emp.estado_verificacion : 'Pendiente';
+        verificacion.innerHTML = `<span class="etiqueta-cuadrada">${estado}</span> ${estadosEmpresa[estado]}`;
+        verificacion.dataset.estadoEmpresa = estado;
+      }
+
       const estadisticaVacantes = contenido.querySelector('#estadistica-vacantes-conteo');
       const estadisticaPostulaciones = contenido.querySelector('#estadistica-postulaciones-conteo');
       if (estadisticaVacantes) estadisticaVacantes.textContent = datos.conteoVacantes ?? 0;
@@ -1346,6 +1355,8 @@ async function enlazarEmpresa(alCambiarPantalla = () => {}) {
     }
   } catch (errorCarga) {
     console.error('Error al cargar perfil de empresa:', errorCarga);
+    const verificacion = contenido.querySelector('#empresa-previa-verificacion');
+    if (verificacion) verificacion.textContent = 'No se pudo consultar el estado de aprobación. Recarga la página.';
   }
   await cargarOfertasEmpresa();
 
@@ -1408,7 +1419,7 @@ function renderizarVacante(vacante = null) {
   return `<div class="mi-perfil-contenedor ${vacante ? 'edicion-vacante-contenedor' : 'publicacion-vacante-contenedor'}">
     <section class="mi-perfil-tarjeta">
       <h2>${vacante ? 'Editar oferta de empleo' : 'Publicar vacante'}</h2>
-      <p>${vacante ? 'Actualiza los datos de tu oferta. Su estado de publicación se conserva.' : 'Publica una nueva oportunidad laboral. Quedará activa inmediatamente para que los candidatos puedan postularse.'}</p>
+      <p>${vacante ? 'Actualiza los datos de tu oferta. Su estado de publicación se conserva.' : 'Publica una nueva oportunidad laboral. Las ofertas solo serán visibles cuando un administrador apruebe tu empresa.'}</p>
       <form class="mi-perfil-formulario" data-formulario="vacante">
         <div class="mi-perfil-campos">
           ${campo('Título del puesto *', 'vacante-titulo', 'text', { requerido: true, atributo: 'placeholder="Ej. Desarrollador/a Frontend React"' })}
@@ -1549,7 +1560,7 @@ function enlazarVacante(alCambiarPantalla = () => {}, { raiz = contenido, vacant
       if (vacante) { await alGuardar(resultado.vacante); return; }
 
       if (mensajeEstado) {
-        mensajeEstado.textContent = `✓ Vacante "${datos.titulo}" publicada exitosamente y visible para candidatos.`;
+        mensajeEstado.textContent = `Vacante "${datos.titulo}" guardada. Será visible para candidatos si tu empresa está aprobada.`;
         mensajeEstado.className = 'mi-perfil-ayuda';
         mensajeEstado.style.color = 'var(--color-esmeralda)';
         mensajeEstado.style.fontWeight = '600';

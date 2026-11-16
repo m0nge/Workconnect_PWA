@@ -75,6 +75,7 @@ export function mapearVacante(fila) {
     titulo: fila.titulo,
     empresa: nombreEmpresa,
     empresaId: fila.empresa_id,
+    empresaVerificada: fila.empresas?.estado_verificacion === 'Verificada',
     sector: fila.sector,
     departamento: fila.departamento,
     municipio: fila.municipio,
