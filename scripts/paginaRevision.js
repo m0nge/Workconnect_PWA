@@ -3,18 +3,20 @@ import { datosRevision, usuarioRevision, vacanteRevision } from '/revision/datos
 import { renderizarEncabezado } from '/js/componentes/encabezado.js';
 import { renderizarAutenticacion } from '/js/componentes/autenticacion.js';
 import { renderizarCuentaIntegrada } from '/js/componentes/miPerfil.js';
+import { renderizarTableroCuenta } from '/js/pantallas/tableroCuenta.js';
 import { pedirMotivo } from '/js/componentes/dialogos.js';
 const parametros = new URLSearchParams(location.search);
 const vista = parametros.get('vista') || 'P19';
 const contenedor = document.querySelector('#area-contenido');
 const sinAccion = () => {};
 const acciones = new Proxy({}, { get: () => sinAccion });
-const rol = vista === 'P07' ? 'candidato' : ['P08','P09','P10'].includes(vista) ? 'empresa' : vista.endsWith('publico') || ['P01','P02','P03','ingreso','registro','registro-empresa'].includes(vista) ? 'visitante' : 'administrador';
+const rol = ['P07','P30'].includes(vista) ? 'candidato' : ['P08','P09','P10','P31'].includes(vista) ? 'empresa' : vista.endsWith('publico') || ['P01','P02','P03','ingreso','registro','registro-empresa'].includes(vista) ? 'visitante' : 'administrador';
 renderizarEncabezado(document.querySelector('#encabezado-principal'), sinAccion, rol, rol === 'visitante' ? null : {...usuarioRevision, rol}, sinAccion, vista);
 document.body.classList.toggle('modo-autenticacion', ['ingreso','registro','registro-empresa'].includes(vista));
 document.body.classList.toggle('modo-inicio', vista === 'P01');
 try {
-  if (['ingreso','registro','registro-empresa'].includes(vista)) renderizarAutenticacion(contenedor, vista === 'ingreso' ? 'login' : 'registro', sinAccion, sinAccion, vista === 'registro-empresa' ? 'empresa' : 'candidato');
+  if (['P30','P31'].includes(vista)) await renderizarTableroCuenta(contenedor, {...usuarioRevision, rol}, rol, sinAccion, sinAccion);
+  else if (['ingreso','registro','registro-empresa'].includes(vista)) renderizarAutenticacion(contenedor, vista === 'ingreso' ? 'login' : 'registro', sinAccion, sinAccion, vista === 'registro-empresa' ? 'empresa' : 'candidato');
   else if (['P07','P08','P09','P10'].includes(vista)) await renderizarCuentaIntegrada(contenedor, document.querySelector('#navegacion-cuenta-integrada'), vista, null, {...usuarioRevision,rol});
   else {
     const configuraciones = {

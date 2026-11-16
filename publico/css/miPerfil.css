@@ -764,6 +764,44 @@
   grid-template-columns: minmax(0, 1fr);
 }
 
+.tablero-cuenta { display: grid; gap: 1.5rem; min-width: 0; }
+.tablero-cabecera { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1.5rem; padding: 1.75rem; border: 1px solid var(--color-borde); border-radius: var(--radio-mediano); background: linear-gradient(120deg, var(--color-superficie-base), var(--color-vino-suave)); }
+.tablero-cabecera .celda-identidad { min-width: 0; flex: 1 1 20rem; align-items: flex-start; }
+.tablero-cabecera .celda-identidad > div { min-width: 0; }
+.tablero-cabecera h1 { margin: .35rem 0; font-size: clamp(1.4rem, 3vw, 2rem); line-height: 1.25; overflow-wrap: anywhere; }
+.tablero-cabecera p { margin: .35rem 0; color: var(--color-texto-secundario); line-height: 1.6; }
+.tablero-cabecera .tablero-etiqueta { color: var(--color-vino); font-size: .7rem; font-weight: 700; letter-spacing: .08em; }
+.tablero-indicadores { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; }
+.tablero-indicador { display: grid; align-content: start; gap: .55rem; min-width: 0; padding: 1.25rem; border: 1px solid var(--color-borde); border-radius: var(--radio-mediano); color: var(--color-texto); background: var(--color-superficie-base); text-align: left; font: inherit; cursor: pointer; box-shadow: var(--sombra-suave); }
+.tablero-indicador > span { font-size: .85rem; color: var(--color-texto-secundario); }
+.tablero-indicador > strong { font-size: clamp(1.4rem, 2.5vw, 2rem); overflow-wrap: anywhere; }
+.tablero-indicador > small { color: var(--color-texto-atenuado); font-size: .8rem; line-height: 1.5; }
+.tablero-indicador:is(:hover, :focus-visible) { border-color: var(--color-vino); }
+.tablero-columnas { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); gap: 1.5rem; align-items: start; }
+.tablero-columna > section { min-width: 0; }
+.tablero-columna { display: grid; gap: 1.5rem; min-width: 0; }
+.tablero-columnas h2 { margin: 0 0 1rem; font-size: 1.1rem; }
+.tablero-columnas p { line-height: 1.6; }
+.tablero-seccion-cabecera { display: flex; align-items: center; justify-content: space-between; gap: .75rem; flex-wrap: wrap; margin-bottom: .75rem; }
+.tablero-seccion-cabecera h2 { margin: 0; }
+.tablero-lista, .tablero-pasos { list-style: none; margin: 0; padding: 0; }
+.tablero-lista li { display: flex; align-items: center; flex-wrap: wrap; gap: .75rem; padding: 1rem 0; border-bottom: 1px solid var(--color-borde); }
+.tablero-lista li:last-child, .tablero-pasos li:last-child { border-bottom: 0; }
+.tablero-lista li > div { min-width: 0; flex: 1 1 10rem; overflow-wrap: anywhere; }
+.tablero-lista li p { margin: .3rem 0 0; color: var(--color-texto-atenuado); font-size: .8rem; }
+.tablero-pasos li { padding: 1rem 0; border-bottom: 1px solid var(--color-borde); }
+.tablero-pasos li:first-child { padding-top: 0; }
+.tablero-pasos p { color: var(--color-texto-secundario); font-size: .9rem; overflow-wrap: anywhere; }
+.tablero-distribucion { display: grid; gap: 1rem; }
+.tablero-fila-estado { display: flex; align-items: center; justify-content: space-between; margin-bottom: .4rem; }
+.tablero-cuenta progress { width: 100%; height: .6rem; accent-color: var(--color-vino); }
+.tablero-pasos progress { display: block; margin-bottom: .8rem; }
+.tablero-vacio { padding: 1.5rem 0; color: var(--color-texto-secundario); }
+.tablero-aprobacion { display: flex; align-items: center; flex-wrap: wrap; gap: 1rem; padding: 1rem 1.25rem; background: var(--color-superficie-secundaria); border: 1px solid var(--color-borde); border-left: 4px solid var(--color-vino); border-radius: var(--radio-mediano); }
+.tablero-aprobacion p { flex: 1 1 20rem; margin: 0; line-height: 1.6; }
+@media (max-width: 900px) { .tablero-columnas { grid-template-columns: minmax(0, 1fr); } .tablero-indicadores { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 480px) { .tablero-cabecera { padding: 1rem; } .tablero-indicadores { gap: .65rem; } .tablero-indicador { padding: .85rem; } .tablero-cuenta .boton { white-space: normal; } }
+
 .publicacion-vacante-contenedor,
 .edicion-vacante-contenedor {
   grid-template-columns: minmax(0, 1fr);

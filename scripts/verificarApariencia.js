@@ -77,13 +77,13 @@ try {
   await ordenar('Runtime.enable');
   await ordenar('Page.enable');
   await ordenar('Emulation.setDeviceMetricsOverride', { width: 1365, height: 1000, deviceScaleFactor: 1, mobile: false });
-  const vistas = ['P01', 'P02', 'P03', 'P04', 'P05', 'P05-publico', 'P07', 'P08', 'P09', 'P10', 'P11', 'P12', 'P13', 'P14', 'P15', 'P16', 'P19', 'P28', 'ingreso', 'registro', 'registro-empresa', 'P19&formulario=recurso', 'P19&ventana=edicion', 'P05&ventana=edicion', 'P05&ventana=dialogo', 'P08&ventana=oferta'];
+  const vistas = ['P01', 'P02', 'P03', 'P04', 'P05', 'P05-publico', 'P07', 'P08', 'P09', 'P10', 'P30', 'P31', 'P11', 'P12', 'P13', 'P14', 'P15', 'P16', 'P19', 'P28', 'ingreso', 'registro', 'registro-empresa', 'P19&formulario=recurso', 'P19&ventana=edicion', 'P05&ventana=edicion', 'P05&ventana=dialogo', 'P08&ventana=oferta'];
   const informes = [];
   const estilosAcciones = new Map();
   for (const pantalla of [
     { ancho: 1365, alto: 1000, vistas },
-    { ancho: 390, alto: 844, vistas: ['P01', 'P03', 'P19', 'P07', 'P09', 'registro-empresa', 'P05&ventana=dialogo', 'P08', 'P08&ventana=oferta'] },
-    { ancho: 320, alto: 844, vistas: ['P19', 'P07', 'P01', 'registro-empresa'] }
+    { ancho: 390, alto: 844, vistas: ['P30', 'P31', 'P01', 'P03', 'P19', 'P07', 'P09', 'registro-empresa', 'P05&ventana=dialogo', 'P08', 'P08&ventana=oferta'] },
+    { ancho: 320, alto: 844, vistas: ['P30', 'P31', 'P19', 'P07', 'P01', 'registro-empresa'] }
   ]) {
     await ordenar('Emulation.setDeviceMetricsOverride', { width: pantalla.ancho, height: pantalla.alto, deviceScaleFactor: 1, mobile: pantalla.ancho < 600 });
     for (const tema of ['claro', 'oscuro']) {
@@ -99,6 +99,33 @@ try {
       }
       if (!lista?.lista) throw new Error(`${vista}: la pantalla no terminó de cargar.`);
       await esperar(150);
+      if (['P30', 'P31'].includes(vista)) {
+        const tableroCorrecto = await evaluar(`(async () => {
+          const esEmpresa = ${vista === 'P31'};
+          const indicadores = [...document.querySelectorAll('.tablero-indicador > strong')].map(elemento => elemento.textContent);
+          if (indicadores.join('|') !== (esEmpresa ? '1|1|1|0' : '0|0|100%|Falta subir')) return false;
+          const solicitudes = performance.getEntriesByType('resource').map(entrada => entrada.name);
+          if (solicitudes.some(ruta => ruta.includes(esEmpresa ? '/api/candidato/' : '/api/empresa/'))) return false;
+          const original = window.fetch;
+          window.fetch = async (ruta, opciones) => {
+            const respuesta = await original(ruta, opciones);
+            if (ruta !== (esEmpresa ? '/api/empresa/postulaciones' : '/api/candidato/perfil')) return respuesta;
+            const datos = await respuesta.json();
+            datos.postulaciones = [...(datos.postulaciones || []), { id: 'revision-tablero', estado: 'Entrevista', creado_en: '2026-11-16', vacante: { titulo: 'Oferta de revisión' }, candidato: { nombre: 'Persona temporal' } }];
+            return new Response(JSON.stringify(datos), { headers: { 'Content-Type': 'application/json' } });
+          };
+          try {
+            document.querySelector('[data-actualizar-tablero]').click();
+            for (let intento = 0; intento < 100; intento++) {
+              const valores = [...document.querySelectorAll('.tablero-indicador > strong')].map(elemento => elemento.textContent);
+              if (esEmpresa ? valores[1] === '2' && valores[3] === '1' : valores[0] === '1' && valores[1] === '1') return true;
+              await new Promise(resolver => setTimeout(resolver, 20));
+            }
+            return false;
+          } finally { window.fetch = original; }
+        })()`);
+        if (!tableroCorrecto) throw new Error('El dashboard no corresponde a su rol o no actualiza sus indicadores.');
+      }
       if (vista === 'P03') {
         const avisoCorrecto = await evaluar(`(async () => {
           const { renderizarP03Detalle } = await import('/js/pantallas/p03Detalle.js');
@@ -313,7 +340,7 @@ try {
       if (erroresNavegador.length) throw new Error(`${vista}: ${erroresNavegador.join('\n')}`);
       informes.push({ vista, tema, ancho: pantalla.ancho, campos: informe.campos.length, acciones: informe.acciones.length });
       if (informes.length % 5 === 0) console.log(`${informes.length} vistas verificadas.`);
-      if (tema === 'oscuro' && ['P19', 'registro-empresa', 'P01', 'P05&ventana=edicion'].includes(vista)) {
+      if ((tema === 'oscuro' && ['P19', 'registro-empresa', 'P01', 'P05&ventana=edicion'].includes(vista)) || ['P30', 'P31'].includes(vista)) {
         const captura = await ordenar('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
         await archivos.writeFile(rutas.join(directorioCapturas, `${vista.replace(/[^a-z0-9]/gi, '-')}-${tema}-${pantalla.ancho}.png`), Buffer.from(captura.data, 'base64'));
       }
@@ -341,9 +368,26 @@ try {
     const visible = await evaluar(`(() => { const rectangulo = document.getElementById('${seccion}').getBoundingClientRect(); return rectangulo.top < innerHeight - 80 && rectangulo.bottom > 70; })()`);
     if (!visible) throw new Error(`El menú no desplazó a ${seccion}.`);
   }
-  await evaluar("document.querySelector('#navegacion-superior [data-seccion-cuenta=\"P08\"]').click()");
+  await evaluar("document.querySelector('#navegacion-superior [data-seccion-cuenta=\"P31\"]').click()");
   if (!await evaluar("!!document.querySelector('#formulario-autenticacion')")) throw new Error('Para empresas no abre el inicio de sesión.');
   console.log('Portada pública: orden, navegación por secciones y acceso de empresas verificados.');
+  for (const rol of ['candidato', 'empresa']) {
+    await ordenar('Page.navigate', { url: `${origen}/?acceso=login&vista=login-${rol}` });
+    await esperar(500);
+    const destinoCorrecto = await evaluar(`(async () => {
+      document.querySelector('#acceso-correo').value = 'revision@example.invalid';
+      document.querySelector('#acceso-contrasena').value = 'revision-temporal';
+      document.querySelector('#formulario-autenticacion').requestSubmit();
+      for (let intento = 0; intento < 100; intento++) {
+        if (document.querySelector('.tablero-indicadores')) break;
+        await new Promise(resolver => setTimeout(resolver, 20));
+      }
+      const inicio = document.querySelector('#navegacion-superior [data-seccion-cuenta="${rol === 'candidato' ? 'P30' : 'P31'}"]');
+      return !!document.querySelector('.tablero-cuenta .tablero-indicadores') && inicio?.classList.contains('activo');
+    })()`);
+    if (!destinoCorrecto) throw new Error(`El inicio de sesión de ${rol} no abre su dashboard.`);
+  }
+  console.log('Inicio de sesión: candidato y empresa llegan a su propio dashboard.');
   const formatosVerificados = await evaluar(`(async () => {
     const { prepararFoto } = await import('/js/utilidades/fotos.js');
     const lienzo = document.createElement('canvas');

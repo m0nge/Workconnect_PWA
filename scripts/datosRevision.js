@@ -40,6 +40,8 @@ export const datosRevision = {
 };
 
 export function respuestaRevision(ruta, vista) {
+  if (ruta === '/api/auth/login' && ['login-candidato', 'login-empresa'].includes(vista)) return { usuario: { ...usuarioRevision, rol: vista === 'login-candidato' ? 'candidato' : 'empresa' } };
+  if (ruta === '/api/auth/sesion' && ['login-candidato', 'login-empresa'].includes(vista)) return { autenticado: false, usuario: null };
   if (ruta === '/api/auth/sesion' && vista === 'portada-publica') return { autenticado: false, usuario: null };
   if (ruta === '/api/datos') return datosRevision;
   if (ruta === '/api/auth/sesion') return { autenticado: true, usuario: { ...usuarioRevision, rol: vista === 'P07' ? 'candidato' : ['P08', 'P09', 'P10'].includes(vista) ? 'empresa' : 'administrador' } };

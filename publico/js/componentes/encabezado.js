@@ -51,12 +51,13 @@ export function renderizarEncabezado(
       <button type="button" class="enlace-nav-superior ${['P01', 'P02', 'P03'].includes(pantallaActual) ? 'activo' : ''}" data-pantalla="P01">Buscar empleos</button>
       <button type="button" class="enlace-nav-superior ${['P17', 'P04'].includes(pantallaActual) ? 'activo' : ''}" data-pantalla="P17">Recursos</button>
       <button type="button" class="enlace-nav-superior ${['P05', 'P28'].includes(pantallaActual) ? 'activo' : ''}" data-pantalla="P05">Foros</button>
-      <button type="button" class="enlace-nav-superior" data-seccion-cuenta="P08">Para empresas</button>
+      <button type="button" class="enlace-nav-superior" data-seccion-cuenta="P31">Para empresas</button>
     `;
   } else if (rolUsuario === 'candidato') {
     const esMisPostulaciones = pantallaActual === 'P07' && seccionCuenta === 'postulaciones';
     const esMiPerfil = pantallaActual === 'P07' && seccionCuenta !== 'postulaciones';
     enlacesNav = `
+      <button type="button" class="enlace-nav-superior ${pantallaActual === 'P30' ? 'activo' : ''}" data-seccion-cuenta="P30">Inicio</button>
       <button type="button" class="enlace-nav-superior ${['P01', 'P02', 'P03'].includes(pantallaActual) ? 'activo' : ''}" data-pantalla="P01">Buscar empleos</button>
       <button type="button" class="enlace-nav-superior ${esMisPostulaciones ? 'activo' : ''}" data-accion-usuario="postulaciones-candidato">Mis postulaciones</button>
       <button type="button" class="enlace-nav-superior ${esMiPerfil ? 'activo' : ''}" data-seccion-cuenta="P07">Mi perfil</button>
@@ -65,6 +66,7 @@ export function renderizarEncabezado(
     `;
   } else if (rolUsuario === 'empresa') {
     enlacesNav = `
+      <button type="button" class="enlace-nav-superior ${pantallaActual === 'P31' ? 'activo' : ''}" data-seccion-cuenta="P31">Inicio</button>
       <button type="button" class="enlace-nav-superior ${pantallaActual === 'P08' ? 'activo' : ''}" data-seccion-cuenta="P08">Mi empresa</button>
       <button type="button" class="enlace-nav-superior ${pantallaActual === 'P09' ? 'activo' : ''}" data-seccion-cuenta="P09">Publicar vacante</button>
       <button type="button" class="enlace-nav-superior ${pantallaActual === 'P10' ? 'activo' : ''}" data-seccion-cuenta="P10">Postulaciones</button>
@@ -215,6 +217,10 @@ export function renderizarEncabezado(
   if (botonLogo) {
     botonLogo.addEventListener('click', () => {
       cerrarMenuMovil();
+      if (usuario && ['candidato', 'empresa'].includes(rolUsuario)) {
+        alNavegarCuenta(rolUsuario === 'candidato' ? 'P30' : 'P31');
+        return;
+      }
       alCambiarPantalla('P01');
     });
   }

@@ -16,12 +16,15 @@ import { renderizarP05Foros } from './pantallas/p05Foros.js';
 import { renderizarP28CrearTema } from './pantallas/p28CrearTema.js';
 import { renderizarAutenticacion } from './componentes/autenticacion.js';
 import { renderizarCuentaIntegrada } from './componentes/miPerfil.js';
+import { renderizarTableroCuenta } from './pantallas/tableroCuenta.js';
 import { escaparHtml } from './utilidades/formato.js';
 const parametrosIniciales = new URLSearchParams(window.location.search);
 const accesoSolicitado = parametrosIniciales.get('acceso') === 'login';
 const vacanteSolicitada = parametrosIniciales.get('vacante');
 const idVacanteInicial = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(vacanteSolicitada || '') ? vacanteSolicitada : null;
 const destinosCuentaPermitidos = {
+  P30: { pantalla: 'P30', rol: 'candidato' },
+  P31: { pantalla: 'P31', rol: 'empresa' },
   P07: { pantalla: 'P07', rol: 'candidato' },
   POSTULACIONES_CANDIDATO: { pantalla: 'P07', rol: 'candidato', seccion: 'postulaciones' },
   P08: { pantalla: 'P08', rol: 'empresa' },
@@ -91,7 +94,7 @@ function navegarASeccionCuenta(pantalla) {
     ? { pantalla: 'P07', rol: 'candidato', seccion: 'postulaciones' }
     : pantalla === 'P07'
       ? { pantalla: 'P07', rol: 'candidato', seccion: 'perfil' }
-      : { pantalla, rol: { P07: 'candidato', P08: 'empresa', P09: 'empresa', P10: 'empresa' }[pantalla] };
+      : { pantalla, rol: destinosCuentaPermitidos[pantalla]?.rol };
   const rolRequerido = destino.rol;
   if (!rolRequerido) {
     mostrarNotificacion('No se pudo identificar la sección solicitada.');
@@ -124,8 +127,8 @@ function redireccionarDestinoCuenta(destino) {
 
 function redireccionarAlPortalSegunRol(usuario) {
   const destinos = {
-    candidato: { pantalla: 'P07', rol: 'candidato' },
-    empresa: { pantalla: 'P08', rol: 'empresa' }
+    candidato: destinosCuentaPermitidos.P30,
+    empresa: destinosCuentaPermitidos.P31
   };
   const destino = destinos[usuario.rol];
   if (destino) {
@@ -140,7 +143,7 @@ function redireccionarAlPortalSegunRol(usuario) {
 }
 
 function cambiarPantalla(nuevaPantalla, idVacante = null, nuevoRol = estadoAplicacion.rolActual) {
-  if (nuevaPantalla === 'AUTH_EMPRESA') { navegarASeccionCuenta('P08'); return; }
+  if (nuevaPantalla === 'AUTH_EMPRESA') { navegarASeccionCuenta('P31'); return; }
   const seccionPortada = seccionDePortada(nuevaPantalla);
   const navegacionPublica = !estadoAplicacion.usuarioActual || (estadoAplicacion.pantallaActual === 'P01' && estadoAplicacion.rolActual !== 'administrador');
   if (seccionPortada && navegacionPublica) {
@@ -172,8 +175,10 @@ function cambiarPantalla(nuevaPantalla, idVacante = null, nuevoRol = estadoAplic
     return;
   }
 
-  const pantallasProtegidas = ['P28', 'P11', 'P12', 'P13', 'P14', 'P15', 'P16', 'P19'];
+  const pantallasProtegidas = ['P28', 'P30', 'P31', 'P11', 'P12', 'P13', 'P14', 'P15', 'P16', 'P19'];
   const permisos = {
+    P30: ['candidato'],
+    P31: ['empresa'],
     P28: ['candidato', 'administrador', 'empresa'],
     P11: ['administrador'],
     P12: ['administrador'],
@@ -396,14 +401,14 @@ function completarAutenticacion(cuenta) {
     (cuenta.rol === 'administrador'
       ? 'P11'
       : cuenta.rol === 'empresa'
-        ? 'P08'
-        : 'P01');
+        ? 'P31'
+        : 'P30');
   estadoAplicacion.pantallaPendiente = null;
   renderizarInterfaz();
   solicitarApi('/api/datos')
     .then((datosFrescos) => {
       estadoAplicacion.datos = datosFrescos;
-      renderizarInterfaz();
+      if (!['P30', 'P31'].includes(estadoAplicacion.pantallaActual)) renderizarInterfaz();
     })
     .catch(() => {});
 }
@@ -424,7 +429,7 @@ function renderizarInterfaz() {
   document.body.classList.toggle('modo-autenticacion', ['AUTH_LOGIN', 'AUTH_REGISTRO'].includes(estadoAplicacion.pantallaActual));
   document.body.classList.toggle(
     'modo-cuenta',
-    ['P07', 'P08', 'P09', 'P10'].includes(estadoAplicacion.pantallaActual)
+    ['P07', 'P08', 'P09', 'P10', 'P30', 'P31'].includes(estadoAplicacion.pantallaActual)
   );
   renderizarEncabezado(
     contenedorEncabezado,
@@ -486,6 +491,11 @@ function renderizarInterfaz() {
       break;
     case 'P05':
       renderizarP05Foros(contenedorContenido, cambiarPantalla, estadoAplicacion.rolActual, mostrarNotificacion);
+      break;
+    case 'P30':
+    case 'P31':
+      renderizarTableroCuenta(contenedorContenido, estadoAplicacion.usuarioActual,
+        estadoAplicacion.pantallaActual === 'P30' ? 'candidato' : 'empresa', navegarASeccionCuenta, cambiarPantalla);
       break;
     case 'P07':
     case 'P08':
@@ -573,7 +583,7 @@ async function iniciarAplicacion() {
     if (sesion.autenticado) {
       estadoAplicacion.usuarioActual = sesion.usuario;
       estadoAplicacion.rolActual = sesion.usuario.rol;
-      if (['AUTH_LOGIN', 'AUTH_REGISTRO'].includes(estadoAplicacion.pantallaActual)) {
+      if (['AUTH_LOGIN', 'AUTH_REGISTRO'].includes(estadoAplicacion.pantallaActual) || (!idVacanteInicial && estadoAplicacion.pantallaActual === 'P01')) {
         const destinoPendiente = estadoAplicacion.destinoCuentaPendiente;
         if (destinoPendiente?.rol === sesion.usuario.rol) {
           estadoAplicacion.destinoCuentaPendiente = null;
