@@ -53,6 +53,10 @@ document.addEventListener('foto-actualizada', (evento) => {
 const contenedorContenido = document.getElementById('area-contenido');
 const notificacionElemento = document.getElementById('notificacion-flotante');
 const notificacionTexto = document.getElementById('notificacion-texto');
+document.getElementById('cerrar-notificacion')?.addEventListener('click', () => {
+  notificacionElemento?.classList.add('oculto');
+  clearTimeout(estadoAplicacion.temporizadorNotificacion);
+});
 
 document.querySelectorAll('[data-pie-pantalla]').forEach((enlace) => {
   enlace.addEventListener('click', (evento) => {
@@ -79,7 +83,7 @@ function mostrarNotificacion(mensaje) {
 
   estadoAplicacion.temporizadorNotificacion = setTimeout(() => {
     notificacionElemento.classList.add('oculto');
-  }, 3200);
+  }, 8000);
 }
 
 function navegarASeccionCuenta(pantalla) {
@@ -473,7 +477,9 @@ function renderizarInterfaz() {
       renderizarP02Resultados(contenedorContenido, estadoAplicacion.datos, '', '', cambiarPantalla);
       break;
     case 'P03':
-      renderizarP03Detalle(contenedorContenido, estadoAplicacion.datos, estadoAplicacion.vacanteSeleccionada, cambiarPantalla, mostrarNotificacion, estadoAplicacion.usuarioActual);
+      renderizarP03Detalle(contenedorContenido, estadoAplicacion.datos, estadoAplicacion.vacanteSeleccionada,
+        (destino) => ['P07', 'POSTULACIONES_CANDIDATO'].includes(destino) ? navegarASeccionCuenta(destino) : cambiarPantalla(destino),
+        mostrarNotificacion, estadoAplicacion.usuarioActual);
       break;
     case 'P04':
       renderizarP04Recursos(contenedorContenido, estadoAplicacion.datos);

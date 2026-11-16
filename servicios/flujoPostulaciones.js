@@ -8,7 +8,7 @@ export function registrarFlujoPostulaciones(aplicacion, { conManejoErrores, obte
     if (!esUuid(vacanteId)) return respuesta.status(400).json({ error: 'La vacante seleccionada no es válida.' });
     const ruta = contexto.perfil.curriculum_url;
     if (!ruta || !ruta.startsWith(`${contexto.perfil.id}/`) || ruta.includes('..')) {
-      return respuesta.status(400).json({ error: 'Primero guarda tu currículum PDF en Mi perfil para postularte.' });
+      return respuesta.status(400).json({ codigo: 'CV_REQUERIDO', error: 'Primero guarda tu currículum PDF en Mi perfil para postularte.' });
     }
     const { data: vacante, error: errorVacante } = await contexto.supabase.from('vacantes')
       .select('id, empresa_id, estado, fecha_limite, empresas!inner(id, estado_verificacion)').eq('id', vacanteId).maybeSingle();

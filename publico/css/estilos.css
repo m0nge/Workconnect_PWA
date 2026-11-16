@@ -2473,7 +2473,8 @@ textarea {
   background-color: var(--color-rosa-fondo);
   border: 1px solid var(--color-rosa-borde);
   color: var(--color-rosa);
-  font-size: 0.75rem;
+  font-size: 1rem;
+  line-height: 1.5;
   font-weight: 600;
 }
 
@@ -2636,10 +2637,12 @@ textarea {
   z-index: 60;
   background-color: var(--color-carbon);
   color: var(--color-blanco);
-  padding: 0.625rem 1rem;
+  padding: 1rem 1.25rem;
+  max-width: min(40rem, calc(100vw - 2.5rem));
   border-radius: var(--radio-mediano);
   box-shadow: 0 10px 15px -3px rgba(15, 23, 42, 0.2);
-  font-size: 0.75rem;
+  font-size: 1rem;
+  line-height: 1.5;
   font-weight: 500;
   border: 1px solid var(--color-texto-secundario);
   display: flex;
@@ -2651,8 +2654,19 @@ textarea {
   width: 0.5rem;
   height: 0.5rem;
   border-radius: 9999px;
-  background-color: var(--color-esmeralda);
+  background-color: var(--color-resaltado);
+  flex-shrink: 0;
 }
+
+.notificacion-cerrar { flex: 0 0 auto; display: grid; place-items: center; width: 2rem; height: 2rem; padding: 0; border: 0; background: transparent; color: inherit; cursor: pointer; border-radius: var(--radio-pequeno); }
+.notificacion-cerrar:focus-visible { outline: 2px solid currentColor; }
+.aviso-contextual { margin: 1rem 0; padding: 1rem; border: 1px solid var(--color-borde); border-left-width: 4px; border-radius: var(--radio-mediano); font-size: 1rem; line-height: 1.6; overflow-wrap: anywhere; }
+.aviso-contextual > strong { display: block; font-size: 1.05rem; }
+.aviso-contextual > p { margin: .4rem 0; color: inherit; font-size: inherit; }
+.aviso-contextual .boton { margin-top: .5rem; white-space: normal; }
+.aviso-contextual-error { color: var(--color-rosa); background: var(--color-rosa-fondo); border-color: var(--color-rosa-borde); }
+.aviso-contextual-exito { color: var(--color-esmeralda); background: var(--color-esmeralda-fondo); border-color: var(--color-esmeralda-borde); }
+.aviso-contextual-informacion { color: var(--color-texto); background: var(--color-superficie-secundaria); border-color: var(--color-vino); }
 
 .pie-pagina {
   background-color: var(--color-superficie-elevada);

@@ -99,6 +99,42 @@ try {
       }
       if (!lista?.lista) throw new Error(`${vista}: la pantalla no terminó de cargar.`);
       await esperar(150);
+      if (vista === 'P03') {
+        const avisoCorrecto = await evaluar(`(async () => {
+          const { renderizarP03Detalle } = await import('/js/pantallas/p03Detalle.js');
+          const { datosRevision, vacanteRevision } = await import('/revision/datos.js');
+          const original = window.fetch;
+          let exito = false; let destino;
+          const esperarCambio = async condicion => {
+            for (let intento = 0; intento < 100; intento++) {
+              if (condicion()) return;
+              await new Promise(resolver => setTimeout(resolver, 20));
+            }
+            throw new Error('No aparecio el aviso junto a la postulacion.');
+          };
+          window.fetch = async (ruta, opciones = {}) => {
+            if (ruta === '/api/candidato/postulaciones') return new Response(JSON.stringify(exito ? { id: 'postulacion-temporal' } : { codigo: 'CV_REQUERIDO', error: 'Primero guarda tu currículum PDF en Mi perfil para postularte.' }), { status: exito ? 201 : 400, headers: { 'Content-Type': 'application/json' } });
+            if (String(ruta).startsWith('/api/candidato/postulaciones/')) return new Response(JSON.stringify({ postulado: false }), { headers: { 'Content-Type': 'application/json' } });
+            return original(ruta, opciones);
+          };
+          try {
+            renderizarP03Detalle(document.querySelector('#area-contenido'), datosRevision, vacanteRevision.id, valor => { destino = valor; }, () => {}, { rol: 'candidato' });
+            const boton = document.querySelector('#aplicar-empleo');
+            await esperarCambio(() => !boton.disabled);
+            boton.click();
+            const aviso = document.querySelector('#aviso-postulacion');
+            await esperarCambio(() => !aviso.hidden && aviso.querySelector('button'));
+            if (aviso.getAttribute('role') !== 'alert' || parseFloat(getComputedStyle(aviso).fontSize) < 16 || !aviso.textContent.includes('Te falta subir tu CV')) return false;
+            aviso.querySelector('button').click();
+            if (destino !== 'P07') return false;
+            exito = true; boton.click();
+            await esperarCambio(() => aviso.classList.contains('aviso-contextual-exito'));
+            aviso.querySelector('button').click();
+            return destino === 'POSTULACIONES_CANDIDATO' && boton.disabled && aviso.getAttribute('role') === 'status';
+          } finally { window.fetch = original; window.scrollTo(0, 0); }
+        })()`);
+        if (!avisoCorrecto) throw new Error('Los avisos de postulación no son visibles o no llevan a la sección correcta.');
+      }
       if (vista === 'P07') {
         const perfilDinamico = await evaluar(`(async () => {
           const original = window.fetch;

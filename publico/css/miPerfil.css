@@ -127,13 +127,17 @@
 .mi-perfil-aviso-accion {
   margin: 0;
   color: var(--color-texto-atenuado);
-  font-size: 0.75rem;
-  line-height: 1.45;
+  font-size: 1rem;
+  line-height: 1.5;
 }
+
+.mi-perfil-aviso-accion:not(:empty) { display: block; padding: .85rem 1rem; border: 1px solid var(--color-esmeralda-borde); border-left-width: 4px; border-radius: var(--radio-pequeno); color: var(--color-esmeralda); background: var(--color-esmeralda-fondo); }
+.mi-perfil-aviso-accion.mi-perfil-error-en-linea:not(:empty) { color: var(--color-rosa); border-color: var(--color-rosa-borde); background: var(--color-rosa-fondo); }
 
 .mi-perfil-error-en-linea {
   color: var(--color-vino);
-  font-size: 0.78rem;
+  font-size: 1rem;
+  line-height: 1.5;
 }
 
 .mi-perfil-contenedor {
@@ -359,6 +363,8 @@
   color: var(--color-texto-secundario);
   font-size: 0.83rem;
 }
+
+.mi-perfil-ayuda.mi-perfil-error-en-linea { padding: .85rem 1rem; border: 1px solid var(--color-rosa-borde); border-left-width: 4px; border-radius: var(--radio-pequeno); background: var(--color-rosa-fondo); color: var(--color-rosa); font-size: 1rem; line-height: 1.5; }
 
 .mi-perfil-formulario,
 .mi-perfil-campos {

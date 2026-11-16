@@ -1,5 +1,6 @@
 import { reportarContenido } from '../utilidades/reportes.js';
 import { escaparHtml } from '../utilidades/formato.js';
+import { mostrarAvisoContextual } from '../componentes/avisoContextual.js';
 
 export function renderizarP03Detalle(
   contenedor,
@@ -127,6 +128,7 @@ export function renderizarP03Detalle(
                 </button>
               </div>
               <div id="lista-valoraciones">Cargando valoraciones...</div>
+              <div id="aviso-valoracion" hidden></div>
               <form id="formulario-valoracion" hidden>
                 <fieldset class="valoracion-estrellas"><legend>Tu calificación *</legend>
                   <label><input type="radio" name="calificacion" value="1" required><span aria-hidden="true">★</span><span class="valoracion-lectura">1 estrella</span></label>
@@ -150,6 +152,7 @@ export function renderizarP03Detalle(
             <button id="aplicar-empleo" class="boton-principal boton-aplicar" type="button">
               Aplicar a esta vacante
             </button>
+            <div id="aviso-postulacion" hidden></div>
             <p class="texto-secundario">
               ${!usuarioActual ? 'Inicia sesión o crea una cuenta para enviar tu postulación.' : usuarioActual.rol === 'candidato' ? 'Se enviará el currículum guardado en tu perfil.' : 'Solo las cuentas de candidato pueden postularse.'}
             </p>
@@ -192,10 +195,12 @@ export function renderizarP03Detalle(
       return;
     }
     if (usuarioActual.rol !== 'candidato') {
-      mostrarNotificacion('Solo las cuentas de candidato pueden postularse.');
+      mostrarAvisoContextual(contenedor.querySelector('#aviso-postulacion'), { mensaje: 'Solo las cuentas de candidato pueden postularse.' });
       return;
     }
     const boton = evento.currentTarget;
+    const aviso = contenedor.querySelector('#aviso-postulacion');
+    aviso.hidden = true;
     boton.disabled = true;
     try {
       const respuesta = await fetch('/api/candidato/postulaciones', {
@@ -204,13 +209,20 @@ export function renderizarP03Detalle(
         body: JSON.stringify({ vacante_id: vacante.id })
       });
       const resultado = await respuesta.json().catch(() => ({}));
-      if (respuesta.status === 409) { boton.textContent = 'Postulado'; mostrarNotificacion(resultado.error); return; }
-      if (!respuesta.ok) throw new Error(resultado.error || 'No se pudo enviar la postulación.');
-      mostrarNotificacion('¡Postulación enviada! Puedes verla en Mis postulaciones.');
+      if (respuesta.status === 409) {
+        boton.textContent = 'Postulado';
+        mostrarAvisoContextual(aviso, { tipo: 'informacion', titulo: 'Ya te postulaste', mensaje: resultado.error, accion: 'Ver mis postulaciones', alAccionar: () => alNavegar('POSTULACIONES_CANDIDATO') });
+        return;
+      }
+      if (!respuesta.ok) throw Object.assign(new Error(resultado.error || 'No se pudo enviar la postulación.'), { codigo: resultado.codigo });
+      mostrarAvisoContextual(aviso, { tipo: 'exito', titulo: 'Postulación enviada', mensaje: 'La empresa recibió tu currículum. Puedes seguir el proceso en Mis postulaciones.', accion: 'Ver mis postulaciones', alAccionar: () => alNavegar('POSTULACIONES_CANDIDATO') });
       boton.textContent = 'Postulado';
       return;
     } catch (error) {
-      mostrarNotificacion(error.message || 'No se pudo enviar la postulación.');
+      const sinCurriculum = error.codigo === 'CV_REQUERIDO';
+      mostrarAvisoContextual(aviso, { titulo: sinCurriculum ? 'Te falta subir tu CV' : 'No se pudo enviar la postulación',
+        mensaje: error.message || 'Intenta de nuevo.',
+        ...(sinCurriculum ? { accion: 'Subir CV en Mi perfil', alAccionar: () => alNavegar('P07') } : {}) });
       boton.disabled = false;
     }
   });
@@ -225,27 +237,27 @@ export function renderizarP03Detalle(
     fetch('/api/candidato/postulaciones/' + encodeURIComponent(vacante.id))
       .then(async r => { if (!r.ok) throw new Error(); return r.json(); })
       .then(d => { if (d.postulado) aplicar.textContent = 'Postulado'; else aplicar.disabled = false; })
-      .catch(() => { aplicar.disabled = false; mostrarNotificacion('No se pudo verificar tu postulación.'); });
+      .catch(() => { aplicar.disabled = false; mostrarAvisoContextual(contenedor.querySelector('#aviso-postulacion'), { mensaje: 'No se pudo verificar si ya te postulaste. Puedes intentar de nuevo.' }); });
   }
   const formulario = contenedor.querySelector('#formulario-valoracion');
   contenedor.querySelector('#escribir-valoracion').addEventListener('click', () => {
     if (!usuarioActual) { mostrarNotificacion('Inicia sesión para escribir una valoración.'); alNavegar('AUTH_LOGIN'); return; }
-    if (usuarioActual.rol !== 'candidato') { mostrarNotificacion('Solo las cuentas de candidato pueden valorar empresas.'); return; }
+    if (usuarioActual.rol !== 'candidato') { mostrarAvisoContextual(contenedor.querySelector('#aviso-valoracion'), { mensaje: 'Solo las cuentas de candidato pueden valorar empresas.' }); return; }
     formulario.hidden = !formulario.hidden;
     if (!formulario.hidden) formulario.querySelector('input').focus();
   });
   formulario.addEventListener('submit', async evento => {
     evento.preventDefault();
     if (!usuarioActual) { mostrarNotificacion('Inicia sesión para valorar una empresa.'); alNavegar('AUTH_LOGIN'); return; }
-    if (usuarioActual.rol !== 'candidato') { mostrarNotificacion('Solo las cuentas de candidato pueden valorar empresas.'); return; }
+    if (usuarioActual.rol !== 'candidato') { mostrarAvisoContextual(contenedor.querySelector('#aviso-valoracion'), { mensaje: 'Solo las cuentas de candidato pueden valorar empresas.' }); return; }
     if (!formulario.reportValidity()) return;
     const boton = formulario.querySelector('button[type="submit"]'); boton.disabled = true;
     try {
       const datos = new FormData(formulario);
       const r = await fetch('/api/candidato/valoraciones', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({empresa_id:vacante.empresaId,calificacion:Number(datos.get('calificacion')),comentario:datos.get('comentario')})});
       const resultado = await r.json().catch(() => ({})); if(!r.ok) throw new Error(resultado.error || 'No se pudo enviar tu valoración.');
-      formulario.reset(); formulario.hidden = true; mostrarNotificacion('Valoración publicada.');
-    } catch(error) { mostrarNotificacion(error.message); } finally { boton.disabled = false; }
+      formulario.reset(); formulario.hidden = true; mostrarAvisoContextual(contenedor.querySelector('#aviso-valoracion'), { tipo: 'exito', titulo: 'Valoración publicada', mensaje: 'Tu opinión se guardó correctamente.' });
+    } catch(error) { mostrarAvisoContextual(contenedor.querySelector('#aviso-valoracion'), { titulo: 'No se pudo guardar la valoración', mensaje: error.message }); } finally { boton.disabled = false; }
   });
   const lista = contenedor.querySelector('#lista-valoraciones');
   if (vacante.empresaId) fetch('/api/valoraciones-empresa/' + encodeURIComponent(vacante.empresaId))
