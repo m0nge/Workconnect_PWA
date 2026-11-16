@@ -247,6 +247,18 @@ export function renderizarP19CrearRecurso(contenedor, recursos, acciones) {
             </div>
 
             <div>
+              <label class="etiqueta-campo" for="recurso-portada-url">URL de imagen de portada (opcional)</label>
+              <input
+                id="recurso-portada-url"
+                type="url"
+                class="campo-texto"
+                maxlength="500"
+                placeholder="https://images.unsplash.com/... o URL pública"
+                value="${escaparHtml(estadoRecurso.imagenPortadaUrl || '')}"
+              />
+            </div>
+
+            <div>
               <label class="etiqueta-campo" for="recurso-etiquetas">Etiquetas (separadas por comas)</label>
               <input
                 id="recurso-etiquetas"
@@ -423,6 +435,13 @@ export function renderizarP19CrearRecurso(contenedor, recursos, acciones) {
       estadoRecurso.etiquetas = e.target.value;
     });
 
+    const inputUrl = zonaSubpestana.querySelector('#recurso-portada-url');
+    if (inputUrl) {
+      inputUrl.addEventListener('input', (e) => {
+        estadoRecurso.imagenPortadaUrl = e.target.value.trim();
+      });
+    }
+
     const inputPortada = zonaSubpestana.querySelector('#recurso-archivo-portada');
     const etiquetaPortada = zonaSubpestana.querySelector('#etiqueta-archivo-portada');
     if (inputPortada && etiquetaPortada) {
@@ -431,6 +450,7 @@ export function renderizarP19CrearRecurso(contenedor, recursos, acciones) {
         if (archivo && (!archivo.type.startsWith('image/') || archivo.size > 2 * 1024 * 1024)) {
           e.target.value = '';
           estadoRecurso.nombreArchivoPortada = '';
+          estadoRecurso.imagenPortadaUrl = '';
           etiquetaPortada.textContent = '🖼️ Seleccionar portada';
           cajaError.textContent = 'La portada debe ser una imagen de hasta 2 MB.';
           cajaError.classList.remove('oculto');
@@ -438,6 +458,14 @@ export function renderizarP19CrearRecurso(contenedor, recursos, acciones) {
         }
         estadoRecurso.nombreArchivoPortada = archivo ? archivo.name : '';
         etiquetaPortada.textContent = `🖼️ ${estadoRecurso.nombreArchivoPortada || 'Seleccionar portada'}`;
+        if (archivo) {
+          const lector = new FileReader();
+          lector.onload = () => {
+            estadoRecurso.imagenPortadaUrl = lector.result;
+            if (inputUrl) inputUrl.value = lector.result;
+          };
+          lector.readAsDataURL(archivo);
+        }
       });
     }
 
@@ -543,7 +571,7 @@ export function renderizarP19CrearRecurso(contenedor, recursos, acciones) {
         tiempoLecturaMin: Number(estadoRecurso.tiempoLecturaMin) || 5,
         resumen: resumenLimpio,
         contenido: contenidoLimpio,
-        imagenPortadaUrl: estadoRecurso.nombreArchivoPortada || null,
+        imagenPortadaUrl: estadoRecurso.imagenPortadaUrl || estadoRecurso.nombreArchivoPortada || null,
         adjuntos: estadoRecurso.nombreArchivoAdjunto ? [estadoRecurso.nombreArchivoAdjunto] : [],
         etiquetas: estadoRecurso.etiquetas
           .split(',')

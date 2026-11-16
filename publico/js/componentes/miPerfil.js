@@ -10,7 +10,7 @@ import {
 let contenido = document.querySelector('#mi-perfil-contenido');
 let navegacion = document.querySelector('.mi-perfil-navegacion');
 let perfilOriginal = {};
-const estadosPostulacion = ['Nueva', 'En revisión', 'Entrevista', 'Finalista', 'Descartada'];
+const estadosPostulacion = ['Nueva', 'En revisión', 'Entrevista', 'Contratada', 'Rechazada'];
 const rolesPorPantalla = {
   P07: 'candidato',
   P08: 'empresa',
@@ -161,6 +161,7 @@ function renderizarPerfilCandidato(seccion = null) {
             <div class="mi-perfil-campos">
               ${campo('Nombre completo', 'perfil-nombre', 'text', { requerido: true, atributo: 'autocomplete="name" readonly' })}
               ${campo('Correo electrónico', 'perfil-correo', 'email', { requerido: true, atributo: 'autocomplete="email" readonly' })}
+              ${campo('Teléfono de contacto', 'perfil-telefono', 'tel', { nombre: 'telefono', atributo: 'maxlength="20" placeholder="Ej. 7000-0000"' })}
               ${campo('Ubicación (departamento o municipio)', 'perfil-ubicacion', 'text', { nombre: 'ubicacion', atributo: 'maxlength="120" list="lista-departamentos-perfil" placeholder="Ej. San Salvador, La Libertad..."' })}
               <datalist id="lista-departamentos-perfil">
                 <option value="San Salvador">
@@ -483,6 +484,7 @@ function renderizarListaCandidato(tipo, registros) {
 
 async function cargarPerfilCandidato(alCambiarPantalla = () => {}, activarTab = () => {}) {
   const datos = await solicitarApiCandidato('/perfil');
+  if (!datos || !datos.perfil) return;
   const formulario = contenido.querySelector('[data-formulario="perfil"]');
   perfilOriginal = {
     telefono: datos.perfil.telefono || '',
@@ -498,32 +500,46 @@ async function cargarPerfilCandidato(alCambiarPantalla = () => {}, activarTab = 
     'perfil-titulo': datos.perfil.titulo_profesional,
     'perfil-resumen': datos.perfil.resumen_laboral
   })) {
-    contenido.querySelector(`#${campoId}`).value = valor || '';
+    const el = contenido.querySelector(`#${campoId}`);
+    if (el) el.value = valor || '';
   }
-  contenido.querySelector('#perfil-nombre-resumen').textContent = datos.perfil.nombre || 'Mi perfil';
-  contenido.querySelector('#perfil-titulo-resumen').textContent =
-    datos.perfil.titulo_profesional || 'Completa tu información profesional';
-  contenido.querySelector('#perfil-resumen-correo').textContent = datos.perfil.email || '—';
-  contenido.querySelector('#perfil-resumen-telefono').textContent = datos.perfil.telefono || '—';
-  contenido.querySelector('#perfil-resumen-ubicacion').textContent = datos.perfil.ubicacion || '—';
-  contenido.querySelector('#perfil-resumen-texto').textContent = datos.perfil.resumen_laboral || '—';
+  const setTexto = (id, valor) => {
+    const el = contenido.querySelector(`#${id}`);
+    if (el) el.textContent = valor;
+  };
+  setTexto('perfil-nombre-resumen', datos.perfil.nombre || 'Mi perfil');
+  setTexto('perfil-titulo-resumen', datos.perfil.titulo_profesional || 'Completa tu información profesional');
+  setTexto('perfil-resumen-correo', datos.perfil.email || '—');
+  setTexto('perfil-resumen-telefono', datos.perfil.telefono || '—');
+  setTexto('perfil-resumen-ubicacion', datos.perfil.ubicacion || '—');
+  setTexto('perfil-resumen-texto', datos.perfil.resumen_laboral || '—');
+
   const foto = contenido.querySelector('#perfil-foto-vista');
   const avatar = contenido.querySelector('#perfil-foto-avatar');
   if (datos.perfil.foto_url) {
-    foto.src = datos.perfil.foto_url;
-    foto.classList.remove('oculto');
-    avatar.classList.add('oculto');
+    if (foto) {
+      foto.src = datos.perfil.foto_url;
+      foto.classList.remove('oculto');
+    }
+    if (avatar) avatar.classList.add('oculto');
+  } else {
+    if (foto) foto.classList.add('oculto');
+    if (avatar) avatar.classList.remove('oculto');
   }
   const curriculumGuardado = Boolean(datos.perfil.curriculum_nombre);
-  contenido.querySelector('#perfil-cv-mensaje').textContent = curriculumGuardado
-    ? `Currículum guardado: ${datos.perfil.curriculum_nombre}.`
-    : 'Ningún currículum cargado.';
-  contenido.querySelector('#perfil-cv-resumen').textContent = curriculumGuardado
-    ? datos.perfil.curriculum_nombre
-    : 'Sin currículum cargado';
+  setTexto(
+    'perfil-cv-mensaje',
+    curriculumGuardado ? `Currículum guardado: ${datos.perfil.curriculum_nombre}.` : 'Ningún currículum cargado.'
+  );
+  setTexto(
+    'perfil-cv-resumen',
+    curriculumGuardado ? datos.perfil.curriculum_nombre : 'Sin currículum cargado'
+  );
   const enlaceCurriculum = contenido.querySelector('#perfil-cv-descargar');
-  enlaceCurriculum.classList.toggle('boton', curriculumGuardado);
-  enlaceCurriculum.hidden = !curriculumGuardado;
+  if (enlaceCurriculum) {
+    enlaceCurriculum.classList.toggle('boton', curriculumGuardado);
+    enlaceCurriculum.hidden = !curriculumGuardado;
+  }
 
   for (const [tipo, propiedad] of [
     ['experiencia', 'experiencias'],
@@ -666,14 +682,18 @@ async function cargarPerfilCandidato(alCambiarPantalla = () => {}, activarTab = 
     }
   }
 
-  const total = [...formulario.querySelectorAll('input:not([readonly]), textarea')];
-  const llenos = total.filter((entrada) => entrada.value.trim()).length;
-  const valor = total.length ? Math.round((llenos / total.length) * 100) : 0;
-  contenido.querySelector('#perfil-progreso').value = valor;
-  contenido.querySelector('#perfil-porcentaje').textContent = `${valor}%`;
+  if (formulario) {
+    const total = [...formulario.querySelectorAll('input:not([readonly]), textarea')];
+    const llenos = total.filter((entrada) => entrada.value.trim()).length;
+    const valor = total.length ? Math.round((llenos / total.length) * 100) : 0;
+    const progreso = contenido.querySelector('#perfil-progreso');
+    if (progreso) progreso.value = valor;
+    const porcentaje = contenido.querySelector('#perfil-porcentaje');
+    if (porcentaje) porcentaje.textContent = `${valor}%`;
+  }
 }
 
-function enlazarPerfilCandidato(alCambiarPantalla = () => {}, alCambiarSeccion = () => {}) {
+function enlazarPerfilCandidato(alCambiarPantalla = () => {}, alCambiarSeccion = () => {}, seccionInicial = null) {
   const formPerfil = contenido.querySelector('[data-formulario="perfil"]');
   const edicionDatos = contenido.querySelector('#perfil-edicion-datos');
   const tabPerfil = contenido.querySelector('#tab-btn-perfil');
@@ -702,32 +722,40 @@ function enlazarPerfilCandidato(alCambiarPantalla = () => {}, alCambiarSeccion =
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  if (seccionInicial === 'postulaciones') {
+    activarTab('postulaciones');
+  }
+
   tabPerfil?.addEventListener('click', () => activarTab('perfil'));
   tabPostulaciones?.addEventListener('click', () => activarTab('postulaciones'));
   contenido.querySelector('#btn-ir-buscar-empleos')?.addEventListener('click', () => alCambiarPantalla('P01'));
 
   contenido.querySelector('#perfil-editar-datos')?.addEventListener('click', () => {
-    edicionDatos.hidden = !edicionDatos.hidden;
+    if (edicionDatos) edicionDatos.hidden = !edicionDatos.hidden;
   });
   contenido.querySelectorAll('[data-editar-seccion]').forEach((boton) => {
     boton.addEventListener('click', () => {
-      const formulario = contenido.querySelector(`[data-lista="${boton.dataset.editarSeccion}"]`);
-      formulario.hidden = false;
-      formulario.querySelector('input, select, textarea')?.focus();
+      const form = contenido.querySelector(`[data-lista="${boton.dataset.editarSeccion}"]`);
+      if (form) {
+        form.hidden = false;
+        form.querySelector('input, select, textarea')?.focus();
+      }
     });
   });
-  contenido.querySelector('#perfil-editar-curriculum').addEventListener('click', () => {
-    contenido.querySelector('[data-edicion-curriculum]').hidden = false;
-    contenido.querySelector('#perfil-cv').focus();
+  contenido.querySelector('#perfil-editar-curriculum')?.addEventListener('click', () => {
+    const editCv = contenido.querySelector('[data-edicion-curriculum]');
+    if (editCv) editCv.hidden = false;
+    contenido.querySelector('#perfil-cv')?.focus();
   });
   contenido.querySelectorAll('[data-descartar-edicion]').forEach((boton) => {
     boton.addEventListener('click', () => {
       const tipo = boton.dataset.descartarEdicion;
       if (tipo === 'perfil') {
         for (const [nombre, valor] of Object.entries(perfilOriginal)) {
-          formPerfil.elements.namedItem(nombre).value = valor;
+          const el = formPerfil?.elements?.namedItem(nombre);
+          if (el) el.value = valor;
         }
-        edicionDatos.hidden = true;
+        if (edicionDatos) edicionDatos.hidden = true;
         return;
       }
       if (tipo === 'curriculum') {
@@ -1005,7 +1033,17 @@ function renderizarEmpresa() {
     <section class="mi-perfil-tarjeta">
       <h3>Vista previa corporativa</h3>
       <div class="mi-perfil-vista-previa">
-        <div id="empresa-previa-avatar" style="width: 56px; height: 56px; font-size: 1.25rem; margin-bottom: 0.5rem; display: inline-flex; align-items: center; justify-content: center; background: #873044; color: white; border-radius: 50%; font-weight: bold;">WC</div>
+        <div id="empresa-previa-avatar" style="width: 64px; height: 64px; font-size: 1.25rem; margin: 0 auto 0.75rem auto; display: flex; align-items: center; justify-content: center; background: #873044; color: white; border-radius: 50%; font-weight: bold; overflow: hidden; border: 2px solid #e2e8f0;">
+          <span id="empresa-previa-iniciales">WC</span>
+          <img id="empresa-previa-img" src="" alt="Logo de la empresa" style="width: 100%; height: 100%; object-fit: cover; display: none;" />
+        </div>
+        <div style="margin-bottom: 0.75rem; text-align: center;">
+          <label for="empresa-logo-input" class="boton boton-secundario" style="cursor: pointer; font-size: 0.8rem; padding: 0.35rem 0.75rem; display: inline-block;">
+            Cambiar logo
+          </label>
+          <input id="empresa-logo-input" type="file" accept="image/jpeg,image/png,image/webp" style="display: none;" />
+          <p id="empresa-logo-mensaje" class="mi-perfil-ayuda" style="margin: 0.35rem 0 0; font-size: 0.75rem;">JPG, PNG o WebP. Máximo 10 MB.</p>
+        </div>
         <strong id="empresa-previa-nombre">Nombre comercial</strong>
         <p id="empresa-previa-sector" class="mi-perfil-ayuda">Sector · Ubicación</p>
         <p id="empresa-previa-descripcion" class="mi-perfil-ayuda">La descripción de la empresa aparecerá aquí.</p>
@@ -1025,22 +1063,48 @@ function renderizarEmpresa() {
         <button type="button" class="boton mi-perfil-enlace-boton btn-ir-postulaciones">Revisar postulaciones</button>
       </div>
     </section>
+    <section class="mi-perfil-tarjeta" style="grid-column: 1 / -1; margin-top: 1rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+        <div>
+          <h3 style="margin: 0; font-size: 1.15rem;">Mis ofertas de empleo publicadas</h3>
+          <p class="mi-perfil-ayuda" style="margin: 0.2rem 0 0;">Gestiona tus ofertas activas, pausa o inactiva las que ya no reciban postulaciones, o elimina ofertas.</p>
+        </div>
+        <button type="button" class="boton boton-primario btn-ir-publicar-vacante">+ Publicar nueva vacante</button>
+      </div>
+      <div class="mi-perfil-desplazamiento">
+        <table class="mi-perfil-tabla" id="tabla-vacantes-empresa">
+          <thead>
+            <tr>
+              <th>PUESTO / VACANTE</th>
+              <th>UBICACIÓN & MODALIDAD</th>
+              <th>PLAZAS & SALARIO</th>
+              <th>ESTADO</th>
+              <th>ACCIONES</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-vacantes-empresa">
+            <tr><td colspan="5" class="mi-perfil-vacio">Cargando ofertas publicadas...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
   </div>`;
 }
 
 async function enlazarEmpresa(alCambiarPantalla = () => {}) {
   const formulario = contenido.querySelector('[data-formulario="empresa"]');
-  contenido.querySelector('.btn-ir-publicar-vacante')?.addEventListener('click', () => {
-    alCambiarPantalla('P09');
+  contenido.querySelectorAll('.btn-ir-publicar-vacante').forEach((btn) => {
+    btn.addEventListener('click', () => alCambiarPantalla('P09'));
   });
-  contenido.querySelector('.btn-ir-postulaciones')?.addEventListener('click', () => {
-    alCambiarPantalla('P10');
+  contenido.querySelectorAll('.btn-ir-postulaciones').forEach((btn) => {
+    btn.addEventListener('click', () => alCambiarPantalla('P10'));
   });
 
   const selectDepto = contenido.querySelector('#empresa-departamento');
   const selectMuni = contenido.querySelector('#empresa-municipio');
   const mensajeEstado = contenido.querySelector('#empresa-mensaje-estado');
   const btnGuardar = contenido.querySelector('#btn-guardar-empresa');
+  const tbodyVacantes = contenido.querySelector('#tbody-vacantes-empresa');
 
   // Inicializar sincronización geográfica
   sincronizarMunicipios(selectDepto, selectMuni, 'San Salvador');
@@ -1082,12 +1146,70 @@ async function enlazarEmpresa(alCambiarPantalla = () => {}) {
     if (elDesc) {
       elDesc.textContent = descripcion || 'La descripción de la empresa aparecerá aquí.';
     }
-    if (elAvatar && nombre) {
+    if (elAvatar && nombre && imgLogo?.style.display !== 'block') {
       const palabras = nombre.trim().split(/\s+/);
       const iniciales = (palabras[0]?.[0] || 'E') + (palabras[1]?.[0] || '');
-      elAvatar.textContent = iniciales.toUpperCase();
+      if (txtIniciales) txtIniciales.textContent = iniciales.toUpperCase();
     }
   };
+
+  const inputLogo = contenido.querySelector('#empresa-logo-input');
+  const msgLogo = contenido.querySelector('#empresa-logo-mensaje');
+  const imgLogo = contenido.querySelector('#empresa-previa-img');
+  const txtIniciales = contenido.querySelector('#empresa-previa-iniciales');
+
+  const aplicarLogo = (url) => {
+    if (url && imgLogo && txtIniciales) {
+      imgLogo.src = url;
+      imgLogo.style.display = 'block';
+      txtIniciales.style.display = 'none';
+      const avatarMenu = document.querySelector('#boton-menu-usuario .avatar-circular');
+      if (avatarMenu) {
+        if (avatarMenu instanceof HTMLImageElement) {
+          avatarMenu.src = url;
+        } else {
+          const img = document.createElement('img');
+          img.className = 'avatar-circular';
+          img.alt = '';
+          img.src = url;
+          avatarMenu.replaceWith(img);
+        }
+      }
+    }
+  };
+
+  inputLogo?.addEventListener('change', async () => {
+    const archivo = inputLogo.files[0];
+    if (!archivo) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(archivo.type) || archivo.size > 10 * 1024 * 1024) {
+      inputLogo.value = '';
+      if (msgLogo) msgLogo.textContent = 'Selecciona una imagen JPG, PNG o WebP de máximo 10 MB.';
+      return;
+    }
+    if (msgLogo) {
+      msgLogo.textContent = 'Guardando logo...';
+      msgLogo.style.color = 'var(--color-vino)';
+    }
+    try {
+      const res = await fetch('/api/empresa/logo', {
+        method: 'POST',
+        headers: { 'Content-Type': archivo.type },
+        body: archivo
+      });
+      const resJson = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(resJson.error || 'No se pudo guardar el logo.');
+      aplicarLogo(resJson.logo_url);
+      if (msgLogo) {
+        msgLogo.textContent = '✓ Logo actualizado exitosamente.';
+        msgLogo.style.color = '#166534';
+      }
+    } catch (errLogo) {
+      if (msgLogo) {
+        msgLogo.textContent = errLogo.message || 'Error al guardar el logo.';
+        msgLogo.style.color = '#dc2626';
+      }
+    }
+  });
 
   const controlesPrevia = [
     'empresa-nombre',
@@ -1101,6 +1223,110 @@ async function enlazarEmpresa(alCambiarPantalla = () => {}) {
     contenido.querySelector(`#${id}`)?.addEventListener('input', actualizarPrevia);
     contenido.querySelector(`#${id}`)?.addEventListener('change', actualizarPrevia);
   });
+
+  // Función para cargar y renderizar las ofertas de empleo de la empresa
+  const cargarOfertasEmpresa = async () => {
+    if (!tbodyVacantes) return;
+    try {
+      const res = await fetch('/api/empresa/vacantes', { cache: 'no-store' });
+      const datos = await res.json().catch(() => ({}));
+      const vacantes = Array.isArray(datos.vacantes) ? datos.vacantes : [];
+
+      const statVac = contenido.querySelector('#stat-vacantes-conteo');
+      if (statVac) statVac.textContent = vacantes.length;
+
+      if (!vacantes.length) {
+        tbodyVacantes.innerHTML = `<tr><td colspan="5" class="mi-perfil-vacio">No has publicado ofertas de empleo aún. Haz clic en "+ Publicar nueva vacante" para empezar.</td></tr>`;
+        return;
+      }
+
+      tbodyVacantes.innerHTML = vacantes.map((v) => {
+        const esActiva = v.estado === 'Activa';
+        const badgeColor = esActiva
+          ? 'background:#ecfdf5; color:#047857; border:1px solid #a7f3d0;'
+          : 'background:#f1f5f9; color:#475569; border:1px solid #cbd5e1;';
+
+        return `
+          <tr data-vacante-id="${v.id}">
+            <td>
+              <strong>${escaparHtml(v.titulo)}</strong>
+              <div class="mi-perfil-ayuda" style="font-size:0.75rem;">${escaparHtml(v.sector)}</div>
+            </td>
+            <td>
+              <div>${escaparHtml(v.municipio)}, ${escaparHtml(v.departamento)}</div>
+              <div class="mi-perfil-ayuda" style="font-size:0.75rem;">${escaparHtml(v.modalidad)} · ${escaparHtml(v.tipo_contrato)}</div>
+            </td>
+            <td>
+              <div>${v.plazas} ${v.plazas === 1 ? 'plaza' : 'plazas'}</div>
+              <div class="mi-perfil-ayuda" style="font-size:0.75rem;">$${Number(v.salario_min || 0)} - $${Number(v.salario_max || 0)}</div>
+            </td>
+            <td>
+              <span style="${badgeColor} padding:0.2rem 0.55rem; border-radius:0.35rem; font-size:0.75rem; font-weight:700;">
+                ${escaparHtml(v.estado)}
+              </span>
+            </td>
+            <td>
+              <div style="display:flex; gap:0.4rem; align-items:center;">
+                <button type="button" class="boton btn-toggle-vacante" data-id="${v.id}" data-estado-actual="${v.estado}" style="padding:0.25rem 0.6rem; font-size:0.75rem;">
+                  ${esActiva ? 'Pausar / Inactivar' : 'Reactivar'}
+                </button>
+                <button type="button" class="boton btn-eliminar-vacante" data-id="${v.id}" data-titulo="${escaparHtml(v.titulo)}" style="padding:0.25rem 0.6rem; font-size:0.75rem; color:#dc2626; border-color:#fca5a5;">
+                  Eliminar
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      // Conectar alternar estado (Activa / Inactiva)
+      tbodyVacantes.querySelectorAll('.btn-toggle-vacante').forEach((boton) => {
+        boton.addEventListener('click', async () => {
+          const id = boton.dataset.id;
+          const estadoActual = boton.dataset.estadoActual;
+          const nuevoEstado = estadoActual === 'Activa' ? 'Inactiva' : 'Activa';
+          boton.disabled = true;
+
+          try {
+            const res = await fetch(`/api/empresa/vacantes/${id}/estado`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ estado: nuevoEstado })
+            });
+            const resJson = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(resJson.error || 'No se pudo cambiar el estado.');
+            await cargarOfertasEmpresa();
+          } catch (err) {
+            alert(err.message || 'Error al cambiar estado.');
+            boton.disabled = false;
+          }
+        });
+      });
+
+      // Conectar eliminar vacante
+      tbodyVacantes.querySelectorAll('.btn-eliminar-vacante').forEach((boton) => {
+        boton.addEventListener('click', async () => {
+          const id = boton.dataset.id;
+          const titulo = boton.dataset.titulo;
+          const confirmar = window.confirm(`¿Estás seguro de que deseas eliminar la oferta "${titulo}"? Se eliminarán también las postulaciones vinculadas a ella.`);
+          if (!confirmar) return;
+
+          boton.disabled = true;
+          try {
+            const res = await fetch(`/api/empresa/vacantes/${id}`, { method: 'DELETE' });
+            const resJson = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(resJson.error || 'No se pudo eliminar la vacante.');
+            await cargarOfertasEmpresa();
+          } catch (err) {
+            alert(err.message || 'Error al eliminar oferta.');
+            boton.disabled = false;
+          }
+        });
+      });
+    } catch (err) {
+      tbodyVacantes.innerHTML = `<tr><td colspan="5" class="mi-perfil-vacio">No se pudieron cargar las ofertas de empleo.</td></tr>`;
+    }
+  };
 
   // Cargar datos actuales de la empresa
   try {
@@ -1132,12 +1358,18 @@ async function enlazarEmpresa(alCambiarPantalla = () => {}) {
       const statPost = contenido.querySelector('#stat-postulaciones-conteo');
       if (statVac) statVac.textContent = datos.conteoVacantes ?? 0;
       if (statPost) statPost.textContent = datos.conteoPostulaciones ?? 0;
+      if (emp.logo_url || datos.usuario?.foto_url) {
+        aplicarLogo(emp.logo_url || datos.usuario.foto_url);
+      }
 
       actualizarPrevia();
     }
   } catch (errorCarga) {
     console.error('Error al cargar perfil de empresa:', errorCarga);
   }
+
+  // Cargar las ofertas iniciales de la empresa
+  await cargarOfertasEmpresa();
 
   formulario?.addEventListener('submit', async (evento) => {
     evento.preventDefault();
@@ -1472,43 +1704,73 @@ async function enlazarPostulaciones() {
             <td>${fecha}</td>
             <td>
               <select class="select-estado-postulacion" data-postulacion-id="${p.id}" style="padding: 0.35rem 0.6rem; border-radius: 0.375rem; border: 1px solid #d8d2cd; font-size: 0.82rem; font-weight: 500;">
-                ${estadosPostulacion
-                  .map((e) => `<option value="${e}" ${e === p.estado ? 'selected' : ''}>${escaparHtml(e)}</option>`)
-                  .join('')}
+                <option value="Nueva" ${p.estado === 'Nueva' ? 'selected' : ''}>Nueva</option>
+                <option value="En revisión" ${p.estado === 'En revisión' ? 'selected' : ''}>En revisión</option>
+                <option value="Entrevista" ${p.estado === 'Entrevista' ? 'selected' : ''}>Entrevista</option>
+                <option value="Contratada" ${p.estado === 'Contratada' ? 'selected' : ''}>✓ Aceptada / Contratada</option>
+                <option value="Rechazada" ${p.estado === 'Rechazada' ? 'selected' : ''}>✗ Denegada / Rechazada</option>
               </select>
             </td>
             <td>
-              ${p.curriculum_url ? `<span class="mi-perfil-ayuda" style="color: #166534; font-weight: 600;">✓ CV en perfil</span>` : '<span class="mi-perfil-ayuda">Sin CV</span>'}
+              <div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">
+                <button type="button" class="boton btn-accion-aceptar" data-id="${p.id}" style="padding: 0.25rem 0.55rem; font-size: 0.75rem; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; font-weight: 600;" ${p.estado === 'Contratada' ? 'disabled' : ''} title="Aceptar al candidato">
+                  ✓ Aceptar
+                </button>
+                <button type="button" class="boton btn-accion-denegar" data-id="${p.id}" style="padding: 0.25rem 0.55rem; font-size: 0.75rem; background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; font-weight: 600;" ${p.estado === 'Rechazada' ? 'disabled' : ''} title="Denegar al postulante">
+                  ✗ Denegar
+                </button>
+              </div>
             </td>
           </tr>
         `;
       })
       .join('');
 
-    // Conectar cambios de estado
+    const cambiarEstadoPostulacion = async (id, nuevoEstado) => {
+      try {
+        const res = await fetch(`/api/empresa/postulaciones/${id}/estado`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ estado: nuevoEstado })
+        });
+        const resJson = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(resJson.error || 'No se pudo actualizar.');
+
+        const post = postulacionesCargadas.find((x) => x.id === id);
+        if (post) post.estado = nuevoEstado;
+        actualizarConteoEstados();
+        renderizarFilas();
+      } catch (errorUpdate) {
+        alert(errorUpdate.message || 'Error al cambiar estado.');
+      }
+    };
+
+    // Conectar cambios de estado por dropdown
     tbody.querySelectorAll('.select-estado-postulacion').forEach((select) => {
       select.addEventListener('change', async () => {
         const id = select.dataset.postulacionId;
         const nuevoEstado = select.value;
         select.disabled = true;
+        await cambiarEstadoPostulacion(id, nuevoEstado);
+        select.disabled = false;
+      });
+    });
 
-        try {
-          const res = await fetch(`/api/empresa/postulaciones/${id}/estado`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ estado: nuevoEstado })
-          });
-          const resJson = await res.json().catch(() => ({}));
-          if (!res.ok) throw new Error(resJson.error || 'No se pudo actualizar.');
+    // Conectar botón Aceptar aplicante
+    tbody.querySelectorAll('.btn-accion-aceptar').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        btn.disabled = true;
+        await cambiarEstadoPostulacion(id, 'Contratada');
+      });
+    });
 
-          const post = postulacionesCargadas.find((x) => x.id === id);
-          if (post) post.estado = nuevoEstado;
-          actualizarConteoEstados();
-        } catch (errorUpdate) {
-          alert(errorUpdate.message || 'Error al cambiar estado.');
-        } finally {
-          select.disabled = false;
-        }
+    // Conectar botón Denegar aplicante
+    tbody.querySelectorAll('.btn-accion-denegar').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        btn.disabled = true;
+        await cambiarEstadoPostulacion(id, 'Rechazada');
       });
     });
   };

@@ -1151,6 +1151,53 @@ aplicacion.put('/api/empresa/perfil', conManejoErrores(async (solicitud, respues
   return respuesta.json({ guardado: true, empresa: empresaActualizada });
 }));
 
+aplicacion.post(
+  '/api/empresa/logo',
+  express.raw({ type: ['image/jpeg', 'image/png', 'image/webp'], limit: tamanoMaximoFotoCandidato }),
+  conManejoErrores(async (solicitud, respuesta) => {
+    const contexto = await obtenerEmpresaAutenticada(solicitud, respuesta);
+    if (!contexto) return;
+    if (!Buffer.isBuffer(solicitud.body) || !solicitud.body.length) {
+      return respuesta.status(400).json({ error: 'Selecciona una imagen válida.' });
+    }
+    const tipo = solicitud.headers['content-type'];
+    const extensiones = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
+    const extension = extensiones[tipo];
+    if (!extension) return respuesta.status(400).json({ error: 'Solo se permiten imágenes JPG, PNG o WebP.' });
+
+    const rutaArchivo = `empresas/${contexto.empresa.id}/logo.${extension}`;
+    const { error: errorSubida } = await contexto.supabase.storage
+      .from(bucketFotosCandidatos)
+      .upload(rutaArchivo, solicitud.body, { contentType: tipo, upsert: true });
+    if (errorSubida) {
+      return respuesta.status(/bucket not found/i.test(errorSubida.message || '') ? 503 : 400).json({
+        error: /bucket not found/i.test(errorSubida.message || '')
+          ? 'Storage no está activado.'
+          : 'No se pudo guardar el logo.'
+      });
+    }
+    const { data: urlPublica } = contexto.supabase.storage
+      .from(bucketFotosCandidatos)
+      .getPublicUrl(rutaArchivo);
+
+    const logoUrl = urlPublica.publicUrl;
+
+    await contexto.supabase
+      .from('usuarios')
+      .update({ foto_url: logoUrl })
+      .eq('id', contexto.usuario.id);
+
+    try {
+      await contexto.supabase
+        .from('empresas')
+        .update({ logo_url: logoUrl })
+        .eq('id', contexto.empresa.id);
+    } catch (_) {}
+
+    return respuesta.json({ guardado: true, logo_url: logoUrl });
+  })
+);
+
 aplicacion.post('/api/empresa/vacantes', conManejoErrores(async (solicitud, respuesta) => {
   const contexto = await obtenerEmpresaAutenticada(solicitud, respuesta);
   if (!contexto) return;
@@ -1227,6 +1274,88 @@ aplicacion.post('/api/empresa/vacantes', conManejoErrores(async (solicitud, resp
   return respuesta.status(201).json({ guardado: true, vacante });
 }));
 
+aplicacion.get('/api/empresa/vacantes', conManejoErrores(async (solicitud, respuesta) => {
+  const contexto = await obtenerEmpresaAutenticada(solicitud, respuesta);
+  if (!contexto) return;
+
+  const { data, error } = await contexto.supabase
+    .from('vacantes')
+    .select('*')
+    .eq('empresa_id', contexto.empresa.id)
+    .order('creado_en', { ascending: false });
+
+  if (error) {
+    return respuesta.status(400).json({ error: 'No se pudieron consultar las vacantes: ' + error.message });
+  }
+
+  return respuesta.json({ vacantes: data || [] });
+}));
+
+aplicacion.put('/api/empresa/vacantes/:id/estado', conManejoErrores(async (solicitud, respuesta) => {
+  const contexto = await obtenerEmpresaAutenticada(solicitud, respuesta);
+  if (!contexto) return;
+
+  const nuevoEstado = String(solicitud.body?.estado || '').trim();
+  if (!['Activa', 'Inactiva', 'Pendiente'].includes(nuevoEstado)) {
+    return respuesta.status(400).json({ error: 'Estado no válido. Debe ser Activa o Inactiva.' });
+  }
+
+  const { data: vacante, error: errorVac } = await contexto.supabase
+    .from('vacantes')
+    .select('id, empresa_id')
+    .eq('id', solicitud.params.id)
+    .eq('empresa_id', contexto.empresa.id)
+    .maybeSingle();
+
+  if (errorVac || !vacante) {
+    return respuesta.status(404).json({ error: 'Vacante no encontrada o no pertenece a tu empresa.' });
+  }
+
+  const { error: errorUpdate } = await contexto.supabase
+    .from('vacantes')
+    .update({ estado: nuevoEstado })
+    .eq('id', solicitud.params.id);
+
+  if (errorUpdate) {
+    return respuesta.status(400).json({ error: 'No se pudo actualizar el estado de la vacante: ' + errorUpdate.message });
+  }
+
+  return respuesta.json({ actualizado: true, nuevoEstado });
+}));
+
+aplicacion.delete('/api/empresa/vacantes/:id', conManejoErrores(async (solicitud, respuesta) => {
+  const contexto = await obtenerEmpresaAutenticada(solicitud, respuesta);
+  if (!contexto) return;
+
+  const { data: vacante, error: errorVac } = await contexto.supabase
+    .from('vacantes')
+    .select('id, empresa_id')
+    .eq('id', solicitud.params.id)
+    .eq('empresa_id', contexto.empresa.id)
+    .maybeSingle();
+
+  if (errorVac || !vacante) {
+    return respuesta.status(404).json({ error: 'Vacante no encontrada o no pertenece a tu empresa.' });
+  }
+
+  // Eliminar postulaciones asociadas primero
+  await contexto.supabase
+    .from('postulaciones')
+    .delete()
+    .eq('vacante_id', solicitud.params.id);
+
+  const { error: errorDelete } = await contexto.supabase
+    .from('vacantes')
+    .delete()
+    .eq('id', solicitud.params.id);
+
+  if (errorDelete) {
+    return respuesta.status(400).json({ error: 'No se pudo eliminar la vacante: ' + errorDelete.message });
+  }
+
+  return respuesta.json({ eliminado: true });
+}));
+
 aplicacion.get('/api/empresa/postulaciones', conManejoErrores(async (solicitud, respuesta) => {
   const contexto = await obtenerEmpresaAutenticada(solicitud, respuesta);
   if (!contexto) return;
@@ -1279,8 +1408,22 @@ aplicacion.put('/api/empresa/postulaciones/:id/estado', conManejoErrores(async (
   const contexto = await obtenerEmpresaAutenticada(solicitud, respuesta);
   if (!contexto) return;
 
-  const nuevoEstado = String(solicitud.body?.estado || '').trim();
-  const estadosPermitidos = ['Nueva', 'En revisión', 'Entrevista', 'Finalista', 'Descartada'];
+  const estadoRecibido = String(solicitud.body?.estado || '').trim();
+  const mapaEstados = {
+    'Aceptada': 'Contratada',
+    'Aceptado': 'Contratada',
+    'Contratada': 'Contratada',
+    'Denegada': 'Rechazada',
+    'Denegado': 'Rechazada',
+    'Rechazada': 'Rechazada',
+    'Descartada': 'Rechazada',
+    'Finalista': 'Entrevista',
+    'Entrevista': 'Entrevista',
+    'En revisión': 'En revisión',
+    'Nueva': 'Nueva'
+  };
+  const nuevoEstado = mapaEstados[estadoRecibido] || estadoRecibido;
+  const estadosPermitidos = ['Nueva', 'En revisión', 'Entrevista', 'Contratada', 'Rechazada'];
   if (!estadosPermitidos.includes(nuevoEstado)) {
     return respuesta.status(400).json({ error: 'Estado de postulación no válido.' });
   }
