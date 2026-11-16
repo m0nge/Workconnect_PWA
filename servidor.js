@@ -998,7 +998,7 @@ aplicacion.post('/api/empresa/vacantes', conManejoErrores(async (solicitud, resp
   if (!contexto) return;
 
   const validacion = validarVacanteEmpresa(solicitud.body || {});
-  if (validacion.error) return respuesta.status(400).json({ error: validacion.error });
+  if (validacion.error) return respuesta.status(400).json({ error: validacion.error, errores: validacion.errores });
   const { titulo, sector, departamento, municipio, modalidad, tipo_contrato: tipoContrato, plazas,
     salario_min: salarioMin, salario_max: salarioMax, descripcion, funciones, requisitos, beneficios } = validacion.datos;
 

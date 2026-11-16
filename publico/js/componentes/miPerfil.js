@@ -1,6 +1,8 @@
 import { formatosFoto, subirFoto } from '../utilidades/fotos.js';
 import { enlazarVistaPreviaVacante } from '../utilidades/vistaPreviaVacante.js';
 import { renderizarAvatar } from '../utilidades/avatar.js';
+import { enlazarValidacionVacante } from '../utilidades/validacionFormularioVacante.js';
+import { mostrarAvisoContextual } from './avisoContextual.js';
 import { confirmarAccion, mostrarAviso } from './dialogos.js';
 import { reportarContenido } from '../utilidades/reportes.js';
 import { escaparHtml } from '../utilidades/formato.js';
@@ -1450,6 +1452,7 @@ function renderizarVacante(vacante = null) {
       <h2>${vacante ? 'Editar oferta de empleo' : 'Publicar vacante'}</h2>
       <p>${vacante ? 'Actualiza los datos de tu oferta. Su estado de publicación se conserva.' : 'Publica una nueva oportunidad laboral. Las ofertas solo serán visibles cuando un administrador apruebe tu empresa.'}</p>
       <form class="mi-perfil-formulario" data-formulario="vacante">
+        <div id="vacante-mensaje-estado" class="oculto" role="alert"></div>
         <div class="mi-perfil-campos">
           ${campo('Título del puesto *', 'vacante-titulo', 'text', { requerido: true, atributo: 'placeholder="Ej. Desarrollador/a Frontend React"' })}
           <div class="mi-perfil-campo">
@@ -1501,7 +1504,6 @@ function renderizarVacante(vacante = null) {
           ${campo('Requisitos del candidato *', 'vacante-requisitos', 'textarea', { requerido: true, completo: true, atributo: 'rows="3" placeholder="Escribe un requisito por línea..."' })}
           ${campo('Beneficios ofrecidos (opcional)', 'vacante-beneficios', 'textarea', { completo: true, atributo: 'rows="3" placeholder="Escribe los beneficios por línea (seguro médico, horarios flexibles, etc.)..."' })}
         </div>
-        <p id="vacante-mensaje-estado" class="mi-perfil-ayuda oculto" role="status"></p>
         <div class="mi-perfil-acciones">
           <button id="boton-publicar-vacante" class="boton boton-primario" type="submit">${vacante ? 'Guardar cambios' : 'Publicar vacante'}</button>
           ${vacante ? '<button class="boton" type="button" data-cancelar-oferta>Cancelar</button>' : '<button class="boton" type="reset">Limpiar formulario</button>'}
@@ -1518,8 +1520,6 @@ function enlazarVacante(alCambiarPantalla = () => {}, { raiz = contenido, vacant
 
   const selectorDepartamento = formulario.querySelector('#vacante-departamento');
   const selectorMunicipio = formulario.querySelector('#vacante-municipio');
-  const minimo = formulario.querySelector('#vacante-salario-min');
-  const maximo = formulario.querySelector('#vacante-salario-max');
   const mensajeEstado = formulario.querySelector('#vacante-mensaje-estado');
   const botonPublicarTema = formulario.querySelector('#boton-publicar-vacante');
 
@@ -1543,40 +1543,15 @@ function enlazarVacante(alCambiarPantalla = () => {}, { raiz = contenido, vacant
     formulario.querySelector('[data-cancelar-oferta]').addEventListener('click', alCancelar);
   }
 
-  const validarSalario = () => {
-    const min = minimo.value === '' ? null : Number(minimo.value);
-    const max = maximo.value === '' ? null : Number(maximo.value);
-    maximo.setCustomValidity(min !== null && max !== null && max < min
-      ? 'El salario máximo no puede ser menor que el salario mínimo.'
-      : '');
-  };
-  minimo.addEventListener('input', validarSalario);
-  maximo.addEventListener('input', validarSalario);
+  const validacionFormulario = enlazarValidacionVacante(formulario, vacante?.fecha_limite?.slice(0, 10));
 
   formulario.addEventListener('submit', async (evento) => {
     evento.preventDefault();
-    validarSalario();
-    if (!formulario.reportValidity()) return;
+    const datos = validacionFormulario.validar();
+    if (!datos) return;
 
     if (botonPublicarTema) botonPublicarTema.disabled = true;
     if (mensajeEstado) mensajeEstado.classList.add('oculto');
-
-    const datos = {
-      titulo: formulario.querySelector('#vacante-titulo').value.trim(),
-      sector: formulario.querySelector('#vacante-sector').value.trim(),
-      departamento: formulario.querySelector('#vacante-departamento').value.trim(),
-      municipio: formulario.querySelector('#vacante-municipio').value.trim(),
-      modalidad: formulario.querySelector('#vacante-modalidad').value.trim(),
-      tipo_contrato: formulario.querySelector('#vacante-contrato').value.trim(),
-      plazas: Number(formulario.querySelector('#vacante-plazas').value) || 1,
-      salario_min: Number(formulario.querySelector('#vacante-salario-min').value),
-      salario_max: Number(formulario.querySelector('#vacante-salario-max').value),
-      fecha_limite: formulario.querySelector('#vacante-fecha-limite').value || null,
-      descripcion: formulario.querySelector('#vacante-descripcion').value.trim(),
-      funciones: formulario.querySelector('#vacante-funciones').value.trim(),
-      requisitos: formulario.querySelector('#vacante-requisitos').value.trim(),
-      beneficios: formulario.querySelector('#vacante-beneficios').value.trim()
-    };
 
     try {
       const respuestaHttp = await fetch(vacante ? `/api/empresa/vacantes/${vacante.id}` : '/api/empresa/vacantes', {
@@ -1585,33 +1560,21 @@ function enlazarVacante(alCambiarPantalla = () => {}, { raiz = contenido, vacant
         body: JSON.stringify(datos)
       });
       const resultado = await respuestaHttp.json().catch(() => ({}));
+      if (!respuestaHttp.ok && resultado.errores) { validacionFormulario.mostrarErrores(resultado.errores); return; }
       if (!respuestaHttp.ok) throw new Error(resultado.error || 'No se pudo publicar la vacante.');
       if (vacante) { await alGuardar(resultado.vacante); return; }
 
-      if (mensajeEstado) {
-        mensajeEstado.textContent = `Vacante "${datos.titulo}" guardada. Será visible para candidatos si tu empresa está aprobada.`;
-        mensajeEstado.className = 'mi-perfil-ayuda';
-        mensajeEstado.style.color = 'var(--color-esmeralda)';
-        mensajeEstado.style.fontWeight = '600';
-        mensajeEstado.classList.remove('oculto');
-      }
       formulario.reset();
-      maximo.setCustomValidity('');
       sincronizarMunicipios(selectorDepartamento, selectorMunicipio, 'San Salvador');
+      mostrarAvisoContextual(mensajeEstado, { tipo: 'exito', titulo: 'Vacante guardada', mensaje: `Vacante "${datos.titulo}" guardada. Será visible para candidatos si tu empresa está aprobada.` });
     } catch (error) {
-      if (mensajeEstado) {
-        mensajeEstado.textContent = error.message || 'Error al publicar la vacante.';
-        mensajeEstado.className = 'mi-perfil-error-en-linea';
-        mensajeEstado.style.color = 'var(--color-rosa)';
-        mensajeEstado.classList.remove('oculto');
-      }
+      mostrarAvisoContextual(mensajeEstado, { titulo: 'No se pudo guardar la vacante', mensaje: error.message || 'Intenta de nuevo.' });
     } finally {
       if (botonPublicarTema) botonPublicarTema.disabled = false;
     }
   });
 
   formulario.addEventListener('reset', () => {
-    maximo.setCustomValidity('');
     if (mensajeEstado) mensajeEstado.classList.add('oculto');
   });
   enlazarVistaPreviaVacante(formulario, raiz.querySelector('.vacante-vista-previa'));

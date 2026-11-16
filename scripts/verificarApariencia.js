@@ -235,6 +235,48 @@ try {
         if (!cargada) throw new Error('La oferta no se cargó en el formulario de edición.');
       }
       if (vista === 'P09') {
+        const erroresVisibles = await evaluar(`(async () => {
+          const formulario = document.querySelector('[data-formulario="vacante"]');
+          const original = window.fetch; let enviados = 0;
+          window.fetch = async (ruta, opciones = {}) => {
+            if (ruta === '/api/empresa/vacantes' && opciones.method === 'POST') {
+              enviados++;
+              return new Response(JSON.stringify(enviados === 1 ? { error: 'Revisa la descripción.', errores: { descripcion: 'Completa la descripción de esta oferta.' } } : { guardado: true }), { status: enviados === 1 ? 400 : 201, headers: { 'Content-Type': 'application/json' } });
+            }
+            return original(ruta, opciones);
+          };
+          const esperarCambio = async condicion => {
+            for (let intento = 0; intento < 100; intento++) {
+              if (condicion()) return;
+              await new Promise(resolver => setTimeout(resolver, 20));
+            }
+            throw new Error('No se actualizaron los errores de la vacante.');
+          };
+          try {
+            formulario.requestSubmit();
+            const titulo = formulario.querySelector('#vacante-titulo');
+            if (enviados || titulo.getAttribute('aria-invalid') !== 'true' || formulario.querySelector('#vacante-titulo-error').hidden || document.activeElement !== titulo) return false;
+            for (const selector of formulario.querySelectorAll('select')) {
+              selector.value = selector.options[1]?.value || '';
+              selector.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            for (const [campo, valor] of Object.entries({ titulo: 'Oferta de prueba', plazas: '1', 'salario-min': '1000', 'salario-max': '500', descripcion: 'Descripcion completa de la oferta laboral.', funciones: 'Organizar documentos', requisitos: 'Experiencia administrativa' })) {
+              const entrada = formulario.querySelector('#vacante-' + campo);
+              entrada.value = valor; entrada.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+            formulario.requestSubmit();
+            if (enviados || formulario.querySelector('#vacante-salario-max').getAttribute('aria-invalid') !== 'true' || titulo.hasAttribute('aria-invalid')) return false;
+            const maximo = formulario.querySelector('#vacante-salario-max');
+            maximo.value = '1200'; maximo.dispatchEvent(new Event('input', { bubbles: true }));
+            formulario.requestSubmit();
+            await esperarCambio(() => enviados === 1 && formulario.querySelector('#vacante-descripcion').getAttribute('aria-invalid') === 'true');
+            if (titulo.value !== 'Oferta de prueba') return false;
+            formulario.requestSubmit();
+            await esperarCambio(() => enviados === 2 && formulario.querySelector('#vacante-mensaje-estado').classList.contains('aviso-contextual-exito'));
+            return !titulo.value && !formulario.querySelector('#vacante-mensaje-estado').classList.contains('oculto') && !formulario.querySelector('[aria-invalid="true"]');
+          } finally { window.fetch = original; }
+        })()`);
+        if (!erroresVisibles) throw new Error('La publicación no muestra los errores por campo o pierde los datos al fallar.');
         const previaCorrecta = await evaluar(`(async () => {
           const formulario = document.querySelector('[data-formulario="vacante"]');
           const panel = document.querySelector('.vacante-vista-previa');

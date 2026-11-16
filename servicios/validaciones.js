@@ -1,10 +1,6 @@
 export const esUuid = (valor) => typeof valor === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(valor);
-export const esTexto = (valor, min, max) => typeof valor === 'string' && valor.trim().length >= min && valor.trim().length <= max;
+export { esTexto, esFecha, esNumeroCampo } from '../publico/js/utilidades/validacionesCampos.js';
 export const esCorreo = (valor) => typeof valor === 'string' && valor.length <= 120 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(valor.trim());
-export function esFecha(valor) {
-  return typeof valor === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(valor) &&
-    !Number.isNaN(Date.parse(`${valor}T00:00:00Z`)) && new Date(`${valor}T00:00:00Z`).toISOString().slice(0, 10) === valor;
-}
 export function esTelefono(valor, requerido = false) {
   if (!requerido && (valor === null || valor === undefined || valor === '')) return true;
   return typeof valor === 'string' && valor.length <= 30 && /^[+\d\s()-]+$/.test(valor) && valor.replace(/\D/g, '').length >= 8 && valor.replace(/\D/g, '').length <= 15;
@@ -14,7 +10,6 @@ export function esUrlWeb(valor) {
   if (typeof valor !== 'string' || valor.length > 2000) return false;
   try { return ['https:', 'http:'].includes(new URL(valor).protocol); } catch { return false; }
 }
-export const esNumeroCampo = (valor) => (typeof valor === 'number' || (typeof valor === 'string' && valor.trim() !== '')) && Number.isFinite(Number(valor));
 
 export function esPortadaRecurso(valor) {
   if (esUrlWeb(valor)) return true;

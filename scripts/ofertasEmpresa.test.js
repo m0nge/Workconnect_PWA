@@ -9,6 +9,15 @@ const oferta = {
   funciones: ['Inspeccionar equipos'], requisitos: ['Experiencia técnica'], beneficios: ['Capacitación']
 };
 
+prueba('identifica todos los campos inválidos con explicaciones específicas', () => {
+  const resultado = validarVacanteEmpresa({ ...oferta, titulo: 'abc', descripcion: 'corta', plazas: 0, salario_min: 1000, salario_max: 500, funciones: '-', requisitos: '' });
+  comprobar.deepEqual(Object.keys(resultado.errores).sort(), ['titulo', 'descripcion', 'plazas', 'salario_max', 'funciones', 'requisitos'].sort());
+  comprobar.match(resultado.errores.titulo, /5 y 120/);
+  comprobar.match(resultado.errores.salario_max, /igual o mayor/);
+  comprobar.match(resultado.errores.funciones, /una función/);
+  comprobar.equal(validarVacanteEmpresa({ ...oferta, salario_min: 600.123 }).errores.salario_min.includes('dos decimales'), true);
+});
+
 prueba('el buscador encuentra ofertas por título, ubicación y estado sin distinguir tildes', () => {
   const ofertas = [{ ...oferta, estado: 'Inactiva' }];
   for (const termino of ['tecnico', 'METAPAN', 'santa ana', 'inactiva', 'tiempo completo', '']) comprobar.equal(filtrarOfertas(ofertas, termino).length, 1);

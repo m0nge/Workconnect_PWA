@@ -173,6 +173,10 @@ try {
   const datosAdministracion = (await solicitar('GET', '/api/datos', undefined, administracion)).cuerpo;
   comprobar.ok(datosAdministracion.empresas.some((registro) => registro.id === perfilEmpresa.id && registro.estado === 'Pendiente'));
   const oferta = { titulo: 'Oferta temporal de revisión', sector: 'Servicios', departamento: 'San Salvador', municipio: 'San Salvador', modalidad: 'Presencial', tipo_contrato: 'Tiempo completo', plazas: 1, salario_min: 500, salario_max: 700, descripcion: 'Oferta temporal para comprobar el flujo de datos.', funciones: ['Organizar documentos'], requisitos: ['Experiencia administrativa'], beneficios: ['Capacitación'] };
+  const rechazada = (await solicitar('POST', '/api/empresa/vacantes', { titulo: 'abc' }, empresa, 400)).cuerpo;
+  comprobar.ok(rechazada.errores.titulo);
+  comprobar.ok(rechazada.errores.descripcion);
+  comprobar.ok(rechazada.errores.salario_min);
   const vacante = (await solicitar('POST', '/api/empresa/vacantes', oferta, empresa, 201)).cuerpo.vacante;
   referencias.add(vacante.id);
   comprobar.equal((await solicitar('GET', '/api/datos')).cuerpo.vacantes.some((registro) => registro.id === vacante.id), false);
