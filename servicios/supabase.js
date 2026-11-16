@@ -40,7 +40,8 @@ export function mapearUsuario(fila) {
     estado: fila.estado,
     iniciales: obtenerIniciales(fila.nombre),
     telefono: fila.telefono || '',
-    ubicacion: fila.ubicacion || ''
+    ubicacion: fila.ubicacion || '',
+    foto_url: fila.foto_url || ''
   };
 }
 

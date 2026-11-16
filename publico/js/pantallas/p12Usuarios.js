@@ -134,13 +134,30 @@ export function renderizarP12Usuarios(contenedor, usuarios, acciones) {
       return;
     }
 
+function renderizarAvatarUsuario(usuario, claseExtra = '') {
+  const tieneFoto = typeof usuario.foto_url === 'string' && usuario.foto_url.trim().length > 0;
+  if (!tieneFoto) {
+    return `<div class="avatar-circular ${claseExtra}">${escaparHtml(usuario.iniciales)}</div>`;
+  }
+  return `
+    <img
+      src="${escaparHtml(usuario.foto_url)}"
+      alt="${escaparHtml(usuario.nombre)}"
+      class="avatar-circular ${claseExtra}"
+      style="object-fit:cover;"
+      onerror="this.style.display='none'; if (this.nextElementSibling) this.nextElementSibling.style.display='flex';"
+    />
+    <div class="avatar-circular ${claseExtra}" style="display:none;">${escaparHtml(usuario.iniciales)}</div>
+  `;
+}
+
     cuerpoTabla.innerHTML = filtrados
       .map(
         (usuario) => `
           <tr>
             <td>
               <div class="celda-identidad">
-                <div class="avatar-circular">${escaparHtml(usuario.iniciales)}</div>
+                ${renderizarAvatarUsuario(usuario)}
                 <div>
                   <p class="titulo-fila">${escaparHtml(usuario.nombre)}</p>
                   <p class="subtitulo-fila">${escaparHtml(usuario.correo)}</p>
@@ -221,7 +238,7 @@ function abrirModalDetalleUsuario(usuario) {
     contenidoHtml: `
       <div class="pila-compacta">
         <div class="caja-resumen-modal" style="justify-content:flex-start;">
-          <div class="avatar-circular grande">${escaparHtml(usuario.iniciales)}</div>
+          ${renderizarAvatarUsuario(usuario, 'grande')}
           <div>
             <h4 style="margin:0; font-weight:700; font-size:0.875rem; color:#0f172a;">
               ${escaparHtml(usuario.nombre)}
