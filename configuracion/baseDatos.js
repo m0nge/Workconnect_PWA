@@ -1,6 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
-
-// Configuración centralizada de conexión a la base de datos Supabase (PostgreSQL)
+import { createClient as crearClienteSupabase } from '@supabase/supabase-js';
 export const configuracionBaseDatos = {
   proveedor: 'Supabase (PostgreSQL)',
   urlProyecto: process.env.SUPABASE_URL || 'https://nrglhwctftjfvflopppo.supabase.co',
@@ -32,7 +30,7 @@ export function crearClienteBaseDatos() {
     return null;
   }
 
-  return createClient(
+  return crearClienteSupabase(
     configuracionBaseDatos.urlProyecto,
     configuracionBaseDatos.claveServicio,
     {

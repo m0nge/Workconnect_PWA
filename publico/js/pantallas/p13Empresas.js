@@ -62,12 +62,12 @@ export function renderizarP13Empresas(contenedor, empresas, acciones) {
     </div>
   `;
 
-  const inputBusqueda = contenedor.querySelector('#busqueda-empresas');
-  const selectEstado = contenedor.querySelector('#filtro-estado-empresas');
+  const entradaBusqueda = contenedor.querySelector('#busqueda-empresas');
+  const selectorEstado = contenedor.querySelector('#filtro-estado-empresas');
   const resumenFiltros = contenedor.querySelector('#resumen-filtros-empresas');
   const cuerpoTabla = contenedor.querySelector('#cuerpo-tabla-empresas');
 
-  selectEstado.value = estadoFiltrosEmpresas.filtroEstado;
+  selectorEstado.value = estadoFiltrosEmpresas.filtroEstado;
 
   const actualizarTabla = () => {
     const texto = estadoFiltrosEmpresas.terminoBusqueda.trim().toLowerCase();
@@ -88,7 +88,7 @@ export function renderizarP13Empresas(contenedor, empresas, acciones) {
 
     resumenFiltros.innerHTML = `
       <span>
-        Mostrando <strong style="color:#1e293b;">${filtradas.length}</strong> de ${empresas.length} empresas registradas
+        Mostrando <strong style="color:var(--color-texto);">${filtradas.length}</strong> de ${empresas.length} empresas registradas
       </span>
       ${
         hayFiltros
@@ -102,8 +102,8 @@ export function renderizarP13Empresas(contenedor, empresas, acciones) {
       botonLimpiar.addEventListener('click', () => {
         estadoFiltrosEmpresas.terminoBusqueda = '';
         estadoFiltrosEmpresas.filtroEstado = 'Todos los estados';
-        inputBusqueda.value = '';
-        selectEstado.value = 'Todos los estados';
+        entradaBusqueda.value = '';
+        selectorEstado.value = 'Todos los estados';
         actualizarTabla();
       });
     }
@@ -139,9 +139,9 @@ export function renderizarP13Empresas(contenedor, empresas, acciones) {
                 </div>
               </div>
             </td>
-            <td style="color:#334155; font-weight:500;">${escaparHtml(empresa.sector)}</td>
-            <td style="color:#475569;">${escaparHtml(empresa.ubicacion)}</td>
-            <td class="texto-centro texto-mono numeros-tabulares" style="font-weight:600; color:#1e293b;">
+            <td style="color:var(--color-texto-secundario); font-weight:500;">${escaparHtml(empresa.sector)}</td>
+            <td style="color:var(--color-texto-secundario);">${escaparHtml(empresa.ubicacion)}</td>
+            <td class="texto-centro texto-mono numeros-tabulares" style="font-weight:600; color:var(--color-texto);">
               ${empresa.vacantes}
             </td>
             <td>
@@ -167,12 +167,12 @@ export function renderizarP13Empresas(contenedor, empresas, acciones) {
     });
   };
 
-  inputBusqueda.addEventListener('input', (e) => {
+  entradaBusqueda.addEventListener('input', (e) => {
     estadoFiltrosEmpresas.terminoBusqueda = e.target.value;
     actualizarTabla();
   });
 
-  selectEstado.addEventListener('change', (e) => {
+  selectorEstado.addEventListener('change', (e) => {
     estadoFiltrosEmpresas.filtroEstado = e.target.value;
     actualizarTabla();
   });
@@ -197,15 +197,15 @@ function abrirModalDetalleEmpresa(empresa, alCambiarEstadoEmpresa) {
           <div class="celda-identidad">
             <div class="avatar-cuadrado grande">${escaparHtml(empresa.iniciales)}</div>
             <div>
-              <h4 style="margin:0; font-weight:700; font-size:1rem; color:#0f172a;">
+              <h4 style="margin:0; font-weight:700; font-size:1rem; color:var(--color-texto);">
                 ${escaparHtml(empresa.nombreComercial)}
               </h4>
-              <p class="texto-mono" style="margin:0.15rem 0 0; font-size:0.75rem; color:#64748b;">
+              <p class="texto-mono" style="margin:0.15rem 0 0; font-size:0.75rem; color:var(--color-texto-atenuado);">
                 NIT: ${escaparHtml(empresa.nit)}
               </p>
             </div>
           </div>
-          <span id="badge-estado-empresa-modal" class="etiqueta-estado ${claseEstado}" style="padding:0.25rem 0.65rem; font-size:0.75rem;">
+          <span id="insignia-estado-empresa-modal" class="etiqueta-estado ${claseEstado}" style="padding:0.25rem 0.65rem; font-size:0.75rem;">
             ${empresa.estado === 'Verificada' ? '✓ Verificada' : escaparHtml(empresa.estado)}
           </span>
         </div>
@@ -233,7 +233,7 @@ function abrirModalDetalleEmpresa(empresa, alCambiarEstadoEmpresa) {
           </div>
           <div class="caja-dato-modal">
             <span class="dato-etiqueta">Sitio web</span>
-            <a href="${escaparHtml(empresa.sitioWeb)}" target="_blank" rel="noreferrer" style="color:#831843;">
+            <a href="${escaparHtml(empresa.sitioWeb)}" target="_blank" rel="noreferrer" style="color:var(--color-vino);">
               ${escaparHtml(empresa.sitioWeb)}
             </a>
           </div>
@@ -241,15 +241,15 @@ function abrirModalDetalleEmpresa(empresa, alCambiarEstadoEmpresa) {
 
         <div class="caja-dato-modal" style="padding:0.75rem;">
           <span class="dato-etiqueta" style="margin-bottom:0.25rem;">Descripción de la empresa</span>
-          <p style="margin:0; color:#334155; line-height:1.5;">${escaparHtml(empresa.descripcion)}</p>
+          <p style="margin:0; color:var(--color-texto-secundario); line-height:1.5;">${escaparHtml(empresa.descripcion)}</p>
         </div>
 
         <div class="caja-resumen-modal" style="padding:0.625rem 0.75rem; font-size:0.75rem;">
           <div>
-            <span style="color:#f59e0b; font-weight:700;">★ ${empresa.calificacion}</span>
-            <span style="color:#64748b;"> (${empresa.totalResenas} valoraciones)</span>
+            <span style="color:var(--color-ambar); font-weight:700;">★ ${empresa.calificacion}</span>
+            <span style="color:var(--color-texto-atenuado);"> (${empresa.totalResenas} valoraciones)</span>
           </div>
-          <span style="color:#475569; font-weight:500;">${empresa.vacantes} vacantes publicadas</span>
+          <span style="color:var(--color-texto-secundario); font-weight:500;">${empresa.vacantes} vacantes publicadas</span>
         </div>
 
         <div class="pie-modal">

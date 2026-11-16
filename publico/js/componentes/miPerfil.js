@@ -1,3 +1,7 @@
+import { confirmarAccion, mostrarAviso } from './dialogos.js';
+import { reportarContenido } from '../utilidades/reportes.js';
+import { escaparHtml } from '../utilidades/formato.js';
+import { solicitarApi } from '../utilidades/solicitudes.js';
 import {
   DEPARTAMENTOS_EL_SALVADOR,
   SECTORES_ECONOMICOS,
@@ -32,7 +36,6 @@ async function leerSesionActual() {
 
 function actualizarNavegacion(rol, pantalla) {
   if (!navegacion) return;
-  // Todo el flujo de navegación se gestiona ahora de forma unificada desde el Navbar superior y pestañas internas
   navegacion.innerHTML = '';
   navegacion.hidden = true;
 }
@@ -56,21 +59,8 @@ function renderizarAccesoDenegado(rolRequerido, rolActual) {
   return `<section class="mi-perfil-tarjeta" role="alert">
     <h2>Sección no disponible para esta cuenta</h2>
     <p>Esta sección es para cuentas de ${rolRequerido}. Tu sesión actual corresponde a ${mensajeRol}.</p>
-    <button type="button" class="boton boton-primario mi-perfil-enlace-boton btn-volver-portal">Volver al portal</button>
+    <button type="button" class="boton boton-primario mi-perfil-enlace-boton boton-volver-portal">Volver al portal</button>
   </section>`;
-}
-
-function escaparHtml(valor) {
-  return String(valor ?? '').replace(/[&<>"']/g, (caracter) => {
-    const entidades = {
-      '&': '&amp;',
-      '<': '&lt;',
-      '>': '&gt;',
-      '"': '&quot;',
-      "'": '&#39;'
-    };
-    return entidades[caracter];
-  });
 }
 
 function campo(etiqueta, id, tipo = 'text', opciones = {}) {
@@ -104,7 +94,7 @@ function renderizarPerfilCandidato(seccion = null) {
       <button
         type="button"
         role="tab"
-        id="tab-btn-perfil"
+        id="tab-boton-perfil"
         class="mi-perfil-pestana ${esPostulaciones ? '' : 'activa'}"
         aria-selected="${!esPostulaciones}"
       >
@@ -117,7 +107,7 @@ function renderizarPerfilCandidato(seccion = null) {
       <button
         type="button"
         role="tab"
-        id="tab-btn-postulaciones"
+        id="tab-boton-postulaciones"
         class="mi-perfil-pestana ${esPostulaciones ? 'activa' : ''}"
         aria-selected="${esPostulaciones}"
       >
@@ -128,11 +118,10 @@ function renderizarPerfilCandidato(seccion = null) {
           <line x1="16" y1="17" x2="8" y2="17"></line>
         </svg>
         Mis postulaciones
-        <span id="badge-total-postulaciones" class="insignia-conteo-tab" hidden>0</span>
+        <span id="insignia-total-postulaciones" class="insignia-conteo-pestana" hidden>0</span>
       </button>
     </div>
 
-    <!-- Panel 1: Perfil profesional -->
     <div id="panel-candidato-perfil" class="mi-perfil-contenedor" ${esPostulaciones ? 'hidden' : ''}>
       <section class="mi-perfil-tarjeta mi-perfil-perfil-principal">
         <div class="mi-perfil-perfil-cabecera">
@@ -339,10 +328,9 @@ function renderizarPerfilCandidato(seccion = null) {
       </section>
     </div>
 
-    <!-- Panel 2: Mis postulaciones -->
     <div id="panel-candidato-postulaciones" class="mi-perfil-panel-postulaciones" ${esPostulaciones ? '' : 'hidden'}>
-      <section class="mi-perfil-tarjeta postulaciones-hero-tarjeta">
-        <div class="postulaciones-hero-cabecera">
+      <section class="mi-perfil-tarjeta postulaciones-presentacion-tarjeta">
+        <div class="postulaciones-presentacion-cabecera">
           <div>
             <span class="mi-perfil-etiqueta-superior">SEGUIMIENTO DE POSTULACIONES</span>
             <h2 style="margin: 0.25rem 0 0.4rem; font-size: 1.4rem;">Mis postulaciones laborales</h2>
@@ -350,7 +338,7 @@ function renderizarPerfilCandidato(seccion = null) {
               Revisa el estado de tus procesos de selección y consulta los detalles de tus postulaciones en WorkConnect.
             </p>
           </div>
-          <button type="button" class="boton boton-primario" id="btn-ir-buscar-empleos" style="flex-shrink:0;">
+          <button type="button" class="boton boton-primario" id="boton-ir-buscar-empleos" style="flex-shrink:0;">
             Explorar empleos
           </button>
         </div>
@@ -380,7 +368,7 @@ function renderizarPerfilCandidato(seccion = null) {
       </section>
 
       <section class="mi-perfil-tarjeta">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.15rem; border-bottom: 1px solid var(--color-borde-suave); padding-bottom: 0.75rem;">
+        <div style="display:flex; justify-content:space-between; align-elementos:center; margin-bottom:1.15rem; border-bottom: 1px solid var(--color-borde-suave); padding-bottom: 0.75rem;">
           <h3 style="margin:0; font-size: 1.05rem;">Historial de postulaciones</h3>
           <span id="postulaciones-conteo-texto" style="font-size:0.8rem; color:var(--color-texto-atenuado);">Consultando...</span>
         </div>
@@ -392,21 +380,15 @@ function renderizarPerfilCandidato(seccion = null) {
   </div>`;
 }
 
-async function solicitarApiCandidato(ruta, opciones = {}) {
-  const respuesta = await fetch(`/api/candidato${ruta}`, {
-    headers: { 'Content-Type': 'application/json' },
-    ...opciones
-  });
-  const resultado = await respuesta.json().catch(() => ({}));
-  if (!respuesta.ok) throw new Error(resultado.error || 'No se pudo guardar la información.');
-  return resultado;
+function solicitarApiCandidato(ruta, opciones = {}) {
+  return solicitarApi(`/api/candidato${ruta}`, opciones);
 }
 
 function mostrarEstadoAccion(id, mensaje, error = false) {
   const elemento = contenido.querySelector(`#${id}`);
   if (!elemento) return;
   elemento.textContent = mensaje;
-  elemento.classList.toggle('mi-perfil-error-inline', error);
+  elemento.classList.toggle('mi-perfil-error-en-linea', error);
 }
 
 function etiquetaRegistro(tipo, registro) {
@@ -482,7 +464,7 @@ function renderizarListaCandidato(tipo, registros) {
   }
 }
 
-async function cargarPerfilCandidato(alCambiarPantalla = () => {}, activarTab = () => {}) {
+async function cargarPerfilCandidato(alCambiarPantalla = () => {}, activarPestana = () => {}) {
   const datos = await solicitarApiCandidato('/perfil');
   if (!datos || !datos.perfil) return;
   const formulario = contenido.querySelector('[data-formulario="perfil"]');
@@ -503,16 +485,16 @@ async function cargarPerfilCandidato(alCambiarPantalla = () => {}, activarTab = 
     const el = contenido.querySelector(`#${campoId}`);
     if (el) el.value = valor || '';
   }
-  const setTexto = (id, valor) => {
+  const establecerTexto = (id, valor) => {
     const el = contenido.querySelector(`#${id}`);
     if (el) el.textContent = valor;
   };
-  setTexto('perfil-nombre-resumen', datos.perfil.nombre || 'Mi perfil');
-  setTexto('perfil-titulo-resumen', datos.perfil.titulo_profesional || 'Completa tu información profesional');
-  setTexto('perfil-resumen-correo', datos.perfil.email || '—');
-  setTexto('perfil-resumen-telefono', datos.perfil.telefono || '—');
-  setTexto('perfil-resumen-ubicacion', datos.perfil.ubicacion || '—');
-  setTexto('perfil-resumen-texto', datos.perfil.resumen_laboral || '—');
+  establecerTexto('perfil-nombre-resumen', datos.perfil.nombre || 'Mi perfil');
+  establecerTexto('perfil-titulo-resumen', datos.perfil.titulo_profesional || 'Completa tu información profesional');
+  establecerTexto('perfil-resumen-correo', datos.perfil.email || '—');
+  establecerTexto('perfil-resumen-telefono', datos.perfil.telefono || '—');
+  establecerTexto('perfil-resumen-ubicacion', datos.perfil.ubicacion || '—');
+  establecerTexto('perfil-resumen-texto', datos.perfil.resumen_laboral || '—');
 
   const foto = contenido.querySelector('#perfil-foto-vista');
   const avatar = contenido.querySelector('#perfil-foto-avatar');
@@ -527,11 +509,11 @@ async function cargarPerfilCandidato(alCambiarPantalla = () => {}, activarTab = 
     if (avatar) avatar.classList.remove('oculto');
   }
   const curriculumGuardado = Boolean(datos.perfil.curriculum_nombre);
-  setTexto(
+  establecerTexto(
     'perfil-cv-mensaje',
     curriculumGuardado ? `Currículum guardado: ${datos.perfil.curriculum_nombre}.` : 'Ningún currículum cargado.'
   );
-  setTexto(
+  establecerTexto(
     'perfil-cv-resumen',
     curriculumGuardado ? datos.perfil.curriculum_nombre : 'Sin currículum cargado'
   );
@@ -549,7 +531,6 @@ async function cargarPerfilCandidato(alCambiarPantalla = () => {}, activarTab = 
   ]) {
     renderizarListaCandidato(tipo, datos[propiedad] || []);
   }
-  // Postulaciones handling
   const postulaciones = Array.isArray(datos.postulaciones) ? datos.postulaciones : [];
   const totalPostulaciones = postulaciones.length;
   const nuevas = postulaciones.filter((p) => p.estado === 'Nueva').length;
@@ -557,29 +538,29 @@ async function cargarPerfilCandidato(alCambiarPantalla = () => {}, activarTab = 
   const entrevista = postulaciones.filter((p) => p.estado === 'Entrevista').length;
   const contratada = postulaciones.filter((p) => p.estado === 'Contratada').length;
 
-  const setKpi = (id, val) => {
+  const establecerIndicador = (id, val) => {
     const el = contenido.querySelector(`#${id}`);
     if (el) el.textContent = String(val);
   };
-  setKpi('kpi-postulaciones-total', totalPostulaciones);
-  setKpi('kpi-postulaciones-nuevas', nuevas);
-  setKpi('kpi-postulaciones-revision', revision);
-  setKpi('kpi-postulaciones-entrevista', entrevista);
-  setKpi('kpi-postulaciones-contratada', contratada);
+  establecerIndicador('kpi-postulaciones-total', totalPostulaciones);
+  establecerIndicador('kpi-postulaciones-nuevas', nuevas);
+  establecerIndicador('kpi-postulaciones-revision', revision);
+  establecerIndicador('kpi-postulaciones-entrevista', entrevista);
+  establecerIndicador('kpi-postulaciones-contratada', contratada);
 
-  const badgeTab = contenido.querySelector('#badge-total-postulaciones');
-  if (badgeTab) {
-    badgeTab.textContent = String(totalPostulaciones);
-    badgeTab.hidden = totalPostulaciones === 0;
+  const insigniaPestana = contenido.querySelector('#insignia-total-postulaciones');
+  if (insigniaPestana) {
+    insigniaPestana.textContent = String(totalPostulaciones);
+    insigniaPestana.hidden = totalPostulaciones === 0;
   }
   const conteoTexto = contenido.querySelector('#postulaciones-conteo-texto');
   if (conteoTexto) {
     conteoTexto.textContent = totalPostulaciones === 1 ? '1 postulación registrada' : `${totalPostulaciones} postulaciones registradas`;
   }
 
-  const statsEl = contenido.querySelector('#perfil-estadisticas');
-  if (statsEl) {
-    statsEl.innerHTML = [
+  const elementoEstadisticas = contenido.querySelector('#perfil-estadisticas');
+  if (elementoEstadisticas) {
+    elementoEstadisticas.innerHTML = [
       ['experiencias', (datos.experiencias || []).length, null],
       ['estudios', (datos.estudios || []).length, null],
       ['habilidades', (datos.habilidades || []).length, null],
@@ -587,14 +568,14 @@ async function cargarPerfilCandidato(alCambiarPantalla = () => {}, activarTab = 
       ['postulaciones', totalPostulaciones, 'postulaciones']
     ]
       .map(
-        ([etiqueta, cant, tabAccion]) =>
-          `<div class="mi-perfil-estadistica ${tabAccion ? 'estadistica-interactiva' : ''}" ${tabAccion ? `data-ir-tab="${tabAccion}" title="Ver mis postulaciones"` : ''}><strong>${cant}</strong><span>${etiqueta}</span></div>`
+        ([etiqueta, cant, pestanaAccion]) =>
+          `<div class="mi-perfil-estadistica ${pestanaAccion ? 'estadistica-interactiva' : ''}" ${pestanaAccion ? `data-ir-tab="${pestanaAccion}" title="Ver mis postulaciones"` : ''}><strong>${cant}</strong><span>${etiqueta}</span></div>`
       )
       .join('');
 
-    statsEl.querySelectorAll('[data-ir-tab]').forEach((caja) => {
+    elementoEstadisticas.querySelectorAll('[data-ir-tab]').forEach((caja) => {
       caja.addEventListener('click', () => {
-        activarTab(caja.dataset.irTab);
+        activarPestana(caja.dataset.irTab);
       });
     });
   }
@@ -606,17 +587,17 @@ async function cargarPerfilCandidato(alCambiarPantalla = () => {}, activarTab = 
       const vacio = document.createElement('li');
       vacio.className = 'postulacion-vacia-tarjeta';
       vacio.innerHTML = `
-        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.75" style="margin-bottom:0.75rem;">
+        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="var(--color-texto-sutil)" stroke-width="1.75" style="margin-bottom:0.75rem;">
           <circle cx="12" cy="12" r="10"></circle>
           <path d="M16 16s-1.5-2-4-2-4 2-4 2"></path>
           <line x1="9" y1="9" x2="9.01" y2="9"></line>
           <line x1="15" y1="9" x2="15.01" y2="9"></line>
         </svg>
-        <p style="margin:0 0 0.35rem; font-weight:700; color:var(--color-carbon); font-size:1rem;">Aún no te has postulado a ninguna vacante</p>
+        <p style="margin:0 0 0.35rem; font-weight:700; color:var(--color-texto); font-size:1rem;">Aún no te has postulado a ninguna vacante</p>
         <p style="margin:0 0 1rem; color:var(--color-texto-atenuado); font-size:0.83rem; max-width:28rem;">Explora las vacantes disponibles en WorkConnect y postúlate a las ofertas que coincidan con tu experiencia.</p>
-        <button type="button" class="boton boton-primario btn-explorar-vacantes">Explorar vacantes de empleo</button>
+        <button type="button" class="boton boton-primario boton-explorar-vacantes">Explorar vacantes de empleo</button>
       `;
-      vacio.querySelector('.btn-explorar-vacantes')?.addEventListener('click', () => {
+      vacio.querySelector('.boton-explorar-vacantes')?.addEventListener('click', () => {
         alCambiarPantalla('P01');
       });
       listaPostulaciones.append(vacio);
@@ -696,25 +677,25 @@ async function cargarPerfilCandidato(alCambiarPantalla = () => {}, activarTab = 
 function enlazarPerfilCandidato(alCambiarPantalla = () => {}, alCambiarSeccion = () => {}, seccionInicial = null) {
   const formPerfil = contenido.querySelector('[data-formulario="perfil"]');
   const edicionDatos = contenido.querySelector('#perfil-edicion-datos');
-  const tabPerfil = contenido.querySelector('#tab-btn-perfil');
-  const tabPostulaciones = contenido.querySelector('#tab-btn-postulaciones');
+  const pestanaPerfil = contenido.querySelector('#tab-boton-perfil');
+  const pestanaPostulaciones = contenido.querySelector('#tab-boton-postulaciones');
   const panelPerfil = contenido.querySelector('#panel-candidato-perfil');
   const panelPostulaciones = contenido.querySelector('#panel-candidato-postulaciones');
 
-  const activarTab = (tab) => {
-    if (tab === 'postulaciones') {
-      tabPerfil?.classList.remove('activa');
-      tabPerfil?.setAttribute('aria-selected', 'false');
-      tabPostulaciones?.classList.add('activa');
-      tabPostulaciones?.setAttribute('aria-selected', 'true');
+  const activarPestana = (pestanaElemento) => {
+    if (pestanaElemento === 'postulaciones') {
+      pestanaPerfil?.classList.remove('activa');
+      pestanaPerfil?.setAttribute('aria-selected', 'false');
+      pestanaPostulaciones?.classList.add('activa');
+      pestanaPostulaciones?.setAttribute('aria-selected', 'true');
       if (panelPerfil) panelPerfil.hidden = true;
       if (panelPostulaciones) panelPostulaciones.hidden = false;
       alCambiarSeccion('postulaciones');
     } else {
-      tabPerfil?.classList.add('activa');
-      tabPerfil?.setAttribute('aria-selected', 'true');
-      tabPostulaciones?.classList.remove('activa');
-      tabPostulaciones?.setAttribute('aria-selected', 'false');
+      pestanaPerfil?.classList.add('activa');
+      pestanaPerfil?.setAttribute('aria-selected', 'true');
+      pestanaPostulaciones?.classList.remove('activa');
+      pestanaPostulaciones?.setAttribute('aria-selected', 'false');
       if (panelPerfil) panelPerfil.hidden = false;
       if (panelPostulaciones) panelPostulaciones.hidden = true;
       alCambiarSeccion('perfil');
@@ -723,12 +704,12 @@ function enlazarPerfilCandidato(alCambiarPantalla = () => {}, alCambiarSeccion =
   };
 
   if (seccionInicial === 'postulaciones') {
-    activarTab('postulaciones');
+    activarPestana('postulaciones');
   }
 
-  tabPerfil?.addEventListener('click', () => activarTab('perfil'));
-  tabPostulaciones?.addEventListener('click', () => activarTab('postulaciones'));
-  contenido.querySelector('#btn-ir-buscar-empleos')?.addEventListener('click', () => alCambiarPantalla('P01'));
+  pestanaPerfil?.addEventListener('click', () => activarPestana('perfil'));
+  pestanaPostulaciones?.addEventListener('click', () => activarPestana('postulaciones'));
+  contenido.querySelector('#boton-ir-buscar-empleos')?.addEventListener('click', () => alCambiarPantalla('P01'));
 
   contenido.querySelector('#perfil-editar-datos')?.addEventListener('click', () => {
     if (edicionDatos) edicionDatos.hidden = !edicionDatos.hidden;
@@ -743,8 +724,8 @@ function enlazarPerfilCandidato(alCambiarPantalla = () => {}, alCambiarSeccion =
     });
   });
   contenido.querySelector('#perfil-editar-curriculum')?.addEventListener('click', () => {
-    const editCv = contenido.querySelector('[data-edicion-curriculum]');
-    if (editCv) editCv.hidden = false;
+    const edicionCurriculum = contenido.querySelector('[data-edicion-curriculum]');
+    if (edicionCurriculum) edicionCurriculum.hidden = false;
     contenido.querySelector('#perfil-cv')?.focus();
   });
   contenido.querySelectorAll('[data-descartar-edicion]').forEach((boton) => {
@@ -923,28 +904,28 @@ function enlazarPerfilCandidato(alCambiarPantalla = () => {}, alCambiarSeccion =
     } else if (archivo.type !== 'application/pdf' || archivo.size > 5 * 1024 * 1024) {
       evento.target.value = '';
       estadoCurriculum.textContent = 'Selecciona un archivo PDF de máximo 5 MB.';
-      estadoCurriculum.classList.add('mi-perfil-error-inline');
+      estadoCurriculum.classList.add('mi-perfil-error-en-linea');
     } else {
       estadoCurriculum.textContent = `${archivo.name} seleccionado. Presiona “Guardar currículum” para almacenarlo.`;
-      estadoCurriculum.classList.remove('mi-perfil-error-inline');
+      estadoCurriculum.classList.remove('mi-perfil-error-en-linea');
     }
   });
   botonCurriculum.addEventListener('click', async () => {
     const archivo = selectorCurriculum.files[0];
     if (!archivo) {
       estadoCurriculum.textContent = 'Selecciona primero un archivo PDF.';
-      estadoCurriculum.classList.add('mi-perfil-error-inline');
+      estadoCurriculum.classList.add('mi-perfil-error-en-linea');
       return;
     }
     if (archivo.type !== 'application/pdf' || archivo.size > 5 * 1024 * 1024) {
       estadoCurriculum.textContent = 'Selecciona un archivo PDF de máximo 5 MB.';
-      estadoCurriculum.classList.add('mi-perfil-error-inline');
+      estadoCurriculum.classList.add('mi-perfil-error-en-linea');
       return;
     }
 
     botonCurriculum.disabled = true;
     estadoCurriculum.textContent = 'Guardando currículum…';
-    estadoCurriculum.classList.remove('mi-perfil-error-inline');
+    estadoCurriculum.classList.remove('mi-perfil-error-en-linea');
     try {
       const respuesta = await fetch('/api/candidato/curriculum', {
         method: 'POST',
@@ -963,7 +944,7 @@ function enlazarPerfilCandidato(alCambiarPantalla = () => {}, alCambiarSeccion =
       contenido.querySelector('[data-edicion-curriculum]').hidden = true;
     } catch (error) {
       estadoCurriculum.textContent = error.message || 'No se pudo guardar el currículum.';
-      estadoCurriculum.classList.add('mi-perfil-error-inline');
+      estadoCurriculum.classList.add('mi-perfil-error-en-linea');
     } finally {
       botonCurriculum.disabled = false;
     }
@@ -974,7 +955,7 @@ function enlazarPerfilCandidato(alCambiarPantalla = () => {}, alCambiarSeccion =
     if (evento.target.checked) fechaFin.value = '';
     fechaFin.disabled = evento.target.checked;
   });
-  cargarPerfilCandidato(alCambiarPantalla, activarTab).catch((error) => {
+  cargarPerfilCandidato(alCambiarPantalla, activarPestana).catch((error) => {
     contenido.querySelectorAll('.mi-perfil-vacio').forEach((elemento) => {
       elemento.textContent = 'No se pudo cargar la información. Intenta de nuevo.';
     });
@@ -1026,22 +1007,22 @@ function renderizarEmpresa() {
         </div>
         <p id="empresa-mensaje-estado" class="mi-perfil-ayuda oculto" role="status"></p>
         <div class="mi-perfil-acciones">
-          <button id="btn-guardar-empresa" class="boton boton-primario" type="submit">Guardar perfil de empresa</button>
+          <button id="boton-guardar-empresa" class="boton boton-primario" type="submit">Guardar perfil de empresa</button>
         </div>
       </form>
     </section>
     <section class="mi-perfil-tarjeta">
       <h3>Vista previa corporativa</h3>
       <div class="mi-perfil-vista-previa">
-        <div id="empresa-previa-avatar" style="width: 64px; height: 64px; font-size: 1.25rem; margin: 0 auto 0.75rem auto; display: flex; align-items: center; justify-content: center; background: #873044; color: white; border-radius: 50%; font-weight: bold; overflow: hidden; border: 2px solid #e2e8f0;">
+        <div id="empresa-previa-avatar" style="width: 64px; height: 64px; font-size: 1.25rem; margin: 0 auto 0.75rem auto; display: flex; align-elementos: center; justify-content: center; background: var(--color-acento-solido); color: white; border-radius: 50%; font-weight: bold; overflow: hidden; border: 2px solid var(--color-borde);">
           <span id="empresa-previa-iniciales">WC</span>
           <img id="empresa-previa-img" src="" alt="Logo de la empresa" style="width: 100%; height: 100%; object-fit: cover; display: none;" />
         </div>
         <div style="margin-bottom: 0.75rem; text-align: center;">
-          <label for="empresa-logo-input" class="boton boton-secundario" style="cursor: pointer; font-size: 0.8rem; padding: 0.35rem 0.75rem; display: inline-block;">
+          <label for="empresa-logo-entrada" class="boton boton-secundario" style="cursor: pointer; font-size: 0.8rem; padding: 0.35rem 0.75rem; display: inline-block;">
             Cambiar logo
           </label>
-          <input id="empresa-logo-input" type="file" accept="image/jpeg,image/png,image/webp" style="display: none;" />
+          <input id="empresa-logo-entrada" type="file" accept="image/jpeg,image/png,image/webp" style="display: none;" />
           <p id="empresa-logo-mensaje" class="mi-perfil-ayuda" style="margin: 0.35rem 0 0; font-size: 0.75rem;">JPG, PNG o WebP. Máximo 10 MB.</p>
         </div>
         <strong id="empresa-previa-nombre">Nombre comercial</strong>
@@ -1049,27 +1030,27 @@ function renderizarEmpresa() {
         <p id="empresa-previa-descripcion" class="mi-perfil-ayuda">La descripción de la empresa aparecerá aquí.</p>
       </div>
       <div class="mi-perfil-estadisticas">
-        <div class="mi-perfil-estadistica"><strong id="stat-vacantes-conteo">0</strong><span>Vacantes publicadas</span></div>
-        <div class="mi-perfil-estadistica"><strong id="stat-postulaciones-conteo">0</strong><span>Postulaciones recibidas</span></div>
+        <div class="mi-perfil-estadistica"><strong id="estadistica-vacantes-conteo">0</strong><span>Vacantes publicadas</span></div>
+        <div class="mi-perfil-estadistica"><strong id="estadistica-postulaciones-conteo">0</strong><span>Postulaciones recibidas</span></div>
       </div>
       <p id="empresa-previa-verificacion" class="mi-perfil-ayuda" style="margin-top: 1rem;">
-        <span style="display: inline-flex; align-items: center; gap: 0.35rem; color: #166534; font-weight: 600;">
+        <span style="display: inline-flex; align-elementos: center; gap: 0.35rem; color: var(--color-esmeralda); font-weight: 600;">
           <svg width="16" height="16" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
           Empresa activa y verificada en WorkConnect
         </span>
       </p>
       <div class="mi-perfil-acciones">
-        <button type="button" class="boton mi-perfil-enlace-boton btn-ir-publicar-vacante">Publicar vacante</button>
-        <button type="button" class="boton mi-perfil-enlace-boton btn-ir-postulaciones">Revisar postulaciones</button>
+        <button type="button" class="boton mi-perfil-enlace-boton boton-ir-publicar-vacante">Publicar vacante</button>
+        <button type="button" class="boton mi-perfil-enlace-boton boton-ir-postulaciones">Revisar postulaciones</button>
       </div>
     </section>
     <section class="mi-perfil-tarjeta" style="grid-column: 1 / -1; margin-top: 1rem;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+      <div style="display: flex; justify-content: space-between; align-elementos: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
         <div>
           <h3 style="margin: 0; font-size: 1.15rem;">Mis ofertas de empleo publicadas</h3>
           <p class="mi-perfil-ayuda" style="margin: 0.2rem 0 0;">Gestiona tus ofertas activas, pausa o inactiva las que ya no reciban postulaciones, o elimina ofertas.</p>
         </div>
-        <button type="button" class="boton boton-primario btn-ir-publicar-vacante">+ Publicar nueva vacante</button>
+        <button type="button" class="boton boton-primario boton-ir-publicar-vacante">+ Publicar nueva vacante</button>
       </div>
       <div class="mi-perfil-desplazamiento">
         <table class="mi-perfil-tabla" id="tabla-vacantes-empresa">
@@ -1082,7 +1063,7 @@ function renderizarEmpresa() {
               <th>ACCIONES</th>
             </tr>
           </thead>
-          <tbody id="tbody-vacantes-empresa">
+          <tbody id="cuerpo-vacantes-empresa">
             <tr><td colspan="5" class="mi-perfil-vacio">Cargando ofertas publicadas...</td></tr>
           </tbody>
         </table>
@@ -1093,25 +1074,21 @@ function renderizarEmpresa() {
 
 async function enlazarEmpresa(alCambiarPantalla = () => {}) {
   const formulario = contenido.querySelector('[data-formulario="empresa"]');
-  contenido.querySelectorAll('.btn-ir-publicar-vacante').forEach((btn) => {
-    btn.addEventListener('click', () => alCambiarPantalla('P09'));
+  contenido.querySelectorAll('.boton-ir-publicar-vacante').forEach((botonAccion) => {
+    botonAccion.addEventListener('click', () => alCambiarPantalla('P09'));
   });
-  contenido.querySelectorAll('.btn-ir-postulaciones').forEach((btn) => {
-    btn.addEventListener('click', () => alCambiarPantalla('P10'));
+  contenido.querySelectorAll('.boton-ir-postulaciones').forEach((botonAccion) => {
+    botonAccion.addEventListener('click', () => alCambiarPantalla('P10'));
   });
 
-  const selectDepto = contenido.querySelector('#empresa-departamento');
-  const selectMuni = contenido.querySelector('#empresa-municipio');
+  const selectorDepartamento = contenido.querySelector('#empresa-departamento');
+  const selectorMunicipio = contenido.querySelector('#empresa-municipio');
   const mensajeEstado = contenido.querySelector('#empresa-mensaje-estado');
-  const btnGuardar = contenido.querySelector('#btn-guardar-empresa');
-  const tbodyVacantes = contenido.querySelector('#tbody-vacantes-empresa');
-
-  // Inicializar sincronización geográfica
-  sincronizarMunicipios(selectDepto, selectMuni, 'San Salvador');
-
-  // Auto-formato de NIT y teléfono
-  const inputNit = contenido.querySelector('#empresa-nit');
-  inputNit?.addEventListener('input', (e) => {
+  const botonGuardarEdicion = contenido.querySelector('#boton-guardar-empresa');
+  const cuerpoFilasVacantes = contenido.querySelector('#cuerpo-vacantes-empresa');
+  sincronizarMunicipios(selectorDepartamento, selectorMunicipio, 'San Salvador');
+  const entradaNit = contenido.querySelector('#empresa-nit');
+  entradaNit?.addEventListener('input', (e) => {
     let v = e.target.value.replace(/\D/g, '').slice(0, 14);
     if (v.length > 13) v = `${v.slice(0, 4)}-${v.slice(4, 10)}-${v.slice(10, 13)}-${v.slice(13)}`;
     else if (v.length > 10) v = `${v.slice(0, 4)}-${v.slice(4, 10)}-${v.slice(10)}`;
@@ -1119,8 +1096,8 @@ async function enlazarEmpresa(alCambiarPantalla = () => {}) {
     e.target.value = v;
   });
 
-  const inputTel = contenido.querySelector('#empresa-telefono');
-  inputTel?.addEventListener('input', (e) => {
+  const entradaTelefono = contenido.querySelector('#empresa-telefono');
+  entradaTelefono?.addEventListener('input', (e) => {
     let v = e.target.value.replace(/\D/g, '').slice(0, 8);
     if (v.length > 4) v = `${v.slice(0, 4)}-${v.slice(4)}`;
     e.target.value = v;
@@ -1134,35 +1111,35 @@ async function enlazarEmpresa(alCambiarPantalla = () => {}) {
     const direccion = contenido.querySelector('#empresa-direccion')?.value.trim();
     const descripcion = contenido.querySelector('#empresa-descripcion')?.value.trim();
 
-    const elNombre = contenido.querySelector('#empresa-previa-nombre');
-    const elSector = contenido.querySelector('#empresa-previa-sector');
-    const elDesc = contenido.querySelector('#empresa-previa-descripcion');
-    const elAvatar = contenido.querySelector('#empresa-previa-avatar');
+    const elementoNombre = contenido.querySelector('#empresa-previa-nombre');
+    const elementoSector = contenido.querySelector('#empresa-previa-sector');
+    const elementoDescripcion = contenido.querySelector('#empresa-previa-descripcion');
+    const elementoAvatar = contenido.querySelector('#empresa-previa-avatar');
 
-    if (elNombre) elNombre.textContent = nombre || 'Nombre comercial';
-    if (elSector) {
-      elSector.textContent = `${sector || 'Sector'} · ${direccion ? `${direccion}, ` : ''}${municipio || 'Municipio'}${departamento ? `, ${departamento}` : ''}`;
+    if (elementoNombre) elementoNombre.textContent = nombre || 'Nombre comercial';
+    if (elementoSector) {
+      elementoSector.textContent = `${sector || 'Sector'} · ${direccion ? `${direccion}, ` : ''}${municipio || 'Municipio'}${departamento ? `, ${departamento}` : ''}`;
     }
-    if (elDesc) {
-      elDesc.textContent = descripcion || 'La descripción de la empresa aparecerá aquí.';
+    if (elementoDescripcion) {
+      elementoDescripcion.textContent = descripcion || 'La descripción de la empresa aparecerá aquí.';
     }
-    if (elAvatar && nombre && imgLogo?.style.display !== 'block') {
+    if (elementoAvatar && nombre && imgLogo?.style.display !== 'block') {
       const palabras = nombre.trim().split(/\s+/);
       const iniciales = (palabras[0]?.[0] || 'E') + (palabras[1]?.[0] || '');
-      if (txtIniciales) txtIniciales.textContent = iniciales.toUpperCase();
+      if (textoIniciales) textoIniciales.textContent = iniciales.toUpperCase();
     }
   };
 
-  const inputLogo = contenido.querySelector('#empresa-logo-input');
-  const msgLogo = contenido.querySelector('#empresa-logo-mensaje');
+  const entradaLogo = contenido.querySelector('#empresa-logo-entrada');
+  const mensajeLogo = contenido.querySelector('#empresa-logo-mensaje');
   const imgLogo = contenido.querySelector('#empresa-previa-img');
-  const txtIniciales = contenido.querySelector('#empresa-previa-iniciales');
+  const textoIniciales = contenido.querySelector('#empresa-previa-iniciales');
 
   const aplicarLogo = (url) => {
-    if (url && imgLogo && txtIniciales) {
+    if (url && imgLogo && textoIniciales) {
       imgLogo.src = url;
       imgLogo.style.display = 'block';
-      txtIniciales.style.display = 'none';
+      textoIniciales.style.display = 'none';
       const avatarMenu = document.querySelector('#boton-menu-usuario .avatar-circular');
       if (avatarMenu) {
         if (avatarMenu instanceof HTMLImageElement) {
@@ -1178,35 +1155,35 @@ async function enlazarEmpresa(alCambiarPantalla = () => {}) {
     }
   };
 
-  inputLogo?.addEventListener('change', async () => {
-    const archivo = inputLogo.files[0];
+  entradaLogo?.addEventListener('change', async () => {
+    const archivo = entradaLogo.files[0];
     if (!archivo) return;
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(archivo.type) || archivo.size > 10 * 1024 * 1024) {
-      inputLogo.value = '';
-      if (msgLogo) msgLogo.textContent = 'Selecciona una imagen JPG, PNG o WebP de máximo 10 MB.';
+      entradaLogo.value = '';
+      if (mensajeLogo) mensajeLogo.textContent = 'Selecciona una imagen JPG, PNG o WebP de máximo 10 MB.';
       return;
     }
-    if (msgLogo) {
-      msgLogo.textContent = 'Guardando logo...';
-      msgLogo.style.color = 'var(--color-vino)';
+    if (mensajeLogo) {
+      mensajeLogo.textContent = 'Guardando logo...';
+      mensajeLogo.style.color = 'var(--color-vino)';
     }
     try {
-      const res = await fetch('/api/empresa/logo', {
+      const respuestaHttp = await fetch('/api/empresa/logo', {
         method: 'POST',
         headers: { 'Content-Type': archivo.type },
         body: archivo
       });
-      const resJson = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(resJson.error || 'No se pudo guardar el logo.');
-      aplicarLogo(resJson.logo_url);
-      if (msgLogo) {
-        msgLogo.textContent = '✓ Logo actualizado exitosamente.';
-        msgLogo.style.color = '#166534';
+      const resultadoJson = await respuestaHttp.json().catch(() => ({}));
+      if (!respuestaHttp.ok) throw new Error(resultadoJson.error || 'No se pudo guardar el logo.');
+      aplicarLogo(resultadoJson.logo_url);
+      if (mensajeLogo) {
+        mensajeLogo.textContent = '✓ Logo actualizado exitosamente.';
+        mensajeLogo.style.color = 'var(--color-esmeralda)';
       }
-    } catch (errLogo) {
-      if (msgLogo) {
-        msgLogo.textContent = errLogo.message || 'Error al guardar el logo.';
-        msgLogo.style.color = '#dc2626';
+    } catch (errorLogo) {
+      if (mensajeLogo) {
+        mensajeLogo.textContent = errorLogo.message || 'Error al guardar el logo.';
+        mensajeLogo.style.color = 'var(--color-rosa)';
       }
     }
   });
@@ -1223,28 +1200,26 @@ async function enlazarEmpresa(alCambiarPantalla = () => {}) {
     contenido.querySelector(`#${id}`)?.addEventListener('input', actualizarPrevia);
     contenido.querySelector(`#${id}`)?.addEventListener('change', actualizarPrevia);
   });
-
-  // Función para cargar y renderizar las ofertas de empleo de la empresa
   const cargarOfertasEmpresa = async () => {
-    if (!tbodyVacantes) return;
+    if (!cuerpoFilasVacantes) return;
     try {
-      const res = await fetch('/api/empresa/vacantes', { cache: 'no-store' });
-      const datos = await res.json().catch(() => ({}));
+      const respuestaHttp = await fetch('/api/empresa/vacantes', { cache: 'no-store' });
+      const datos = await respuestaHttp.json().catch(() => ({}));
       const vacantes = Array.isArray(datos.vacantes) ? datos.vacantes : [];
 
-      const statVac = contenido.querySelector('#stat-vacantes-conteo');
-      if (statVac) statVac.textContent = vacantes.length;
+      const estadisticaVacantes = contenido.querySelector('#estadistica-vacantes-conteo');
+      if (estadisticaVacantes) estadisticaVacantes.textContent = vacantes.length;
 
       if (!vacantes.length) {
-        tbodyVacantes.innerHTML = `<tr><td colspan="5" class="mi-perfil-vacio">No has publicado ofertas de empleo aún. Haz clic en "+ Publicar nueva vacante" para empezar.</td></tr>`;
+        cuerpoFilasVacantes.innerHTML = `<tr><td colspan="5" class="mi-perfil-vacio">No has publicado ofertas de empleo aún. Haz clic en "+ Publicar nueva vacante" para empezar.</td></tr>`;
         return;
       }
 
-      tbodyVacantes.innerHTML = vacantes.map((v) => {
+      cuerpoFilasVacantes.innerHTML = vacantes.map((v) => {
         const esActiva = v.estado === 'Activa';
-        const badgeColor = esActiva
-          ? 'background:#ecfdf5; color:#047857; border:1px solid #a7f3d0;'
-          : 'background:#f1f5f9; color:#475569; border:1px solid #cbd5e1;';
+        const colorInsignia = esActiva
+          ? 'background:var(--color-esmeralda-fondo); color:var(--color-esmeralda); border:1px solid var(--color-esmeralda-borde);'
+          : 'background:var(--color-superficie-elevada); color:var(--color-texto-secundario); border:1px solid var(--color-borde-suave);';
 
         return `
           <tr data-vacante-id="${v.id}">
@@ -1261,16 +1236,16 @@ async function enlazarEmpresa(alCambiarPantalla = () => {}) {
               <div class="mi-perfil-ayuda" style="font-size:0.75rem;">$${Number(v.salario_min || 0)} - $${Number(v.salario_max || 0)}</div>
             </td>
             <td>
-              <span style="${badgeColor} padding:0.2rem 0.55rem; border-radius:0.35rem; font-size:0.75rem; font-weight:700;">
+              <span style="${colorInsignia} padding:0.2rem 0.55rem; border-radius:0.35rem; font-size:0.75rem; font-weight:700;">
                 ${escaparHtml(v.estado)}
               </span>
             </td>
             <td>
-              <div style="display:flex; gap:0.4rem; align-items:center;">
-                <button type="button" class="boton btn-toggle-vacante" data-id="${v.id}" data-estado-actual="${v.estado}" style="padding:0.25rem 0.6rem; font-size:0.75rem;">
+              <div style="display:flex; gap:0.4rem; align-elementos:center;">
+                <button type="button" class="boton boton-cambiar-vacante" data-id="${v.id}" data-estado-actual="${v.estado}" style="padding:0.25rem 0.6rem; font-size:0.75rem;">
                   ${esActiva ? 'Pausar / Inactivar' : 'Reactivar'}
                 </button>
-                <button type="button" class="boton btn-eliminar-vacante" data-id="${v.id}" data-titulo="${escaparHtml(v.titulo)}" style="padding:0.25rem 0.6rem; font-size:0.75rem; color:#dc2626; border-color:#fca5a5;">
+                <button type="button" class="boton boton-eliminar-vacante" data-id="${v.id}" data-titulo="${escaparHtml(v.titulo)}">
                   Eliminar
                 </button>
               </div>
@@ -1278,9 +1253,7 @@ async function enlazarEmpresa(alCambiarPantalla = () => {}) {
           </tr>
         `;
       }).join('');
-
-      // Conectar alternar estado (Activa / Inactiva)
-      tbodyVacantes.querySelectorAll('.btn-toggle-vacante').forEach((boton) => {
+      cuerpoFilasVacantes.querySelectorAll('.boton-cambiar-vacante').forEach((boton) => {
         boton.addEventListener('click', async () => {
           const id = boton.dataset.id;
           const estadoActual = boton.dataset.estadoActual;
@@ -1288,76 +1261,72 @@ async function enlazarEmpresa(alCambiarPantalla = () => {}) {
           boton.disabled = true;
 
           try {
-            const res = await fetch(`/api/empresa/vacantes/${id}/estado`, {
+            const respuestaHttp = await fetch(`/api/empresa/vacantes/${id}/estado`, {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ estado: nuevoEstado })
             });
-            const resJson = await res.json().catch(() => ({}));
-            if (!res.ok) throw new Error(resJson.error || 'No se pudo cambiar el estado.');
+            const resultadoJson = await respuestaHttp.json().catch(() => ({}));
+            if (!respuestaHttp.ok) throw new Error(resultadoJson.error || 'No se pudo cambiar el estado.');
             await cargarOfertasEmpresa();
-          } catch (err) {
-            alert(err.message || 'Error al cambiar estado.');
+          } catch (errorCapturado) {
+            mostrarAviso(errorCapturado.message || 'Error al cambiar estado.');
             boton.disabled = false;
           }
         });
       });
-
-      // Conectar eliminar vacante
-      tbodyVacantes.querySelectorAll('.btn-eliminar-vacante').forEach((boton) => {
+      cuerpoFilasVacantes.querySelectorAll('.boton-eliminar-vacante').forEach((boton) => {
         boton.addEventListener('click', async () => {
           const id = boton.dataset.id;
           const titulo = boton.dataset.titulo;
-          const confirmar = window.confirm(`¿Estás seguro de que deseas eliminar la oferta "${titulo}"? Se eliminarán también las postulaciones vinculadas a ella.`);
+          const confirmar = await confirmarAccion(`¿Estás seguro de que deseas eliminar la oferta "${titulo}"? Se eliminarán también las postulaciones vinculadas a ella.`);
           if (!confirmar) return;
 
           boton.disabled = true;
           try {
-            const res = await fetch(`/api/empresa/vacantes/${id}`, { method: 'DELETE' });
-            const resJson = await res.json().catch(() => ({}));
-            if (!res.ok) throw new Error(resJson.error || 'No se pudo eliminar la vacante.');
+            const respuestaHttp = await fetch(`/api/empresa/vacantes/${id}`, { method: 'DELETE' });
+            const resultadoJson = await respuestaHttp.json().catch(() => ({}));
+            if (!respuestaHttp.ok) throw new Error(resultadoJson.error || 'No se pudo eliminar la vacante.');
             await cargarOfertasEmpresa();
-          } catch (err) {
-            alert(err.message || 'Error al eliminar oferta.');
+          } catch (errorCapturado) {
+            mostrarAviso(errorCapturado.message || 'Error al eliminar oferta.');
             boton.disabled = false;
           }
         });
       });
-    } catch (err) {
-      tbodyVacantes.innerHTML = `<tr><td colspan="5" class="mi-perfil-vacio">No se pudieron cargar las ofertas de empleo.</td></tr>`;
+    } catch (errorCapturado) {
+      cuerpoFilasVacantes.innerHTML = `<tr><td colspan="5" class="mi-perfil-vacio">No se pudieron cargar las ofertas de empleo.</td></tr>`;
     }
   };
-
-  // Cargar datos actuales de la empresa
   try {
-    const res = await fetch('/api/empresa/perfil', { cache: 'no-store' });
-    const datos = await res.json().catch(() => ({}));
-    if (res.ok && datos.empresa) {
+    const respuestaHttp = await fetch('/api/empresa/perfil', { cache: 'no-store' });
+    const datos = await respuestaHttp.json().catch(() => ({}));
+    if (respuestaHttp.ok && datos.empresa) {
       const emp = datos.empresa;
-      const setValor = (id, val) => {
+      const establecerValor = (id, val) => {
         const el = contenido.querySelector(`#${id}`);
         if (el && val !== undefined && val !== null) el.value = val;
       };
 
-      setValor('empresa-nombre', emp.nombre_comercial || '');
-      setValor('empresa-razon-social', emp.razon_social || '');
-      setValor('empresa-nit', emp.nit || '');
-      setValor('empresa-sector', emp.sector || '');
-      setValor('empresa-departamento', emp.departamento || 'San Salvador');
+      establecerValor('empresa-nombre', emp.nombre_comercial || '');
+      establecerValor('empresa-razon-social', emp.razon_social || '');
+      establecerValor('empresa-nit', emp.nit || '');
+      establecerValor('empresa-sector', emp.sector || '');
+      establecerValor('empresa-departamento', emp.departamento || 'San Salvador');
 
-      sincronizarMunicipios(selectDepto, selectMuni, emp.municipio || 'San Salvador');
+      sincronizarMunicipios(selectorDepartamento, selectorMunicipio, emp.municipio || 'San Salvador');
 
-      setValor('empresa-direccion', emp.direccion || '');
-      setValor('empresa-tamano', emp.tamano || '51-200 empleados');
-      setValor('empresa-correo', emp.contacto_email || datos.usuario?.email || '');
-      setValor('empresa-telefono', emp.telefono || datos.usuario?.telefono || '');
-      setValor('empresa-web', emp.sitio_web || '');
-      setValor('empresa-descripcion', emp.descripcion || '');
+      establecerValor('empresa-direccion', emp.direccion || '');
+      establecerValor('empresa-tamano', emp.tamano || '51-200 empleados');
+      establecerValor('empresa-correo', emp.contacto_email || datos.usuario?.email || '');
+      establecerValor('empresa-telefono', emp.telefono || datos.usuario?.telefono || '');
+      establecerValor('empresa-web', emp.sitio_web || '');
+      establecerValor('empresa-descripcion', emp.descripcion || '');
 
-      const statVac = contenido.querySelector('#stat-vacantes-conteo');
-      const statPost = contenido.querySelector('#stat-postulaciones-conteo');
-      if (statVac) statVac.textContent = datos.conteoVacantes ?? 0;
-      if (statPost) statPost.textContent = datos.conteoPostulaciones ?? 0;
+      const estadisticaVacantes = contenido.querySelector('#estadistica-vacantes-conteo');
+      const estadisticaPostulaciones = contenido.querySelector('#estadistica-postulaciones-conteo');
+      if (estadisticaVacantes) estadisticaVacantes.textContent = datos.conteoVacantes ?? 0;
+      if (estadisticaPostulaciones) estadisticaPostulaciones.textContent = datos.conteoPostulaciones ?? 0;
       if (emp.logo_url || datos.usuario?.foto_url) {
         aplicarLogo(emp.logo_url || datos.usuario.foto_url);
       }
@@ -1367,21 +1336,19 @@ async function enlazarEmpresa(alCambiarPantalla = () => {}) {
   } catch (errorCarga) {
     console.error('Error al cargar perfil de empresa:', errorCarga);
   }
-
-  // Cargar las ofertas iniciales de la empresa
   await cargarOfertasEmpresa();
 
   formulario?.addEventListener('submit', async (evento) => {
     evento.preventDefault();
     if (!formulario.reportValidity()) return;
 
-    if (btnGuardar) btnGuardar.disabled = true;
+    if (botonGuardarEdicion) botonGuardarEdicion.disabled = true;
     if (mensajeEstado) {
       mensajeEstado.classList.add('oculto');
       mensajeEstado.className = 'mi-perfil-ayuda oculto';
     }
 
-    const payload = {
+    const contenidoFirmado = {
       nombre_comercial: contenido.querySelector('#empresa-nombre').value.trim(),
       razon_social: contenido.querySelector('#empresa-razon-social').value.trim(),
       nit: contenido.querySelector('#empresa-nit').value.trim(),
@@ -1397,18 +1364,18 @@ async function enlazarEmpresa(alCambiarPantalla = () => {}) {
     };
 
     try {
-      const res = await fetch('/api/empresa/perfil', {
+      const respuestaHttp = await fetch('/api/empresa/perfil', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(contenidoFirmado)
       });
-      const respuesta = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(respuesta.error || 'No se pudo guardar el perfil.');
+      const respuesta = await respuestaHttp.json().catch(() => ({}));
+      if (!respuestaHttp.ok) throw new Error(respuesta.error || 'No se pudo guardar el perfil.');
 
       if (mensajeEstado) {
         mensajeEstado.textContent = '✓ Perfil de empresa guardado exitosamente en la base de datos.';
         mensajeEstado.className = 'mi-perfil-ayuda';
-        mensajeEstado.style.color = '#166534';
+        mensajeEstado.style.color = 'var(--color-esmeralda)';
         mensajeEstado.style.fontWeight = '600';
         mensajeEstado.classList.remove('oculto');
       }
@@ -1416,12 +1383,12 @@ async function enlazarEmpresa(alCambiarPantalla = () => {}) {
     } catch (error) {
       if (mensajeEstado) {
         mensajeEstado.textContent = error.message || 'Error al guardar el perfil.';
-        mensajeEstado.className = 'mi-perfil-error-inline';
-        mensajeEstado.style.color = '#dc2626';
+        mensajeEstado.className = 'mi-perfil-error-en-linea';
+        mensajeEstado.style.color = 'var(--color-rosa)';
         mensajeEstado.classList.remove('oculto');
       }
     } finally {
-      if (btnGuardar) btnGuardar.disabled = false;
+      if (botonGuardarEdicion) botonGuardarEdicion.disabled = false;
     }
   });
 }
@@ -1485,7 +1452,7 @@ function renderizarVacante() {
         </div>
         <p id="vacante-mensaje-estado" class="mi-perfil-ayuda oculto" role="status"></p>
         <div class="mi-perfil-acciones">
-          <button id="btn-publicar-vacante" class="boton boton-primario" type="submit">Publicar vacante</button>
+          <button id="boton-publicar-vacante" class="boton boton-primario" type="submit">Publicar vacante</button>
           <button class="boton" type="reset">Limpiar formulario</button>
         </div>
       </form>
@@ -1497,14 +1464,14 @@ function enlazarVacante(alCambiarPantalla = () => {}) {
   const formulario = contenido.querySelector('[data-formulario="vacante"]');
   if (!formulario) return;
 
-  const selectDepto = formulario.querySelector('#vacante-departamento');
-  const selectMuni = formulario.querySelector('#vacante-municipio');
+  const selectorDepartamento = formulario.querySelector('#vacante-departamento');
+  const selectorMunicipio = formulario.querySelector('#vacante-municipio');
   const minimo = formulario.querySelector('#vacante-salario-min');
   const maximo = formulario.querySelector('#vacante-salario-max');
   const mensajeEstado = formulario.querySelector('#vacante-mensaje-estado');
-  const btnPublicar = formulario.querySelector('#btn-publicar-vacante');
+  const botonPublicarTema = formulario.querySelector('#boton-publicar-vacante');
 
-  sincronizarMunicipios(selectDepto, selectMuni, 'San Salvador');
+  sincronizarMunicipios(selectorDepartamento, selectorMunicipio, 'San Salvador');
 
   const validarSalario = () => {
     const min = minimo.value === '' ? null : Number(minimo.value);
@@ -1521,7 +1488,7 @@ function enlazarVacante(alCambiarPantalla = () => {}) {
     validarSalario();
     if (!formulario.reportValidity()) return;
 
-    if (btnPublicar) btnPublicar.disabled = true;
+    if (botonPublicarTema) botonPublicarTema.disabled = true;
     if (mensajeEstado) mensajeEstado.classList.add('oculto');
 
     const datos = {
@@ -1542,33 +1509,33 @@ function enlazarVacante(alCambiarPantalla = () => {}) {
     };
 
     try {
-      const res = await fetch('/api/empresa/vacantes', {
+      const respuestaHttp = await fetch('/api/empresa/vacantes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(datos)
       });
-      const resultado = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(resultado.error || 'No se pudo publicar la vacante.');
+      const resultado = await respuestaHttp.json().catch(() => ({}));
+      if (!respuestaHttp.ok) throw new Error(resultado.error || 'No se pudo publicar la vacante.');
 
       if (mensajeEstado) {
         mensajeEstado.textContent = `✓ Vacante "${datos.titulo}" publicada exitosamente y visible para candidatos.`;
         mensajeEstado.className = 'mi-perfil-ayuda';
-        mensajeEstado.style.color = '#166534';
+        mensajeEstado.style.color = 'var(--color-esmeralda)';
         mensajeEstado.style.fontWeight = '600';
         mensajeEstado.classList.remove('oculto');
       }
       formulario.reset();
       maximo.setCustomValidity('');
-      sincronizarMunicipios(selectDepto, selectMuni, 'San Salvador');
+      sincronizarMunicipios(selectorDepartamento, selectorMunicipio, 'San Salvador');
     } catch (error) {
       if (mensajeEstado) {
         mensajeEstado.textContent = error.message || 'Error al publicar la vacante.';
-        mensajeEstado.className = 'mi-perfil-error-inline';
-        mensajeEstado.style.color = '#dc2626';
+        mensajeEstado.className = 'mi-perfil-error-en-linea';
+        mensajeEstado.style.color = 'var(--color-rosa)';
         mensajeEstado.classList.remove('oculto');
       }
     } finally {
-      if (btnPublicar) btnPublicar.disabled = false;
+      if (botonPublicarTema) botonPublicarTema.disabled = false;
     }
   });
 
@@ -1612,7 +1579,7 @@ function renderizarPostulaciones() {
               <th>CURRÍCULUM</th>
             </tr>
           </thead>
-          <tbody id="tbody-postulaciones-empresa">
+          <tbody id="cuerpo-postulaciones-empresa">
             <tr><td colspan="5" class="mi-perfil-vacio">Cargando postulaciones recibidas...</td></tr>
           </tbody>
         </table>
@@ -1622,9 +1589,9 @@ function renderizarPostulaciones() {
 }
 
 async function enlazarPostulaciones() {
-  const tbody = contenido.querySelector('#tbody-postulaciones-empresa');
-  const inputBusqueda = contenido.querySelector('#postulacion-busqueda');
-  const selectFiltroEstado = contenido.querySelector('#postulacion-filtro-estado');
+  const cuerpoFilas = contenido.querySelector('#cuerpo-postulaciones-empresa');
+  const entradaBusqueda = contenido.querySelector('#postulacion-busqueda');
+  const selectorFiltroEstado = contenido.querySelector('#postulacion-filtro-estado');
 
   let postulacionesCargadas = [];
 
@@ -1641,9 +1608,9 @@ async function enlazarPostulaciones() {
   };
 
   const renderizarFilas = () => {
-    if (!tbody) return;
-    const busqueda = (inputBusqueda?.value || '').trim().toLowerCase();
-    const filtroEstado = selectFiltroEstado?.value || '';
+    if (!cuerpoFilas) return;
+    const busqueda = (entradaBusqueda?.value || '').trim().toLowerCase();
+    const filtroEstado = selectorFiltroEstado?.value || '';
 
     const filtradas = postulacionesCargadas.filter((p) => {
       const coincideEstado = !filtroEstado || p.estado === filtroEstado;
@@ -1656,7 +1623,7 @@ async function enlazarPostulaciones() {
     });
 
     if (!filtradas.length) {
-      tbody.innerHTML = `<tr><td colspan="5" class="mi-perfil-vacio">No se encontraron postulaciones con los filtros seleccionados.</td></tr>`;
+      cuerpoFilas.innerHTML = `<tr><td colspan="5" class="mi-perfil-vacio">No se encontraron postulaciones con los filtros seleccionados.</td></tr>`;
       return;
     }
 
@@ -1666,7 +1633,7 @@ async function enlazarPostulaciones() {
       year: 'numeric'
     });
 
-    tbody.innerHTML = filtradas
+    cuerpoFilas.innerHTML = filtradas
       .map((p) => {
         const fecha = p.creado_en ? formatoFecha.format(new Date(p.creado_en)) : '—';
         const iniciales = (p.candidato?.nombre || 'C')
@@ -1679,8 +1646,8 @@ async function enlazarPostulaciones() {
         return `
           <tr data-postulacion-fila="${p.id}">
             <td>
-              <div style="display: flex; align-items: center; gap: 0.75rem;">
-                <div style="width: 36px; height: 36px; border-radius: 50%; background: #873044; color: white; display: inline-flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: bold; flex-shrink: 0;">
+              <div style="display: flex; align-elementos: center; gap: 0.75rem;">
+                <div style="width: 36px; height: 36px; border-radius: 50%; background: var(--color-acento-solido); color: white; display: inline-flex; align-elementos: center; justify-content: center; font-size: 0.85rem; font-weight: bold; flex-shrink: 0;">
                   ${iniciales}
                 </div>
                 <div>
@@ -1703,7 +1670,7 @@ async function enlazarPostulaciones() {
             </td>
             <td>${fecha}</td>
             <td>
-              <select class="select-estado-postulacion" data-postulacion-id="${p.id}" style="padding: 0.35rem 0.6rem; border-radius: 0.375rem; border: 1px solid #d8d2cd; font-size: 0.82rem; font-weight: 500;">
+              <select class="selector-estado-postulacion" data-postulacion-id="${p.id}" style="padding: 0.35rem 0.6rem; border-radius: 0.375rem; border: 1px solid var(--color-borde); font-size: 0.82rem; font-weight: 500;">
                 <option value="Nueva" ${p.estado === 'Nueva' ? 'selected' : ''}>Nueva</option>
                 <option value="En revisión" ${p.estado === 'En revisión' ? 'selected' : ''}>En revisión</option>
                 <option value="Entrevista" ${p.estado === 'Entrevista' ? 'selected' : ''}>Entrevista</option>
@@ -1712,11 +1679,13 @@ async function enlazarPostulaciones() {
               </select>
             </td>
             <td>
-              <div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">
-                <button type="button" class="boton btn-accion-aceptar" data-id="${p.id}" style="padding: 0.25rem 0.55rem; font-size: 0.75rem; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; font-weight: 600;" ${p.estado === 'Contratada' ? 'disabled' : ''} title="Aceptar al candidato">
+              <div style="display: flex; gap: 0.4rem; align-elementos: center; flex-wrap: wrap;">
+                ${p.curriculum_url ? `<a class="boton" href="${escaparHtml(p.curriculum_url)}" target="_blank" rel="noopener">Ver currículum</a>` : ''}
+                <button type="button" class="boton" data-reportar-postulacion="${p.id}">Reportar</button>
+                <button type="button" class="boton boton-accion-aceptar" data-id="${p.id}" ${p.estado === 'Contratada' ? 'disabled' : ''} title="Aceptar al candidato">
                   ✓ Aceptar
                 </button>
-                <button type="button" class="boton btn-accion-denegar" data-id="${p.id}" style="padding: 0.25rem 0.55rem; font-size: 0.75rem; background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; font-weight: 600;" ${p.estado === 'Rechazada' ? 'disabled' : ''} title="Denegar al postulante">
+                <button type="button" class="boton boton-accion-denegar" data-id="${p.id}" ${p.estado === 'Rechazada' ? 'disabled' : ''} title="Denegar al postulante">
                   ✗ Denegar
                 </button>
               </div>
@@ -1726,70 +1695,72 @@ async function enlazarPostulaciones() {
       })
       .join('');
 
+    cuerpoFilas.querySelectorAll('[data-reportar-postulacion]').forEach((boton) => {
+      boton.addEventListener('click', async () => {
+        boton.disabled = true;
+        try { await reportarContenido('postulaciones', boton.dataset.reportarPostulacion, mostrarAviso); }
+        finally { boton.disabled = false; }
+      });
+    });
+
     const cambiarEstadoPostulacion = async (id, nuevoEstado) => {
       try {
-        const res = await fetch(`/api/empresa/postulaciones/${id}/estado`, {
+        const respuestaHttp = await fetch(`/api/empresa/postulaciones/${id}/estado`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ estado: nuevoEstado })
         });
-        const resJson = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(resJson.error || 'No se pudo actualizar.');
+        const resultadoJson = await respuestaHttp.json().catch(() => ({}));
+        if (!respuestaHttp.ok) throw new Error(resultadoJson.error || 'No se pudo actualizar.');
 
-        const post = postulacionesCargadas.find((x) => x.id === id);
-        if (post) post.estado = nuevoEstado;
+        const postulacionRegistro = postulacionesCargadas.find((x) => x.id === id);
+        if (postulacionRegistro) postulacionRegistro.estado = nuevoEstado;
         actualizarConteoEstados();
         renderizarFilas();
-      } catch (errorUpdate) {
-        alert(errorUpdate.message || 'Error al cambiar estado.');
+      } catch (errorActualizacion) {
+        mostrarAviso(errorActualizacion.message || 'Error al cambiar estado.');
       }
     };
-
-    // Conectar cambios de estado por dropdown
-    tbody.querySelectorAll('.select-estado-postulacion').forEach((select) => {
-      select.addEventListener('change', async () => {
-        const id = select.dataset.postulacionId;
-        const nuevoEstado = select.value;
-        select.disabled = true;
+    cuerpoFilas.querySelectorAll('.selector-estado-postulacion').forEach((selectorEntrada) => {
+      selectorEntrada.addEventListener('change', async () => {
+        const id = selectorEntrada.dataset.postulacionId;
+        const nuevoEstado = selectorEntrada.value;
+        selectorEntrada.disabled = true;
         await cambiarEstadoPostulacion(id, nuevoEstado);
-        select.disabled = false;
+        selectorEntrada.disabled = false;
       });
     });
-
-    // Conectar botón Aceptar aplicante
-    tbody.querySelectorAll('.btn-accion-aceptar').forEach((btn) => {
-      btn.addEventListener('click', async () => {
-        const id = btn.dataset.id;
-        btn.disabled = true;
+    cuerpoFilas.querySelectorAll('.boton-accion-aceptar').forEach((botonAccion) => {
+      botonAccion.addEventListener('click', async () => {
+        const id = botonAccion.dataset.id;
+        botonAccion.disabled = true;
         await cambiarEstadoPostulacion(id, 'Contratada');
       });
     });
-
-    // Conectar botón Denegar aplicante
-    tbody.querySelectorAll('.btn-accion-denegar').forEach((btn) => {
-      btn.addEventListener('click', async () => {
-        const id = btn.dataset.id;
-        btn.disabled = true;
+    cuerpoFilas.querySelectorAll('.boton-accion-denegar').forEach((botonAccion) => {
+      botonAccion.addEventListener('click', async () => {
+        const id = botonAccion.dataset.id;
+        botonAccion.disabled = true;
         await cambiarEstadoPostulacion(id, 'Rechazada');
       });
     });
   };
 
-  inputBusqueda?.addEventListener('input', renderizarFilas);
-  selectFiltroEstado?.addEventListener('change', renderizarFilas);
+  entradaBusqueda?.addEventListener('input', renderizarFilas);
+  selectorFiltroEstado?.addEventListener('change', renderizarFilas);
 
   try {
-    const res = await fetch('/api/empresa/postulaciones', { cache: 'no-store' });
-    const datos = await res.json().catch(() => ({}));
-    if (res.ok && Array.isArray(datos.postulaciones)) {
+    const respuestaHttp = await fetch('/api/empresa/postulaciones', { cache: 'no-store' });
+    const datos = await respuestaHttp.json().catch(() => ({}));
+    if (respuestaHttp.ok && Array.isArray(datos.postulaciones)) {
       postulacionesCargadas = datos.postulaciones;
       actualizarConteoEstados();
       renderizarFilas();
     } else {
-      tbody.innerHTML = `<tr><td colspan="5" class="mi-perfil-vacio">No se pudieron cargar las postulaciones.</td></tr>`;
+      cuerpoFilas.innerHTML = `<tr><td colspan="5" class="mi-perfil-vacio">No se pudieron cargar las postulaciones.</td></tr>`;
     }
   } catch (error) {
-    tbody.innerHTML = `<tr><td colspan="5" class="mi-perfil-vacio">Error al consultar postulaciones recibidas.</td></tr>`;
+    cuerpoFilas.innerHTML = `<tr><td colspan="5" class="mi-perfil-vacio">Error al consultar postulaciones recibidas.</td></tr>`;
   }
 }
 
@@ -1840,8 +1811,8 @@ async function renderizarPantalla() {
     P09: [renderizarVacante, enlazarVacante],
     P10: [renderizarPostulaciones, enlazarPostulaciones]
   };
-  const [render, enlazar] = pantallas[pantalla] || [renderizarEmpresa, enlazarEmpresa];
-  contenido.innerHTML = render();
+  const [actualizarVista, enlazar] = pantallas[pantalla] || [renderizarEmpresa, enlazarEmpresa];
+  contenido.innerHTML = actualizarVista();
   if (enlazar) enlazar();
 }
 
@@ -1862,7 +1833,7 @@ export async function renderizarCuentaIntegrada(
   const rolRequerido = rolesPorPantalla[pantalla];
   if (sesion.rol !== rolRequerido) {
     contenido.innerHTML = renderizarAccesoDenegado(rolRequerido, sesion.rol);
-    contenido.querySelector('.btn-volver-portal')?.addEventListener('click', () => {
+    contenido.querySelector('.boton-volver-portal')?.addEventListener('click', () => {
       alCambiarPantalla('P01');
     });
     return;
@@ -1878,8 +1849,8 @@ export async function renderizarCuentaIntegrada(
     P09: [renderizarVacante, enlazarVacante],
     P10: [renderizarPostulaciones, enlazarPostulaciones]
   };
-  const [render, enlazar] = pantallas[pantalla] || [renderizarEmpresa, enlazarEmpresa];
-  contenido.innerHTML = render();
+  const [actualizarVista, enlazar] = pantallas[pantalla] || [renderizarEmpresa, enlazarEmpresa];
+  contenido.innerHTML = actualizarVista();
   if (enlazar) enlazar(alCambiarPantalla);
   window.scrollTo({ top: 0, behavior: 'instant' });
 }

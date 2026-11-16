@@ -65,20 +65,20 @@ export function renderizarP28CrearTema(contenedor, alNavegar, mostrarNotificacio
     botonPublicar.textContent = 'Publicando...';
 
     try {
-      const res = await fetch('/api/foros/temas', {
+      const respuestaHttp = await fetch('/api/foros/temas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ titulo, categoria, descripcion })
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(data.error || 'No se pudo publicar el tema.');
+      const datosRespuesta = await respuestaHttp.json().catch(() => ({}));
+      if (!respuestaHttp.ok) {
+        throw new Error(datosRespuesta.error || 'No se pudo publicar el tema.');
       }
       mostrarNotificacion('El tema se publicó correctamente en los foros.');
       alNavegar('P05');
-    } catch (err) {
+    } catch (errorCapturado) {
       if (alertaError) {
-        alertaError.textContent = err.message || 'Error al publicar el tema.';
+        alertaError.textContent = errorCapturado.message || 'Error al publicar el tema.';
         alertaError.classList.remove('oculto');
       }
     } finally {

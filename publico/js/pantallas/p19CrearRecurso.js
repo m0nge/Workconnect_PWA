@@ -1,7 +1,8 @@
+import { renderizarGestionRecursos } from './gestionRecursos.js';
 import { escaparHtml, validarNumero, validarTexto, valorEnLista } from '../utilidades/formato.js';
 
 const estadoRecurso = {
-  subpestana: 'Crear',
+  subpestana: 'MisRecursos',
   titulo: '',
   categoria: 'Artículo',
   nivelLectura: 'Básico',
@@ -19,18 +20,15 @@ export function renderizarP19CrearRecurso(contenedor, recursos, acciones) {
   contenedor.innerHTML = `
     <div class="pila-vertical">
       <div class="cabecera-pantalla">
-        <h1 class="titulo-pantalla">Crear recurso laboral</h1>
+        <h1 class="titulo-pantalla">Recursos laborales</h1>
         <p class="subtitulo-pantalla">
-          Formulario para redactar, categorizar y publicar artículos, consejos y tutoriales en el portal público.
+          Encuentra tus recursos, edítalos y administra su publicación desde la lista.
         </p>
       </div>
 
       <div class="barra-pestanas" id="pestanas-recursos">
-        <button type="button" class="boton-pestana ${estadoRecurso.subpestana === 'Publicados' ? 'activo' : ''}" data-subpestana="Publicados">
-          Publicados (${recursos.length})
-        </button>
         <button type="button" class="boton-pestana ${estadoRecurso.subpestana === 'MisRecursos' ? 'activo' : ''}" data-subpestana="MisRecursos">
-          Mis recursos
+          Todos los recursos
         </button>
         <button type="button" class="boton-pestana ${estadoRecurso.subpestana === 'Crear' ? 'activo' : ''}" data-subpestana="Crear">
           <span>Crear recurso</span>
@@ -45,95 +43,10 @@ export function renderizarP19CrearRecurso(contenedor, recursos, acciones) {
   const zonaSubpestana = contenedor.querySelector('#contenido-subpestana-recurso');
 
   const pintarSubpestana = () => {
-    if (estadoRecurso.subpestana === 'Publicados') {
-      const tarjetasHtml = recursos
-        .map(
-          (rec) => `
-            <div class="tarjeta" style="padding:1rem;">
-              <div style="display:flex; justify-content:space-between; font-size:11px; color:#64748b; margin-bottom:0.25rem;">
-                <span style="font-weight:700; color:#831843; text-transform:uppercase;">${escaparHtml(rec.categoria)}</span>
-                <span>Lectura de ${rec.tiempoLecturaMin} min</span>
-              </div>
-              <h3 style="margin:0; font-size:0.875rem; font-weight:700; color:#0f172a;">${escaparHtml(rec.titulo)}</h3>
-              <p style="margin:0.35rem 0 0; font-size:0.75rem; color:#475569; line-height:1.45;">
-                ${escaparHtml(rec.resumen)}
-              </p>
-              <div style="display:flex; align-items:center; justify-content:space-between; margin-top:0.75rem; padding-top:0.5rem; border-top:1px solid #f1f5f9; font-size:11px; color:#64748b;">
-                <span>${escaparHtml(rec.fechaCreacion)}</span>
-                <span class="etiqueta-cuadrada" style="color:#047857; background:#ecfdf5; border-color:#a7f3d0;">
-                  ${escaparHtml(rec.estadoPublicacion)}
-                </span>
-              </div>
-            </div>
-          `
-        )
-        .join('');
-
-      zonaSubpestana.innerHTML = `
-        <div class="tarjeta tarjeta-espaciado pila-compacta">
-          <div class="seccion-lista-cabecera" style="margin-bottom:0;">
-            <h2 class="grafico-titulo">Catálogo de recursos activos</h2>
-            <button type="button" id="ir-a-crear-recurso" class="enlace-accion-vino" style="text-decoration:none; font-weight:700;">
-              + Redactar nuevo recurso
-            </button>
-          </div>
-          <div class="cuadricula-publicados">
-            ${tarjetasHtml}
-          </div>
-        </div>
-      `;
-
-      zonaSubpestana
-        .querySelector('#ir-a-crear-recurso')
-        .addEventListener('click', () => {
-          estadoRecurso.subpestana = 'Crear';
-          renderizarP19CrearRecurso(contenedor, recursos, acciones);
-        });
-      return;
-    }
-
     if (estadoRecurso.subpestana === 'MisRecursos') {
-      const filasHtml = recursos
-        .map(
-          (r) => `
-            <tr>
-              <td style="font-weight:600; color:#1e293b;">${escaparHtml(r.titulo)}</td>
-              <td style="color:#475569;">${escaparHtml(r.categoria)}</td>
-              <td style="color:#475569;">${escaparHtml(r.nivelLectura)}</td>
-              <td>
-                <span class="etiqueta-cuadrada" style="background:#f1f5f9; color:#334155; border-color:#e2e8f0; font-size:10px;">
-                  ${escaparHtml(r.estadoPublicacion)}
-                </span>
-              </td>
-            </tr>
-          `
-        )
-        .join('');
-
-      zonaSubpestana.innerHTML = `
-        <div class="tarjeta tarjeta-espaciado pila-compacta">
-          <h2 class="grafico-titulo">Historial y borradores editoriales</h2>
-          <div class="desplazamiento-tabla">
-            <table class="tabla-datos">
-              <thead>
-                <tr>
-                  <th>TÍTULO</th>
-                  <th>CATEGORÍA</th>
-                  <th>NIVEL</th>
-                  <th>ESTADO</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${filasHtml}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      `;
+      renderizarGestionRecursos(zonaSubpestana, recursos, acciones);
       return;
     }
-
-    // Subpestaña Crear recurso
     zonaSubpestana.innerHTML = `
       <div class="cuadricula-recurso">
         <div class="tarjeta tarjeta-espaciado">
@@ -228,8 +141,8 @@ export function renderizarP19CrearRecurso(contenedor, recursos, acciones) {
 
             <div class="cuadricula-campos-2" style="padding-top:0.25rem;">
               <label class="caja-archivo-simulado" style="cursor:pointer; display:block;">
-                <p style="margin:0; font-size:0.75rem; font-weight:600; color:#334155;">Imagen de portada</p>
-                <p style="margin:0.15rem 0 0; font-size:10px; color:#64748b;">PNG, JPG hasta 2 MB (1200x630)</p>
+                <p style="margin:0; font-size:0.75rem; font-weight:600; color:var(--color-texto-secundario);">Imagen de portada</p>
+                <p style="margin:0.15rem 0 0; font-size:10px; color:var(--color-texto-atenuado);">PNG, JPG hasta 2 MB (1200x630)</p>
                 <input id="recurso-archivo-portada" type="file" accept="image/*" class="oculto" />
                 <span id="etiqueta-archivo-portada" class="etiqueta-archivo">
                   🖼️ ${escaparHtml(estadoRecurso.nombreArchivoPortada || 'Seleccionar portada')}
@@ -237,8 +150,8 @@ export function renderizarP19CrearRecurso(contenedor, recursos, acciones) {
               </label>
 
               <label class="caja-archivo-simulado" style="cursor:pointer; display:block;">
-                <p style="margin:0; font-size:0.75rem; font-weight:600; color:#334155;">Archivos adjuntos</p>
-                <p style="margin:0.15rem 0 0; font-size:10px; color:#64748b;">PDF, DOCX hasta 5 MB (plantillas)</p>
+                <p style="margin:0; font-size:0.75rem; font-weight:600; color:var(--color-texto-secundario);">Archivos adjuntos</p>
+                <p style="margin:0.15rem 0 0; font-size:10px; color:var(--color-texto-atenuado);">PDF, DOCX hasta 5 MB (plantillas)</p>
                 <input id="recurso-archivo-adjunto" type="file" accept=".pdf,.doc,.docx" class="oculto" />
                 <span id="etiqueta-archivo-adjunto" class="etiqueta-archivo">
                   📎 ${escaparHtml(estadoRecurso.nombreArchivoAdjunto || 'Adjuntar archivo')}
@@ -281,7 +194,7 @@ export function renderizarP19CrearRecurso(contenedor, recursos, acciones) {
                   <input type="radio" name="estadoPublicacion" value="Enviar a revisión" ${estadoRecurso.estadoPublicacion === 'Enviar a revisión' ? 'checked' : ''} />
                   <span>Enviar a revisión</span>
                 </label>
-                <label class="opcion-linea" style="font-weight:700; color:#0f172a;">
+                <label class="opcion-linea" style="font-weight:700; color:var(--color-texto);">
                   <input type="radio" name="estadoPublicacion" value="Publicado" ${estadoRecurso.estadoPublicacion === 'Publicado' ? 'checked' : ''} />
                   <span>Publicar ahora</span>
                 </label>
@@ -315,13 +228,13 @@ export function renderizarP19CrearRecurso(contenedor, recursos, acciones) {
 
         <div class="pila-compacta">
           <div class="tarjeta" style="padding:1rem;">
-            <span style="font-size:10px; text-transform:uppercase; font-weight:700; color:#64748b; letter-spacing:0.05em; display:block; margin-bottom:0.5rem;">
+            <span style="font-size:10px; text-transform:uppercase; font-weight:700; color:var(--color-texto-atenuado); letter-spacing:0.05em; display:block; margin-bottom:0.5rem;">
               Vista previa en el catálogo
             </span>
 
             <div class="tarjeta-vista-previa">
-              <div style="display:flex; align-items:center; justify-content:space-between; font-size:11px; color:#64748b; margin-bottom:0.25rem;">
-                <span id="previa-categoria" style="font-weight:700; color:#831843; text-transform:uppercase; font-size:10px;">
+              <div style="display:flex; align-elementos:center; justify-content:space-between; font-size:11px; color:var(--color-texto-atenuado); margin-bottom:0.25rem;">
+                <span id="previa-categoria" style="font-weight:700; color:var(--color-vino); text-transform:uppercase; font-size:10px;">
                   ${escaparHtml(estadoRecurso.categoria)}
                 </span>
                 <span id="previa-tiempo" class="texto-mono" style="font-size:10px;">
@@ -329,44 +242,44 @@ export function renderizarP19CrearRecurso(contenedor, recursos, acciones) {
                 </span>
               </div>
 
-              <h3 id="previa-titulo" style="margin:0; font-weight:700; color:#0f172a; font-size:0.875rem; line-height:1.35;">
+              <h3 id="previa-titulo" style="margin:0; font-weight:700; color:var(--color-texto); font-size:0.875rem; line-height:1.35;">
                 ${escaparHtml(estadoRecurso.titulo) || 'Un título claro y específico para el candidato'}
               </h3>
 
-              <p id="previa-resumen" style="margin:0.375rem 0 0; font-size:0.75rem; color:#475569; line-height:1.5;">
+              <p id="previa-resumen" style="margin:0.375rem 0 0; font-size:0.75rem; color:var(--color-texto-secundario); line-height:1.5;">
                 ${escaparHtml(estadoRecurso.resumen) || 'Aquí se mostrará el resumen de 2-3 líneas que describe qué aprenderá el usuario con este recurso laboral.'}
               </p>
 
-              <div style="margin-top:0.75rem; padding-top:0.5rem; border-top:1px solid #e2e8f0; display:flex; align-items:center; justify-content:space-between; font-size:10px; color:#64748b;">
+              <div style="margin-top:0.75rem; padding-top:0.5rem; border-top:1px solid var(--color-borde); display:flex; align-elementos:center; justify-content:space-between; font-size:10px; color:var(--color-texto-atenuado);">
                 <span>Por: Equipo Editorial</span>
-                <span style="font-weight:600; color:#334155;">WorkConnect</span>
+                <span style="font-weight:600; color:var(--color-texto-secundario);">WorkConnect</span>
               </div>
             </div>
           </div>
 
           <div class="tarjeta" style="padding:1rem;">
-            <h3 style="margin:0 0 0.5rem; font-weight:700; color:#0f172a; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.04em;">
+            <h3 style="margin:0 0 0.5rem; font-weight:700; color:var(--color-texto); font-size:0.75rem; text-transform:uppercase; letter-spacing:0.04em;">
               Reglas de publicación
             </h3>
             <ul class="lista-reglas">
               <li>
-                <span style="color:#831843; font-weight:700;">•</span>
+                <span style="color:var(--color-vino); font-weight:700;">•</span>
                 <span><strong>Título específico:</strong> Evita títulos genéricos como «Consejos».</span>
               </li>
               <li>
-                <span style="color:#831843; font-weight:700;">•</span>
+                <span style="color:var(--color-vino); font-weight:700;">•</span>
                 <span><strong>Resumen de 2-3 líneas:</strong> Es lo que el candidato verá en la tarjeta.</span>
               </li>
               <li>
-                <span style="color:#831843; font-weight:700;">•</span>
+                <span style="color:var(--color-vino); font-weight:700;">•</span>
                 <span><strong>Un solo tema:</strong> Un recurso, un tema sin dispersión.</span>
               </li>
               <li>
-                <span style="color:#831843; font-weight:700;">•</span>
+                <span style="color:var(--color-vino); font-weight:700;">•</span>
                 <span><strong>Sin datos personales:</strong> Nada de casos individuales identificables.</span>
               </li>
               <li>
-                <span style="color:#831843; font-weight:700;">•</span>
+                <span style="color:var(--color-vino); font-weight:700;">•</span>
                 <span><strong>Portada horizontal:</strong> 1200 x 630 px recomendada.</span>
               </li>
             </ul>
@@ -435,74 +348,74 @@ export function renderizarP19CrearRecurso(contenedor, recursos, acciones) {
       estadoRecurso.etiquetas = e.target.value;
     });
 
-    const inputUrl = zonaSubpestana.querySelector('#recurso-portada-url');
-    if (inputUrl) {
-      inputUrl.addEventListener('input', (e) => {
+    const entradaUrl = zonaSubpestana.querySelector('#recurso-portada-url');
+    if (entradaUrl) {
+      entradaUrl.addEventListener('input', (e) => {
         estadoRecurso.imagenPortadaUrl = e.target.value.trim();
       });
     }
 
-    const inputPortada = zonaSubpestana.querySelector('#recurso-archivo-portada');
+    const entradaPortada = zonaSubpestana.querySelector('#recurso-archivo-portada');
     const etiquetaPortada = zonaSubpestana.querySelector('#etiqueta-archivo-portada');
-    if (inputPortada && etiquetaPortada) {
-      inputPortada.addEventListener('change', (e) => {
+    if (entradaPortada && etiquetaPortada) {
+      entradaPortada.addEventListener('change', (e) => {
         const archivo = e.target.files?.[0];
         if (archivo && (!archivo.type.startsWith('image/') || archivo.size > 2 * 1024 * 1024)) {
           e.target.value = '';
           estadoRecurso.nombreArchivoPortada = '';
           estadoRecurso.imagenPortadaUrl = '';
-          etiquetaPortada.textContent = '🖼️ Seleccionar portada';
+          etiquetaPortada.textContent = ' Seleccionar portada';
           cajaError.textContent = 'La portada debe ser una imagen de hasta 2 MB.';
           cajaError.classList.remove('oculto');
           return;
         }
         estadoRecurso.nombreArchivoPortada = archivo ? archivo.name : '';
         if (archivo) {
-          etiquetaPortada.textContent = '⏳ Optimizando imagen...';
+          etiquetaPortada.textContent = ' Optimizando imagen...';
           const lector = new FileReader();
           lector.onload = (eventoCarga) => {
-            const img = new Image();
-            img.onload = () => {
-              const maxDim = 800;
-              let ancho = img.width;
-              let alto = img.height;
-              if (ancho > maxDim || alto > maxDim) {
+            const imagen = new Image();
+            imagen.onload = () => {
+              const dimensionMaxima = 800;
+              let ancho = imagen.width;
+              let alto = imagen.height;
+              if (ancho > dimensionMaxima || alto > dimensionMaxima) {
                 if (ancho > alto) {
-                  alto = Math.round((alto * maxDim) / ancho);
-                  ancho = maxDim;
+                  alto = Math.round((alto * dimensionMaxima) / ancho);
+                  ancho = dimensionMaxima;
                 } else {
-                  ancho = Math.round((ancho * maxDim) / alto);
-                  alto = maxDim;
+                  ancho = Math.round((ancho * dimensionMaxima) / alto);
+                  alto = dimensionMaxima;
                 }
               }
               const lienzo = document.createElement('canvas');
               lienzo.width = ancho;
               lienzo.height = alto;
-              const ctx = lienzo.getContext('2d');
-              ctx.drawImage(img, 0, 0, ancho, alto);
+              const contextoLienzo = lienzo.getContext('2d');
+              contextoLienzo.drawImage(imagen, 0, 0, ancho, alto);
               const urlOptimizada = lienzo.toDataURL('image/jpeg', 0.75);
               estadoRecurso.imagenPortadaUrl = urlOptimizada;
-              if (inputUrl) inputUrl.value = urlOptimizada;
-              etiquetaPortada.textContent = `🖼️ ${archivo.name}`;
+              if (entradaUrl) entradaUrl.value = urlOptimizada;
+              etiquetaPortada.textContent = ` ${archivo.name}`;
             };
-            img.onerror = () => {
+            imagen.onerror = () => {
               estadoRecurso.imagenPortadaUrl = eventoCarga.target.result;
-              if (inputUrl) inputUrl.value = eventoCarga.target.result;
-              etiquetaPortada.textContent = `🖼️ ${archivo.name}`;
+              if (entradaUrl) entradaUrl.value = eventoCarga.target.result;
+              etiquetaPortada.textContent = ` ${archivo.name}`;
             };
-            img.src = eventoCarga.target.result;
+            imagen.src = eventoCarga.target.result;
           };
           lector.readAsDataURL(archivo);
         } else {
-          etiquetaPortada.textContent = '🖼️ Seleccionar portada';
+          etiquetaPortada.textContent = ' Seleccionar portada';
         }
       });
     }
 
-    const inputAdjunto = zonaSubpestana.querySelector('#recurso-archivo-adjunto');
+    const entradaAdjunto = zonaSubpestana.querySelector('#recurso-archivo-adjunto');
     const etiquetaAdjunto = zonaSubpestana.querySelector('#etiqueta-archivo-adjunto');
-    if (inputAdjunto && etiquetaAdjunto) {
-      inputAdjunto.addEventListener('change', (e) => {
+    if (entradaAdjunto && etiquetaAdjunto) {
+      entradaAdjunto.addEventListener('change', (e) => {
         const archivo = e.target.files?.[0];
         const extensionesPermitidas = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
         if (archivo && (!extensionesPermitidas.includes(archivo.type) || archivo.size > 5 * 1024 * 1024)) {
@@ -551,6 +464,7 @@ export function renderizarP19CrearRecurso(contenedor, recursos, acciones) {
       estadoRecurso.audiencia = ['Visitantes', 'Candidatos registrados'];
       estadoRecurso.nombreArchivoPortada = '';
       estadoRecurso.nombreArchivoAdjunto = '';
+      estadoRecurso.imagenPortadaUrl = '';
       pintarSubpestana();
     };
 
@@ -594,29 +508,31 @@ export function renderizarP19CrearRecurso(contenedor, recursos, acciones) {
         return;
       }
 
+      const botonGuardar = formulario.querySelector('[type="submit"]');
+      botonGuardar.disabled = true;
       try {
-        await acciones.alCrearRecurso({
-          titulo: tituloLimpio,
-          categoria: estadoRecurso.categoria,
-          nivelLectura: estadoRecurso.nivelLectura,
-          tiempoLecturaMin: Number(estadoRecurso.tiempoLecturaMin) || 5,
-          resumen: resumenLimpio,
-          contenido: contenidoLimpio,
-          imagenPortadaUrl: estadoRecurso.imagenPortadaUrl ? estadoRecurso.imagenPortadaUrl.trim() : null,
-          adjuntos: estadoRecurso.nombreArchivoAdjunto ? [estadoRecurso.nombreArchivoAdjunto] : [],
-          etiquetas: estadoRecurso.etiquetas
-            .split(',')
-            .map((t) => t.trim())
-            .filter(Boolean),
-          estadoPublicacion: estadoRecurso.estadoPublicacion,
-          audiencia: [...estadoRecurso.audiencia]
-        });
+      await acciones.alCrearRecurso({
+        titulo: tituloLimpio,
+        categoria: estadoRecurso.categoria,
+        nivelLectura: estadoRecurso.nivelLectura,
+        tiempoLecturaMin: Number(estadoRecurso.tiempoLecturaMin) || 5,
+        resumen: resumenLimpio,
+        contenido: contenidoLimpio,
+        imagenPortadaUrl: estadoRecurso.imagenPortadaUrl?.trim() || null,
+        adjuntos: estadoRecurso.nombreArchivoAdjunto ? [estadoRecurso.nombreArchivoAdjunto] : [],
+        etiquetas: estadoRecurso.etiquetas
+          .split(',')
+          .map((t) => t.trim())
+          .filter(Boolean),
+        estadoPublicacion: estadoRecurso.estadoPublicacion,
+        audiencia: [...estadoRecurso.audiencia]
+      });
 
-        limpiarFormulario();
-      } catch (errorCrear) {
-        cajaError.textContent = errorCrear.message || 'Error al guardar el recurso laboral.';
-        cajaError.classList.remove('oculto');
-      }
+      estadoRecurso.subpestana = 'MisRecursos';
+      limpiarFormulario();
+      renderizarP19CrearRecurso(contenedor, recursos, acciones);
+      } catch (error) { cajaError.textContent = error.message; cajaError.classList.remove('oculto'); }
+      finally { botonGuardar.disabled = false; }
     });
   };
 

@@ -1,5 +1,6 @@
+import { solicitarApi } from './utilidades/solicitudes.js';
 import { renderizarEncabezado } from './componentes/encabezado.js';
-import { renderizarP11Dashboard } from './pantallas/p11Dashboard.js';
+import { renderizarP11Resumen } from './pantallas/p11Resumen.js';
 import { renderizarP12Usuarios } from './pantallas/p12Usuarios.js';
 import { renderizarP13Empresas } from './pantallas/p13Empresas.js';
 import { renderizarP14Vacantes } from './pantallas/p14Vacantes.js';
@@ -15,8 +16,6 @@ import { renderizarP28CrearTema } from './pantallas/p28CrearTema.js';
 import { renderizarAutenticacion } from './componentes/autenticacion.js';
 import { renderizarCuentaIntegrada } from './componentes/miPerfil.js';
 import { escaparHtml } from './utilidades/formato.js';
-
-// Estado global de la aplicación en JavaScript puro
 const parametrosIniciales = new URLSearchParams(window.location.search);
 const accesoSolicitado = parametrosIniciales.get('acceso') === 'login';
 const vacanteSolicitada = parametrosIniciales.get('vacante');
@@ -129,36 +128,6 @@ function redireccionarAlPortalSegunRol(usuario) {
   return false;
 }
 
-async function solicitarApi(ruta, opciones = {}) {
-  const respuesta = await fetch(ruta, {
-    headers: { 'Content-Type': 'application/json' },
-    ...opciones
-  });
-
-  const cuerpo = await respuesta.json().catch(() => ({}));
-  if (!respuesta.ok) {
-    let mensajeError = cuerpo.error;
-    if (!mensajeError) {
-      if (respuesta.status === 413) {
-        mensajeError = 'El contenido o imagen seleccionada supera el tamaño máximo permitido por el servidor.';
-      } else if (respuesta.status === 404) {
-        mensajeError = 'El recurso solicitado no fue encontrado.';
-      } else if (respuesta.status >= 500) {
-        mensajeError = 'Error interno del servidor. Por favor, intenta de nuevo.';
-      } else {
-        mensajeError = 'Error al comunicarse con el servidor.';
-      }
-    }
-    const error = new Error(mensajeError);
-    error.status = respuesta.status;
-    error.requiereConfiguracion = Boolean(cuerpo.requiereConfiguracion);
-    error.urlSupabase = cuerpo.urlSupabase || '';
-    throw error;
-  }
-
-  return cuerpo;
-}
-
 function cambiarPantalla(nuevaPantalla, idVacante = null, nuevoRol = estadoAplicacion.rolActual) {
   if (nuevaPantalla === 'AUTH_REGISTRO_EMPRESA') {
     estadoAplicacion.rolRegistro = 'empresa';
@@ -228,7 +197,7 @@ function cambiarPantalla(nuevaPantalla, idVacante = null, nuevoRol = estadoAplic
 function datosPublicosVacios() {
   return {
     usuarios: [], empresas: [], vacantes: [], elementosModeracion: [], solicitudesVerificacion: [],
-    recursosLaborales: [], estadisticasDashboard: {
+    recursosLaborales: [], estadisticasResumen: {
       totalPostulaciones: 0, contrataciones: 0, postulacionesPorMes: [], postulacionesPorEstado: [], vacantesPorSector: []
     }
   };
@@ -242,8 +211,6 @@ function calcularPendientes(datos) {
     verificaciones: datos.solicitudesVerificacion.filter((s) => s.estado === 'Pendiente').length
   };
 }
-
-// Acciones conectadas directamente con Supabase a través del servidor Node.js
 const accionesPanel = {
   async alActualizarUsuario(usuarioActualizado) {
     const guardado = await solicitarApi(`/api/usuarios/${usuarioActualizado.id}`, {
@@ -352,6 +319,25 @@ const accionesPanel = {
     renderizarInterfaz();
   },
 
+  async alActualizarRecurso(id, cambios) {
+    const actualizado = await solicitarApi(`/api/recursos/${id}`, { method: 'PUT', body: JSON.stringify(cambios) });
+    const indice = estadoAplicacion.datos.recursosLaborales.findIndex((r) => r.id === id);
+    if (indice !== -1) estadoAplicacion.datos.recursosLaborales.splice(indice, 1, actualizado);
+    mostrarNotificacion('Recurso actualizado.');
+    return actualizado;
+  },
+  async alCambiarEstadoRecurso(id, estado) {
+    const actualizado = await solicitarApi(`/api/recursos/${id}/estado`, { method: 'PATCH', body: JSON.stringify({ estado }) });
+    const indice = estadoAplicacion.datos.recursosLaborales.findIndex((r) => r.id === id);
+    if (indice !== -1) estadoAplicacion.datos.recursosLaborales.splice(indice, 1, actualizado);
+    return actualizado;
+  },
+  async alEliminarRecurso(id) {
+    await solicitarApi(`/api/recursos/${id}`, { method: 'DELETE' });
+    const indice = estadoAplicacion.datos.recursosLaborales.findIndex((r) => r.id === id);
+    if (indice !== -1) estadoAplicacion.datos.recursosLaborales.splice(indice, 1);
+    mostrarNotificacion('Recurso eliminado.');
+  },
   async alCrearRecurso(nuevoRecurso) {
     const creado = await solicitarApi('/api/recursos', {
       method: 'POST',
@@ -392,8 +378,6 @@ function completarAutenticacion(cuenta) {
         : 'P01');
   estadoAplicacion.pantallaPendiente = null;
   renderizarInterfaz();
-
-  // Actualizar datos del portal en segundo plano para sincronizar la nueva cuenta/empresa
   solicitarApi('/api/datos')
     .then((datosFrescos) => {
       estadoAplicacion.datos = datosFrescos;
@@ -510,7 +494,7 @@ function renderizarInterfaz() {
       renderizarP28CrearTema(contenedorContenido, cambiarPantalla, mostrarNotificacion);
       break;
     case 'P11':
-      renderizarP11Dashboard(contenedorContenido, estadoAplicacion.datos, cambiarPantalla);
+      renderizarP11Resumen(contenedorContenido, estadoAplicacion.datos, cambiarPantalla);
       break;
     case 'P12':
       renderizarP12Usuarios(contenedorContenido, estadoAplicacion.datos.usuarios, accionesPanel);
@@ -543,7 +527,7 @@ function renderizarInterfaz() {
       );
       break;
     default:
-      renderizarP11Dashboard(contenedorContenido, estadoAplicacion.datos, cambiarPantalla);
+      renderizarP11Resumen(contenedorContenido, estadoAplicacion.datos, cambiarPantalla);
   }
 }
 
@@ -578,7 +562,7 @@ async function iniciarAplicacion() {
       estadoAplicacion.datos = datosPublicosVacios();
       renderizarInterfaz();
       contenedorContenido.innerHTML = `
-        <div class="tarjeta-estado-carga" style="color:#be123c;">
+        <div class="tarjeta-estado-carga" style="color:var(--color-rosa);">
           No se pudo verificar la sesión. Intenta nuevamente.
         </div>
       `;
@@ -598,7 +582,7 @@ async function iniciarAplicacion() {
     }
 
     contenedorContenido.innerHTML = `
-      <div class="tarjeta-estado-carga" style="color:#be123c;">
+      <div class="tarjeta-estado-carga" style="color:var(--color-rosa);">
         No se pudieron cargar los datos. Intenta nuevamente.
       </div>
     `;

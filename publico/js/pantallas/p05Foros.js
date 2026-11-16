@@ -1,3 +1,5 @@
+import { renderizarGestionForos } from './gestionForos.js';
+import { reportarContenido } from '../utilidades/reportes.js';
 import { escaparHtml } from '../utilidades/formato.js';
 import { abrirModal } from '../componentes/modal.js';
 
@@ -14,6 +16,7 @@ function renderizarAvatarForo(autor, fotoUrl) {
 }
 
 export async function renderizarP05Foros(contenedor, alNavegar, rolActual = 'visitante', mostrarNotificacion = () => {}) {
+  if (rolActual === 'administrador') return renderizarGestionForos(contenedor, alNavegar);
   try {
     const r = await fetch('/api/foros/temas');
     temas = r.ok ? await r.json() : [];
@@ -22,7 +25,6 @@ export async function renderizarP05Foros(contenedor, alNavegar, rolActual = 'vis
   }
 
   const puedeCrearTema = ['candidato', 'empresa', 'administrador'].includes(rolActual);
-  const esAdministrador = rolActual === 'administrador';
   const puedeResponder = ['candidato', 'empresa', 'administrador'].includes(rolActual);
   const categorias = ['Todas las categorías', ...new Set(temas.map((tema) => tema.categoria))];
 
@@ -34,7 +36,7 @@ export async function renderizarP05Foros(contenedor, alNavegar, rolActual = 'vis
           Participa en conversaciones y comparte experiencias laborales.
         </p>
       </div>
-      <div class="foros-layout">
+      <div class="foros-disposicion">
         <aside class="foros-categorias tarjeta">
           <strong>Categorías</strong>
           <nav id="categorias-foros" aria-label="Categorías de foros">
@@ -46,7 +48,6 @@ export async function renderizarP05Foros(contenedor, alNavegar, rolActual = 'vis
             <h2 class="grafico-titulo">Conversaciones</h2>
             <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
               ${puedeCrearTema ? '<button class="boton-principal" id="crear-tema" type="button">Crear tema</button>' : ''}
-              ${esAdministrador ? '<button class="boton-secundario" id="administrar-foros" type="button">Administrar foros</button>' : ''}
             </div>
           </div>
           <div id="lista-foros" class="lista-tarjetas-publicas"></div>
@@ -56,7 +57,6 @@ export async function renderizarP05Foros(contenedor, alNavegar, rolActual = 'vis
   `;
 
   contenedor.querySelector('#crear-tema')?.addEventListener('click', () => alNavegar('P28'));
-  contenedor.querySelector('#administrar-foros')?.addEventListener('click', () => alNavegar('P15'));
 
   const pintarTemas = (categoriaSeleccionada = '') => {
     const lista = contenedor.querySelector('#lista-foros');
@@ -64,8 +64,8 @@ export async function renderizarP05Foros(contenedor, alNavegar, rolActual = 'vis
 
     if (temasFiltrados.length === 0) {
       lista.innerHTML = `
-        <div class="tarjeta tarjeta-espaciado" style="text-align:center; color:#64748b; padding:2.5rem 1rem;">
-          <p style="margin:0 0 0.5rem; font-weight:600; color:#334155;">No hay temas en esta categoría todavía.</p>
+        <div class="tarjeta tarjeta-espaciado" style="text-align:center; color:var(--color-texto-atenuado); padding:2.5rem 1rem;">
+          <p style="margin:0 0 0.5rem; font-weight:600; color:var(--color-texto-secundario);">No hay temas en esta categoría todavía.</p>
           ${puedeCrearTema ? '<button class="boton-principal" id="crear-primer-tema" type="button">Sé el primero en abrir un tema</button>' : ''}
         </div>
       `;
@@ -97,15 +97,15 @@ export async function renderizarP05Foros(contenedor, alNavegar, rolActual = 'vis
           titulo: tema.titulo,
           subtitulo: `${tema.autor} · ${tema.categoria}`,
           contenidoHtml: `
-            <div class="caja-tema-detalle" style="margin-bottom:1.25rem; padding:0.875rem 1rem; background:#f8fafc; border-radius:6px; border:1px solid #e2e8f0;">
-              <div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:0.75rem;">
+            <div class="caja-tema-detalle" style="margin-bottom:1.25rem; padding:0.875rem 1rem; background:var(--color-superficie-secundaria); border-radius:6px; border:1px solid var(--color-borde);">
+              <div style="display:flex; align-elementos:center; gap:0.75rem; margin-bottom:0.75rem;">
                 ${renderizarAvatarForo(tema.autor, tema.fotoUrl)}
                 <div>
-                  <strong style="color:#0f172a; font-size:0.875rem; display:block;">${escaparHtml(tema.autor)}</strong>
-                  <span style="font-size:0.75rem; color:#64748b;">${escaparHtml(tema.categoria)}</span>
+                  <strong style="color:var(--color-texto); font-size:0.875rem; display:block;">${escaparHtml(tema.autor)}</strong>
+                  <span style="font-size:0.75rem; color:var(--color-texto-atenuado);">${escaparHtml(tema.categoria)}</span>
                 </div>
               </div>
-              <p style="margin:0; font-size:0.875rem; color:#1e293b; line-height:1.6; white-space:pre-wrap;">${escaparHtml(tema.descripcion)}</p>
+              <p style="margin:0; font-size:0.875rem; color:var(--color-texto); line-height:1.6; white-space:pre-wrap;">${escaparHtml(tema.descripcion)}</p>
             </div>
 
             <h3 class="foro-respuestas-titulo" id="contador-respuestas">${tema.respuestas} respuestas</h3>
@@ -129,7 +129,7 @@ export async function renderizarP05Foros(contenedor, alNavegar, rolActual = 'vis
                   </form>
                 `
                 : `
-                  <div style="margin-top:1.25rem; padding:0.875rem 1rem; background:#f8fafc; border-radius:6px; border:1px solid #e2e8f0;">
+                  <div style="margin-top:1.25rem; padding:0.875rem 1rem; background:var(--color-superficie-secundaria); border-radius:6px; border:1px solid var(--color-borde);">
                     <p class="texto-secundario" style="margin:0;">Inicia sesión con tu cuenta para responder en este foro.</p>
                   </div>
                 `
@@ -152,9 +152,9 @@ export async function renderizarP05Foros(contenedor, alNavegar, rolActual = 'vis
 
             const cargarRespuestas = async () => {
               try {
-                const res = await fetch(`/api/foros/temas/${tema.id}/respuestas`);
-                if (!res.ok) throw new Error('No se pudieron cargar las respuestas.');
-                const lista = await res.json();
+                const respuestaHttp = await fetch(`/api/foros/temas/${tema.id}/respuestas`);
+                if (!respuestaHttp.ok) throw new Error('No se pudieron cargar las respuestas.');
+                const lista = await respuestaHttp.json();
                 actualizarConteoEnTarjeta(lista.length);
                 if (contadorElemento) {
                   contadorElemento.textContent = `${lista.length} ${lista.length === 1 ? 'respuesta' : 'respuestas'}`;
@@ -171,17 +171,21 @@ export async function renderizarP05Foros(contenedor, alNavegar, rolActual = 'vis
                   <article class="foro-respuesta">
                     ${renderizarAvatarForo(r.autor, r.fotoUrl)}
                     <div style="flex:1;">
-                      <div style="display:flex; justify-content:space-between; align-items:center;">
+                      <div style="display:flex; justify-content:space-between; align-elementos:center;">
                         <strong>${escaparHtml(r.autor)}</strong>
+                        ${puedeResponder ? `<button class="boton" type="button" data-reportar-respuesta="${escaparHtml(r.id)}">Reportar</button>` : ''}
                       </div>
                       <p style="white-space:pre-wrap;">${escaparHtml(r.contenido)}</p>
                     </div>
                   </article>
                 `).join('');
-              } catch (err) {
+                contenedorRespuestas.querySelectorAll('[data-reportar-respuesta]').forEach((boton) => {
+                  boton.addEventListener('click', () => reportarContenido('foros_respuestas', boton.dataset.reportarRespuesta, mostrarNotificacion));
+                });
+              } catch (errorCapturado) {
                 if (contenedorRespuestas) {
                   contenedorRespuestas.innerHTML = `
-                    <p class="texto-secundario" style="padding:1rem 0; color:#ef4444;">
+                    <p class="texto-secundario" style="padding:1rem 0; color:var(--color-rosa);">
                       No se pudieron cargar las respuestas en este momento.
                     </p>
                   `;
@@ -206,20 +210,20 @@ export async function renderizarP05Foros(contenedor, alNavegar, rolActual = 'vis
                 }
                 if (alertaError) alertaError.classList.add('oculto');
 
-                const botonSubmit = formulario.querySelector('#boton-enviar-respuesta');
-                if (botonSubmit) {
-                  botonSubmit.disabled = true;
-                  botonSubmit.textContent = 'Guardando...';
+                const botonEnviar = formulario.querySelector('#boton-enviar-respuesta');
+                if (botonEnviar) {
+                  botonEnviar.disabled = true;
+                  botonEnviar.textContent = 'Guardando...';
                 }
 
                 try {
-                  const res = await fetch(`/api/foros/temas/${tema.id}/respuestas`, {
+                  const respuestaHttp = await fetch(`/api/foros/temas/${tema.id}/respuestas`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ contenido: texto })
                   });
-                  const resultado = await res.json().catch(() => ({}));
-                  if (!res.ok) {
+                  const resultado = await respuestaHttp.json().catch(() => ({}));
+                  if (!respuestaHttp.ok) {
                     throw new Error(resultado.error || 'No se pudo guardar la respuesta.');
                   }
                   campoTexto.value = '';
@@ -231,9 +235,9 @@ export async function renderizarP05Foros(contenedor, alNavegar, rolActual = 'vis
                     alertaError.classList.remove('oculto');
                   }
                 } finally {
-                  if (botonSubmit) {
-                    botonSubmit.disabled = false;
-                    botonSubmit.textContent = 'Responder';
+                  if (botonEnviar) {
+                    botonEnviar.disabled = false;
+                    botonEnviar.textContent = 'Responder';
                   }
                 }
               });
@@ -243,9 +247,9 @@ export async function renderizarP05Foros(contenedor, alNavegar, rolActual = 'vis
               botonReportar.addEventListener('click', async () => {
                 botonReportar.disabled = true;
                 try {
-                  const res = await fetch(`/api/foros/temas/${tema.id}/reportar`, { method: 'POST' });
-                  const resultado = await res.json().catch(() => ({}));
-                  if (!res.ok) throw new Error(resultado.error || 'No se pudo enviar el reporte.');
+                  const respuestaHttp = await fetch(`/api/foros/temas/${tema.id}/reportar`, { method: 'POST' });
+                  const resultado = await respuestaHttp.json().catch(() => ({}));
+                  if (!respuestaHttp.ok) throw new Error(resultado.error || 'No se pudo enviar el reporte.');
                   mostrarNotificacion('Tema enviado a moderación.');
                   botonReportar.textContent = 'Reportado';
                 } catch (error) {

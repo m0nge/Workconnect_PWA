@@ -7,7 +7,9 @@
     "dev": "node servidor.js",
     "start": "node servidor.js",
     "build": "node scripts/verificar.js",
-    "lint": "node scripts/verificar.js"
+    "lint": "node scripts/verificar.js",
+    "test": "node --test",
+    "verificar:interfaz": "node scripts/verificarApariencia.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.0",

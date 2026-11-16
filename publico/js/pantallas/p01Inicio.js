@@ -12,10 +12,10 @@ export function renderizarP01Inicio(
   const destacadas = vacantes.slice(0, 3);
   const esCandidato = rolActual === 'candidato';
   const esEmpresa = rolActual === 'empresa';
-  const textoHero = esEmpresa
+  const textoPresentacion = esEmpresa
     ? 'Encuentra el talento que tu empresa necesita.'
     : 'Conectando talento con oportunidades.';
-  const subtituloHero = esEmpresa
+  const subtituloPresentacion = esEmpresa
     ? 'Publica vacantes y encuentra profesionales para hacer crecer tu equipo.'
     : 'Explora vacantes verificadas, postúlate en minutos y da seguimiento a cada proceso.';
   const etiquetasMetricas = esCandidato
@@ -25,7 +25,7 @@ export function renderizarP01Inicio(
     vacantes.length,
     datos.empresas.filter((empresa) => empresa.estado === 'Verificada').length,
     datos.recursosLaborales.length,
-    datos.estadisticasDashboard.totalPostulaciones
+    datos.estadisticasResumen.totalPostulaciones
   ];
 
   contenedor.innerHTML = `
@@ -34,8 +34,8 @@ export function renderizarP01Inicio(
         <div class="portada-contenido">
           <div class="portada-mensaje">
             <span class="portada-etiqueta">PORTAL DE EMPLEOS DE EL SALVADOR</span>
-            <h1 class="titulo-pantalla">${esCandidato ? 'Encuentra tu próxima oportunidad.' : textoHero}</h1>
-            <p class="portada-descripcion">${subtituloHero}</p>
+            <h1 class="titulo-pantalla">${esCandidato ? 'Encuentra tu próxima oportunidad.' : textoPresentacion}</h1>
+            <p class="portada-descripcion">${subtituloPresentacion}</p>
             <div class="portada-sectores">
               <span>Explora por sector:</span>
               <button type="button" data-sector="Tecnología">Tecnología</button>

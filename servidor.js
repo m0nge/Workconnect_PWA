@@ -1,8 +1,13 @@
 import 'dotenv/config';
 import express from 'express';
-import { randomUUID } from 'node:crypto';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { registrarFlujoPostulaciones } from './servicios/flujoPostulaciones.js';
+import { crearControlAcceso, esUuid, esTexto, esCorreo, esTelefono, esUrlWeb, esFecha, esNumeroCampo, esPortadaRecurso } from './servicios/validaciones.js';
+import { registrarGestionContenido } from './servicios/gestionContenido.js';
+import { reportarAutomaticamente, destinoModeracion } from './servicios/moderacion.js';
+import { randomUUID as crearIdentificador } from 'node:crypto';
+import { crearTokenSesion, validarTokenSesion, duracionSesion } from './servicios/sesion.js';
+import rutasArchivos from 'node:path';
+import { fileURLToPath as convertirUrlARuta } from 'node:url';
 import {
   configuracionBaseDatos,
   verificarConfiguracionBaseDatos,
@@ -13,16 +18,16 @@ import {
   mapearModeracion,
   mapearSolicitudVerificacion,
   mapearRecurso,
-  construirEstadisticasDashboard
+  construirEstadisticasResumen
 } from './servicios/supabase.js';
 
-const __archivoActual = fileURLToPath(import.meta.url);
-const __directorioActual = path.dirname(__archivoActual);
+const __archivoActual = convertirUrlARuta(import.meta.url);
+const __directorioActual = rutasArchivos.dirname(__archivoActual);
 
 const aplicacion = express();
 const puerto = Number(process.env.PORT) || 3000;
-const bucketCurriculums = 'curriculums-candidatos';
-const bucketFotosCandidatos = 'fotos-candidatos';
+const depositoCurriculums = 'curriculums-candidatos';
+const depositoFotosCandidatos = 'fotos-candidatos';
 const tamanoMaximoCurriculum = 5 * 1024 * 1024;
 const tamanoMaximoFotoCandidato = 10 * 1024 * 1024;
 
@@ -42,14 +47,6 @@ function obtenerClienteOError(respuesta) {
     return null;
   }
   return cliente;
-}
-
-function obtenerClientesSupabase(respuesta) {
-  const datos = obtenerClienteOError(respuesta);
-  if (!datos) return null;
-  const autenticacion = obtenerClienteOError(respuesta);
-  if (!autenticacion) return null;
-  return { datos, autenticacion };
 }
 
 function conManejoErrores(manejador) {
@@ -91,24 +88,14 @@ function atributosCookie(solicitud, maxAge) {
   return `Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${segura ? '; Secure' : ''}`;
 }
 
-function guardarCookiesSesion(solicitud, respuesta, sesion) {
-  respuesta.append(
-    'Set-Cookie',
-    `workconnect-access=${encodeURIComponent(sesion.access_token)}; ${atributosCookie(
-      solicitud,
-      Number(sesion.expires_in) || 3600
-    )}`
-  );
-  respuesta.append(
-    'Set-Cookie',
-    `workconnect-refresh=${encodeURIComponent(sesion.refresh_token)}; ${atributosCookie(
-      solicitud,
-      60 * 60 * 24 * 30
-    )}`
-  );
+function guardarCookiesSesion(solicitud, respuesta, usuario) {
+  const token = crearTokenSesion(usuario.id);
+  respuesta.append('Set-Cookie',
+    `workconnect-session=${encodeURIComponent(token)}; ${atributosCookie(solicitud, duracionSesion)}`);
 }
 
 function borrarCookiesSesion(solicitud, respuesta) {
+  respuesta.append('Set-Cookie', `workconnect-session=; ${atributosCookie(solicitud, 0)}`);
   respuesta.append(
     'Set-Cookie',
     `workconnect-access=; ${atributosCookie(solicitud, 0)}`
@@ -150,54 +137,20 @@ function mapearCuenta(usuario) {
 }
 
 async function obtenerContextoAutenticado(solicitud, respuesta, opcional = false) {
-  const clientes = obtenerClientesSupabase(respuesta);
-  if (!clientes) return null;
-  const { datos: supabase, autenticacion: supabaseAuth } = clientes;
-
-  let tokenAcceso = leerCookie(solicitud, 'workconnect-access');
-  const tokenRenovacion = leerCookie(solicitud, 'workconnect-refresh');
-  if (!tokenAcceso && !tokenRenovacion) {
+  if (solicitud.contextoAutenticado) return solicitud.contextoAutenticado;
+  const token = leerCookie(solicitud, 'workconnect-session');
+  const sesion = validarTokenSesion(token);
+  if (!sesion) {
+    if (token) borrarCookiesSesion(solicitud, respuesta);
     if (!opcional) respuesta.status(401).json({ error: 'Inicia sesión para continuar.' });
     return null;
   }
-
-  let usuarioAuth = null;
-  let errorAuth = null;
-  if (tokenAcceso) {
-    const resultado = await supabaseAuth.auth.getUser(tokenAcceso);
-    usuarioAuth = resultado.data.user;
-    errorAuth = resultado.error;
-  }
-
-  if (!usuarioAuth && tokenRenovacion) {
-    const renovacion = await supabaseAuth.auth.refreshSession({
-      refresh_token: tokenRenovacion
-    });
-    if (renovacion.data.session && renovacion.data.user) {
-      guardarCookiesSesion(solicitud, respuesta, renovacion.data.session);
-      usuarioAuth = renovacion.data.user;
-      errorAuth = null;
-    } else {
-      errorAuth = renovacion.error;
-    }
-  }
-
-  if (!usuarioAuth) {
-    borrarCookiesSesion(solicitud, respuesta);
-    const codigo = Number(errorAuth?.status) >= 500 ? 503 : 401;
-    respuesta.status(codigo).json({
-      error:
-        codigo === 503
-          ? 'No se pudo validar la sesión. Intenta de nuevo.'
-          : 'La sesión venció. Inicia sesión nuevamente.'
-    });
-    return null;
-  }
-
+  const supabase = obtenerClienteOError(respuesta);
+  if (!supabase) return null;
   const { data: usuario, error } = await supabase
     .from('usuarios')
-    .select('id, auth_uid, nombre, email, rol, estado, foto_url')
-    .eq('auth_uid', usuarioAuth.id)
+    .select('id, nombre, email, rol, estado, foto_url')
+    .eq('id', sesion.usuarioId)
     .maybeSingle();
 
   if (error) {
@@ -216,7 +169,8 @@ async function obtenerContextoAutenticado(solicitud, respuesta, opcional = false
     return null;
   }
 
-  return { supabase, usuario, rol: normalizarRol(usuario.rol) };
+  solicitud.contextoAutenticado = { supabase, usuario, rol: normalizarRol(usuario.rol) };
+  return solicitud.contextoAutenticado;
 }
 
 async function exigirRol(solicitud, respuesta, rolesPermitidos) {
@@ -239,13 +193,13 @@ async function asegurarPerfilCandidato(supabase, usuarioId) {
   if (errorConsulta) throw new Error('No se pudo consultar el perfil del candidato.');
   if (existente) return existente;
 
-  const { data, error } = await supabase
+  const { data: datosRespuesta, error } = await supabase
     .from('perfiles_candidatos')
     .insert({ usuario_id: usuarioId })
     .select('id, usuario_id, titulo_profesional, resumen_laboral, curriculum_nombre, curriculum_url')
     .single();
   if (error) throw new Error('No se pudo preparar el perfil del candidato.');
-  return data;
+  return datosRespuesta;
 }
 
 async function asegurarPerfilEmpresa(supabase, usuario, datosExtra = {}) {
@@ -261,7 +215,7 @@ async function asegurarPerfilEmpresa(supabase, usuario, datosExtra = {}) {
   if (existente) return existente;
 
   const nombre = datosExtra.nombre || datosExtra.nombre_comercial || usuario.nombre || 'Empresa';
-  const { data, error } = await supabase
+  const { data: datosRespuesta, error } = await supabase
     .from('empresas')
     .insert({
       usuario_id: usuario.id,
@@ -277,7 +231,7 @@ async function asegurarPerfilEmpresa(supabase, usuario, datosExtra = {}) {
       telefono: datosExtra.telefono || usuario.telefono || '2200-0000',
       sitio_web: datosExtra.sitio_web || null,
       descripcion: datosExtra.descripcion || 'Empresa registrada en WorkConnect.',
-      estado_verificacion: 'Verificada'
+      estado_verificacion: 'Pendiente'
     })
     .select()
     .maybeSingle();
@@ -285,7 +239,7 @@ async function asegurarPerfilEmpresa(supabase, usuario, datosExtra = {}) {
   if (error) {
     console.error('Error al registrar perfil de empresa:', error);
   }
-  return data;
+  return datosRespuesta;
 }
 
 async function obtenerEmpresaAutenticada(solicitud, respuesta) {
@@ -426,188 +380,97 @@ function normalizarRegistroCandidato(tipo, datos, parcial = false) {
   return registro;
 }
 
+aplicacion.use('/api', conManejoErrores(crearControlAcceso(obtenerContextoAutenticado)));
+aplicacion.use('/api', (solicitud, respuesta, siguiente) => {
+  if (solicitud.is('application/json') && (solicitud.body === null || typeof solicitud.body !== 'object' || Array.isArray(solicitud.body))) {
+    return respuesta.status(400).json({ error: 'Envía un objeto JSON válido.' });
+  }
+  siguiente();
+});
+aplicacion.param('id', (_solicitud, respuesta, siguiente, id) => {
+  if (!esUuid(id)) return respuesta.status(400).json({ error: 'El identificador no es válido.' });
+  siguiente();
+});
+
 aplicacion.post('/api/auth/registro', conManejoErrores(async (solicitud, respuesta) => {
-  const clientes = obtenerClientesSupabase(respuesta);
-  if (!clientes) return;
-  const { datos: supabase, autenticacion: supabaseAuth } = clientes;
-  const { nombre, email, password, rol, sector, telefono, departamento, municipio, razon_social, nit, tamano } = solicitud.body || {};
+  const supabase = obtenerClienteOError(respuesta);
+  if (!supabase) return;
+  const { nombre, email: correoSolicitud, password: contrasenaSolicitud, rol, telefono, departamento, municipio } = solicitud.body || {};
   const nombreLimpio = typeof nombre === 'string' ? nombre.trim() : '';
-  const correo = typeof email === 'string' ? email.trim().toLowerCase() : '';
-  if (
-    nombreLimpio.length < 3 ||
-    nombreLimpio.length > 80 ||
-    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo) ||
-    typeof password !== 'string' ||
-    password.length < 6 ||
-    password.length > 80 ||
-    !['candidato', 'empresa'].includes(rol)
-  ) {
-    return respuesta.status(400).json({ error: 'Revisa nombre, correo, contraseña y tipo de cuenta.' });
+  const correo = typeof correoSolicitud === 'string' ? correoSolicitud.trim().toLowerCase() : '';
+  if (!esCorreo(correo) || !esTelefono(telefono, rol === 'empresa') ||
+      (rol === 'empresa' && (!esTexto(solicitud.body.sector, 2, 100) || !esTexto(departamento, 2, 100) || !esTexto(municipio, 2, 100) ||
+       !esTexto(solicitud.body.nit, 10, 25) || !esTexto(solicitud.body.tamano, 2, 80)))) {
+    return respuesta.status(400).json({ error: 'Revisa correo, teléfono y los datos obligatorios de la empresa.' });
   }
-
-  let dataUser = null;
-  const resAdmin = await supabaseAuth.auth.admin.createUser({
-    email: correo,
-    password,
-    email_confirm: true,
-    user_metadata: { nombre: nombreLimpio, rol }
-  });
-
-  if (!resAdmin.error && resAdmin.data?.user) {
-    dataUser = resAdmin.data.user;
-  } else {
-    const resSignUp = await supabaseAuth.auth.signUp({
-      email: correo,
-      password,
-      options: { data: { nombre: nombreLimpio, rol } }
+  if (nombreLimpio.length < 3 || nombreLimpio.length > 80 ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo) ||
+      typeof contrasenaSolicitud !== 'string' || contrasenaSolicitud.length < 6 ||
+      Buffer.byteLength(contrasenaSolicitud, 'utf8') > 72 || !['candidato', 'empresa'].includes(rol)) {
+    return respuesta.status(400).json({
+      error: 'Revisa nombre, correo y tipo de cuenta. La contraseña debe tener al menos 6 caracteres y un máximo de 72 bytes.'
     });
-    if (resSignUp.error || !resSignUp.data.user) {
-      return respuesta.status(400).json({
-        error: resSignUp.error?.message || resAdmin.error?.message || 'No se pudo crear la cuenta. Revisa los datos e intenta de nuevo.'
-      });
-    }
-    dataUser = resSignUp.data.user;
-    if (dataUser?.id) {
-      await supabaseAuth.auth.admin.updateUserById(dataUser.id, { email_confirm: true }).catch(() => {});
-    }
   }
-
-  let usuario;
+  const ubicacion = [municipio, departamento].filter((valor) => typeof valor === 'string' && valor.trim()).join(', ') || null;
+  const { data: datosRespuesta, error } = await supabase.rpc('registro_prueba', {
+    p_nombre: nombreLimpio,
+    p_email: correo,
+    p_password: contrasenaSolicitud,
+    p_rol: rol,
+    p_telefono: typeof telefono === 'string' ? telefono.trim() : null,
+    p_ubicacion: ubicacion
+  });
+  if (error) {
+    console.error('Error ejecutando registro_prueba.', { code: error.code });
+    return respuesta.status(error.code === '23505' ? 409 : 503).json({
+      error: error.code === '23505' ? 'Ya existe una cuenta con ese correo.' : 'No se pudo crear la cuenta. Verifica la configuración de registro.'
+    });
+  }
+  const usuario = Array.isArray(datosRespuesta) ? datosRespuesta[0] : datosRespuesta;
+  if (!usuario?.id) return respuesta.status(503).json({ error: 'No se pudo obtener la cuenta creada.' });
   try {
-    const { data: vinculado, error: errorVinculo } = await supabase
-      .from('usuarios')
-      .select('id, auth_uid, nombre, email, rol, estado, foto_url')
-      .eq('auth_uid', dataUser.id)
-      .maybeSingle();
-    if (errorVinculo) throw new Error('La cuenta Auth se creó, pero no se pudo validar su perfil.');
-
-    const ubicacionTexto = municipio && departamento
-      ? `${municipio}, ${departamento}`
-      : (departamento || null);
-
-    if (vinculado) {
-      usuario = vinculado;
-      if (vinculado.estado !== 'Activo') {
-        return respuesta.status(403).json({ error: 'La cuenta está inactiva. Contacta con soporte.' });
-      }
-      if (normalizarRol(vinculado.rol) !== rol) {
-        return respuesta.status(409).json({
-          error: 'Esta cuenta ya está vinculada con otro tipo de perfil. Contacta con soporte.'
-        });
-      }
-    } else {
-      const { data: nuevoUsuario, error: errorUsuario } = await supabase
-        .from('usuarios')
-        .insert({
-          auth_uid: dataUser.id,
-          nombre: nombreLimpio,
-          email: correo,
-          rol: rol === 'candidato' ? 'Candidato/a' : 'Empresa',
-          telefono: typeof telefono === 'string' ? telefono.trim() : null,
-          ubicacion: ubicacionTexto,
-          estado: 'Activo'
-        })
-        .select('id, auth_uid, nombre, email, rol, estado, foto_url')
-        .single();
-      if (errorUsuario) {
-        throw new Error(
-          errorUsuario.code === '23505'
-            ? 'Ya existe un perfil con ese correo. La cuenta anterior debe verificarse y vincularse.'
-            : 'La cuenta Auth se creó, pero no se pudo guardar el perfil de WorkConnect.'
-        );
-      }
-      usuario = nuevoUsuario;
-    }
-
     if (rol === 'candidato') {
       await asegurarPerfilCandidato(supabase, usuario.id);
-    } else if (rol === 'empresa') {
-      await asegurarPerfilEmpresa(supabase, usuario, {
-        nombre: nombreLimpio,
-        sector,
-        telefono,
-        departamento,
-        municipio,
-        razon_social,
-        nit,
-        tamano,
-        contacto_email: correo
+    } else {
+      const empresa = await asegurarPerfilEmpresa(supabase, usuario, {
+        ...solicitud.body, nombre: nombreLimpio, contacto_email: correo
       });
+      if (!empresa) throw new Error('No se pudo preparar el perfil de empresa.');
     }
-  } catch (errorVinculo) {
-    return respuesta.status(409).json({ error: errorVinculo.message });
+  } catch {
+    return respuesta.status(503).json({ error: 'La cuenta se creó, pero no se pudo preparar el perfil. Intenta iniciar sesión.' });
   }
-
-  // Generar sesión inmediatamente para que el usuario ingrese sin bloqueo
-  let sesionActiva = null;
-  const resLogin = await supabaseAuth.auth.signInWithPassword({ email: correo, password });
-  if (resLogin.data?.session) {
-    sesionActiva = resLogin.data.session;
-    guardarCookiesSesion(solicitud, respuesta, sesionActiva);
-  }
-
+  await reportarAutomaticamente(supabase, { texto: nombreLimpio, tipo: 'reporte', categoria: 'Reportes', origen: 'usuarios', id: usuario.id, autor: usuario.nombre });
   respuesta.set('Cache-Control', 'no-store');
-  return respuesta.status(201).json({
-    usuario: mapearCuenta(usuario),
-    confirmacionRequerida: false
-  });
+  guardarCookiesSesion(solicitud, respuesta, usuario);
+  return respuesta.status(201).json({ usuario: mapearCuenta(usuario), confirmacionRequerida: false });
 }));
 
 aplicacion.post('/api/auth/login', conManejoErrores(async (solicitud, respuesta) => {
-  const clientes = obtenerClientesSupabase(respuesta);
-  if (!clientes) return;
-  const { datos: supabase, autenticacion: supabaseAuth } = clientes;
-  const { email, password } = solicitud.body || {};
-  const correo = typeof email === 'string' ? email.trim().toLowerCase() : '';
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo) || typeof password !== 'string' || !password) {
+  const supabase = obtenerClienteOError(respuesta);
+  if (!supabase) return;
+  const { email: correoSolicitud, password: contrasenaSolicitud } = solicitud.body || {};
+  const correo = typeof correoSolicitud === 'string' ? correoSolicitud.trim().toLowerCase() : '';
+  if (!esCorreo(correo) || typeof contrasenaSolicitud !== 'string' || !contrasenaSolicitud || contrasenaSolicitud.length > 80) {
     return respuesta.status(400).json({ error: 'Escribe un correo y una contraseña válidos.' });
   }
 
-  let { data, error } = await supabaseAuth.auth.signInWithPassword({ email: correo, password });
-
-  // Si la cuenta estaba sin confirmar, auto-confirmarla con permisos de admin y reintentar
-  if (error && (error.code === 'email_not_confirmed' || /confirm/i.test(error.message || ''))) {
-    try {
-      const { data: lista } = await supabaseAuth.auth.admin.listUsers();
-      const u = lista?.users?.find((item) => item.email?.toLowerCase() === correo);
-      if (u) {
-        await supabaseAuth.auth.admin.updateUserById(u.id, { email_confirm: true });
-        const reintento = await supabaseAuth.auth.signInWithPassword({ email: correo, password });
-        data = reintento.data;
-        error = reintento.error;
-      }
-    } catch (errorAutoConfirm) {
-      console.error('Error al auto-confirmar usuario:', errorAutoConfirm);
-    }
+  const { data: datosRespuesta, error } = await supabase.rpc('login_prueba', {
+    p_email: correo,
+    p_password: contrasenaSolicitud
+  });
+  if (error) {
+    const credencialesInvalidas = ['P0001', '28000', '28P01'].includes(error.code);
+    if (!credencialesInvalidas) console.error('Error ejecutando login_prueba.', { code: error.code });
+    return respuesta.status(credencialesInvalidas ? 401 : 503).json({
+      error: credencialesInvalidas ? 'Correo o contraseña incorrectos.' : 'No se pudo iniciar sesión. Intenta de nuevo.'
+    });
   }
-
-  if (error || !data.user || !data.session) {
+  const usuario = Array.isArray(datosRespuesta) ? (datosRespuesta.length === 1 ? datosRespuesta[0] : null) : datosRespuesta;
+  if (!usuario?.id) {
     return respuesta.status(401).json({ error: 'Correo o contraseña incorrectos.' });
   }
-
-  const { data: usuario, error: errorUsuario } = await supabase
-    .from('usuarios')
-    .select('id, auth_uid, nombre, email, rol, estado, foto_url')
-    .eq('auth_uid', data.user.id)
-    .maybeSingle();
-  if (errorUsuario) {
-    console.error('Error consultando la cuenta WorkConnect durante el inicio de sesión.', {
-      code: errorUsuario.code,
-      status: errorUsuario.status
-    });
-    await supabase.auth.admin.signOut(data.session.access_token, 'local');
-    return respuesta.status(500).json({
-      error: 'No se pudo consultar el perfil de la cuenta. Intenta de nuevo.'
-    });
-  }
-  if (!usuario) {
-    await supabase.auth.admin.signOut(data.session.access_token, 'local');
-    return respuesta.status(403).json({
-      error: 'La cuenta Auth no está vinculada con un perfil de WorkConnect.'
-    });
-  }
   if (usuario.estado !== 'Activo') {
-    await supabase.auth.admin.signOut(data.session.access_token, 'local');
     return respuesta.status(403).json({ error: 'La cuenta está inactiva. Contacta con soporte.' });
   }
 
@@ -616,7 +479,6 @@ aplicacion.post('/api/auth/login', conManejoErrores(async (solicitud, respuesta)
     try {
       await asegurarPerfilCandidato(supabase, usuario.id);
     } catch (errorPerfil) {
-      await supabase.auth.admin.signOut(data.session.access_token, 'local');
       return respuesta.status(500).json({ error: errorPerfil.message });
     }
   } else if (rolNorm === 'empresa') {
@@ -628,7 +490,7 @@ aplicacion.post('/api/auth/login', conManejoErrores(async (solicitud, respuesta)
   }
 
   respuesta.set('Cache-Control', 'no-store');
-  guardarCookiesSesion(solicitud, respuesta, data.session);
+  guardarCookiesSesion(solicitud, respuesta, usuario);
   return respuesta.json({ usuario: mapearCuenta(usuario) });
 }));
 
@@ -640,14 +502,6 @@ aplicacion.get('/api/auth/sesion', conManejoErrores(async (solicitud, respuesta)
 }));
 
 aplicacion.post('/api/auth/logout', conManejoErrores(async (solicitud, respuesta) => {
-  const token = leerCookie(solicitud, 'workconnect-access');
-  const supabase = crearClienteBaseDatos();
-  if (token && supabase) {
-    const { error } = await supabase.auth.admin.signOut(token, 'local');
-    if (error && Number(error.status) >= 500) {
-      return respuesta.status(503).json({ error: 'No se pudo cerrar la sesión. Intenta de nuevo.' });
-    }
-  }
   borrarCookiesSesion(solicitud, respuesta);
   return respuesta.json({ cerrado: true });
 }));
@@ -730,7 +584,7 @@ aplicacion.post(
 
     const rutaArchivo = `${contexto.usuario.id}/foto.${extension}`;
     const { error: errorSubida } = await contexto.supabase.storage
-      .from(bucketFotosCandidatos)
+      .from(depositoFotosCandidatos)
       .upload(rutaArchivo, solicitud.body, { contentType: tipo, upsert: true });
     if (errorSubida) {
       return respuesta.status(/bucket not found/i.test(errorSubida.message || '') ? 503 : 400).json({
@@ -740,7 +594,7 @@ aplicacion.post(
       });
     }
     const { data: urlPublica } = contexto.supabase.storage
-      .from(bucketFotosCandidatos)
+      .from(depositoFotosCandidatos)
       .getPublicUrl(rutaArchivo);
     const { error: errorUsuario } = await contexto.supabase
       .from('usuarios')
@@ -777,9 +631,9 @@ aplicacion.post(
       return respuesta.status(400).json({ error: 'Selecciona un archivo PDF válido de máximo 5 MB.' });
     }
 
-    const rutaArchivo = `${contexto.perfil.id}/${randomUUID()}.pdf`;
-    const storage = contexto.supabase.storage.from(bucketCurriculums);
-    const { error: errorSubida } = await storage.upload(rutaArchivo, solicitud.body, {
+    const rutaArchivo = `${contexto.perfil.id}/${crearIdentificador()}.pdf`;
+    const almacenamiento = contexto.supabase.storage.from(depositoCurriculums);
+    const { error: errorSubida } = await almacenamiento.upload(rutaArchivo, solicitud.body, {
       contentType: 'application/pdf',
       upsert: false
     });
@@ -788,10 +642,10 @@ aplicacion.post(
         statusCode: errorSubida.statusCode,
         message: errorSubida.message
       });
-      const bucketInexistente =
+      const depositoInexistente =
         Number(errorSubida.statusCode) === 404 || /bucket not found/i.test(errorSubida.message || '');
-      return respuesta.status(bucketInexistente ? 503 : 502).json({
-        error: bucketInexistente
+      return respuesta.status(depositoInexistente ? 503 : 502).json({
+        error: depositoInexistente
           ? 'Storage privado todavía no está activado. Hace falta crear el bucket curriculums-candidatos.'
           : 'No se pudo guardar el currículum. Intenta de nuevo.'
       });
@@ -805,7 +659,7 @@ aplicacion.post(
       .select('id')
       .maybeSingle();
     if (errorPerfil || !perfilActualizado) {
-      const { error: errorLimpieza } = await storage.remove([rutaArchivo]);
+      const { error: errorLimpieza } = await almacenamiento.remove([rutaArchivo]);
       if (errorLimpieza) {
         console.error('No se pudo limpiar un currículum no vinculado al perfil.', {
           statusCode: errorLimpieza.statusCode,
@@ -822,7 +676,9 @@ aplicacion.post(
       rutaAnterior.startsWith(`${contexto.perfil.id}/`) &&
       !rutaAnterior.includes('..')
     ) {
-      const { error: errorEliminacion } = await storage.remove([rutaAnterior]);
+      const { data: referencias, error: errorReferencias } = await contexto.supabase.from('postulaciones').select('id').eq('curriculum_url', rutaAnterior).limit(1);
+      const { error: errorEliminacion } = !errorReferencias && referencias?.length === 0
+        ? await almacenamiento.remove([rutaAnterior]) : { error: null };
       if (errorEliminacion) {
         console.error('No se pudo retirar el currículum anterior del candidato.', {
           statusCode: errorEliminacion.statusCode,
@@ -850,16 +706,16 @@ aplicacion.get('/api/candidato/curriculum', conManejoErrores(async (solicitud, r
 
   const { data: archivo, error } = await contexto.supabase
     .storage
-    .from(bucketCurriculums)
+    .from(depositoCurriculums)
     .download(rutaArchivo);
   if (error || !archivo) {
     console.error('Error descargando el currículum privado.', {
       statusCode: error?.statusCode,
       message: error?.message
     });
-    const bucketInexistente = /bucket not found/i.test(error?.message || '');
-    return respuesta.status(bucketInexistente ? 503 : 404).json({
-      error: bucketInexistente
+    const depositoInexistente = /bucket not found/i.test(error?.message || '');
+    return respuesta.status(depositoInexistente ? 503 : 404).json({
+      error: depositoInexistente
         ? 'Storage privado todavía no está activado.'
         : 'No se encontró el archivo guardado.'
     });
@@ -878,14 +734,15 @@ aplicacion.put('/api/candidato/perfil', conManejoErrores(async (solicitud, respu
   const contexto = await obtenerCandidatoAutenticado(solicitud, respuesta);
   if (!contexto) return;
   const datos = solicitud.body || {};
-  const { telefono, ubicacion, titulo_profesional, resumen_laboral } = datos;
-  const campos = [telefono, ubicacion, titulo_profesional, resumen_laboral];
+  const { telefono, ubicacion, titulo_profesional: tituloProfesionalSolicitud, resumen_laboral: resumenLaboralSolicitud } = datos;
+  const campos = [telefono, ubicacion, tituloProfesionalSolicitud, resumenLaboralSolicitud];
+  if (Object.hasOwn(datos, 'telefono') && !esTelefono(telefono)) return respuesta.status(400).json({ error: 'Escribe un teléfono válido de 8 a 15 dígitos.' });
   if (
     campos.some((valor) => valor !== undefined && valor !== null && typeof valor !== 'string') ||
     (typeof telefono === 'string' && telefono.length > 30) ||
     (typeof ubicacion === 'string' && ubicacion.length > 120) ||
-    (typeof titulo_profesional === 'string' && titulo_profesional.length > 120) ||
-    (typeof resumen_laboral === 'string' && resumen_laboral.length > 1000)
+    (typeof tituloProfesionalSolicitud === 'string' && tituloProfesionalSolicitud.length > 120) ||
+    (typeof resumenLaboralSolicitud === 'string' && resumenLaboralSolicitud.length > 1000)
   ) {
     return respuesta.status(400).json({ error: 'Revisa los datos del perfil.' });
   }
@@ -900,11 +757,11 @@ aplicacion.put('/api/candidato/perfil', conManejoErrores(async (solicitud, respu
   }
   if (Object.hasOwn(datos, 'titulo_profesional')) {
     actualizacionPerfil.titulo_profesional =
-      typeof titulo_profesional === 'string' ? titulo_profesional.trim() || null : null;
+      typeof tituloProfesionalSolicitud === 'string' ? tituloProfesionalSolicitud.trim() || null : null;
   }
   if (Object.hasOwn(datos, 'resumen_laboral')) {
     actualizacionPerfil.resumen_laboral =
-      typeof resumen_laboral === 'string' ? resumen_laboral.trim() || null : null;
+      typeof resumenLaboralSolicitud === 'string' ? resumenLaboralSolicitud.trim() || null : null;
   }
   if (!Object.keys(actualizacionUsuario).length && !Object.keys(actualizacionPerfil).length) {
     return respuesta.status(400).json({ error: 'No hay campos del perfil para guardar.' });
@@ -931,66 +788,40 @@ aplicacion.put('/api/candidato/perfil', conManejoErrores(async (solicitud, respu
       });
     }
   }
+  await reportarAutomaticamente(contexto.supabase, { texto: [tituloProfesionalSolicitud, resumenLaboralSolicitud, ubicacion].filter(Boolean).join(' '), tipo: 'reporte', categoria: 'Reportes', origen: 'perfiles_candidatos', id: contexto.perfil.id, autor: contexto.usuario.nombre });
   return respuesta.json({ guardado: true });
 }));
 
-
 const esUuidValoracion = v => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
-aplicacion.get('/api/candidato/postulaciones/:vacanteId', conManejoErrores(async (req, res) => {
-  const ctx = await obtenerCandidatoAutenticado(req, res); if (!ctx) return;
-  if (!esUuidValoracion(req.params.vacanteId)) return res.status(400).json({error:'Vacante no válida.'});
-  const {data,error} = await ctx.supabase.from('postulaciones').select('id').eq('candidato_id',ctx.perfil.id).eq('vacante_id',req.params.vacanteId).limit(1);
-  if (error) return res.status(500).json({error:'No se pudo consultar tu postulación.'});
-  return res.json({postulado:data.length > 0});
+aplicacion.get('/api/candidato/postulaciones/:vacanteId', conManejoErrores(async (solicitudHttp, respuestaHttp) => {
+  const contextoSolicitud = await obtenerCandidatoAutenticado(solicitudHttp, respuestaHttp); if (!contextoSolicitud) return;
+  if (!esUuid(solicitudHttp.params.vacanteId)) return respuestaHttp.status(400).json({ error: 'Vacante no válida.' });
+  if (!esUuidValoracion(solicitudHttp.params.vacanteId)) return respuestaHttp.status(400).json({error:'Vacante no válida.'});
+  const {data: datosRespuesta,error} = await contextoSolicitud.supabase.from('postulaciones').select('id').eq('candidato_id',contextoSolicitud.perfil.id).eq('vacante_id',solicitudHttp.params.vacanteId).limit(1);
+  if (error) return respuestaHttp.status(500).json({error:'No se pudo consultar tu postulación.'});
+  return respuestaHttp.json({postulado:datosRespuesta.length > 0});
 }));
-aplicacion.get('/api/valoraciones-empresa/:id', conManejoErrores(async (req,res) => {
-  if (!esUuidValoracion(req.params.id)) return res.status(400).json({error:'Empresa no válida.'});
-  const db=obtenerClienteOError(res); if (!db) return;
-  const {data,error}=await db.from('valoraciones_empresas').select('calificacion, comentario').eq('empresa_id',req.params.id).eq('estado','Aprobada').order('creado_en',{ascending:false});
-  if(error) return res.status(500).json({error:'No se pudieron cargar las valoraciones.'});
-  return res.json({valoraciones:data || []});
+aplicacion.get('/api/valoraciones-empresa/:id', conManejoErrores(async (solicitudHttp,respuestaHttp) => {
+  if (!esUuidValoracion(solicitudHttp.params.id)) return respuestaHttp.status(400).json({error:'Empresa no válida.'});
+  const clienteDatos=obtenerClienteOError(respuestaHttp); if (!clienteDatos) return;
+  const {data: datosRespuesta,error}=await clienteDatos.from('valoraciones_empresas').select('id, calificacion, comentario').eq('empresa_id',solicitudHttp.params.id).eq('estado','Aprobada').order('creado_en',{ascending:false});
+  if(error) return respuestaHttp.status(500).json({error:'No se pudieron cargar las valoraciones.'});
+  return respuestaHttp.json({valoraciones:datosRespuesta || []});
 }));
-aplicacion.post('/api/candidato/valoraciones', conManejoErrores(async (req,res) => {
-  const ctx=await obtenerCandidatoAutenticado(req,res); if(!ctx) return;
-  const {empresa_id,calificacion,comentario}=req.body || {}; const texto=typeof comentario === 'string' ? comentario.trim() : '';
-  if (!esUuidValoracion(empresa_id) || !Number.isInteger(calificacion) || calificacion<1 || calificacion>5 || texto.length<3 || texto.length>2000) return res.status(400).json({error:'Selecciona de 1 a 5 estrellas y escribe un comentario de 3 a 2000 caracteres.'});
-  const empresa=await ctx.supabase.from('empresas').select('id').eq('id',empresa_id).maybeSingle();
-  if(empresa.error) return res.status(500).json({error:'No se pudo comprobar la empresa.'});
-  if(!empresa.data) return res.status(404).json({error:'No se encontró la empresa.'});
-  const {error}=await ctx.supabase.from('valoraciones_empresas').insert({empresa_id,candidato_id:ctx.perfil.id,calificacion,comentario:texto,estado:'Pendiente'});
-  if(error) return res.status(500).json({error:'No se pudo guardar la valoración.'});
-  return res.status(201).json({estado:'Pendiente'});
+aplicacion.post('/api/candidato/valoraciones', conManejoErrores(async (solicitudHttp,respuestaHttp) => {
+  const contextoSolicitud=await obtenerCandidatoAutenticado(solicitudHttp,respuestaHttp); if(!contextoSolicitud) return;
+  const {empresa_id: identificadorEmpresa,calificacion,comentario}=solicitudHttp.body || {}; const texto=typeof comentario === 'string' ? comentario.trim() : '';
+  if (!esUuidValoracion(identificadorEmpresa) || !Number.isInteger(calificacion) || calificacion<1 || calificacion>5 || texto.length<3 || texto.length>2000) return respuestaHttp.status(400).json({error:'Selecciona de 1 a 5 estrellas y escribe un comentario de 3 a 2000 caracteres.'});
+  const empresa=await contextoSolicitud.supabase.from('empresas').select('id').eq('id',identificadorEmpresa).maybeSingle();
+  if(empresa.error) return respuestaHttp.status(500).json({error:'No se pudo comprobar la empresa.'});
+  if(!empresa.data) return respuestaHttp.status(404).json({error:'No se encontró la empresa.'});
+  const {data: valoracion,error}=await contextoSolicitud.supabase.from('valoraciones_empresas').insert({empresa_id: identificadorEmpresa,candidato_id:contextoSolicitud.perfil.id,calificacion,comentario:texto,estado:'Aprobada'}).select('id').single();
+  if(error) return respuestaHttp.status(500).json({error:'No se pudo guardar la valoración.'});
+  await reportarAutomaticamente(contextoSolicitud.supabase, { texto, tipo: 'valoracion', categoria: 'Valoraciones', id: valoracion.id, autor: contextoSolicitud.usuario.nombre });
+  return respuestaHttp.status(201).json({estado:'Aprobada'});
 }));
 
-aplicacion.post('/api/candidato/postulaciones', conManejoErrores(async (solicitud, respuesta) => {
-  const contexto = await obtenerCandidatoAutenticado(solicitud, respuesta);
-  if (!contexto) return;
-  const vacanteId = solicitud.body?.vacante_id;
-  if (typeof vacanteId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(vacanteId)) {
-    return respuesta.status(400).json({ error: 'La vacante seleccionada no es válida.' });
-  }
-  if (!contexto.perfil.curriculum_url) {
-    return respuesta.status(400).json({ error: 'Primero guarda tu currículum PDF en Mi perfil para postularte.' });
-  }
-  const { data: vacante, error: errorVacante } = await contexto.supabase
-    .from('vacantes').select('id, estado, fecha_limite').eq('id', vacanteId).maybeSingle();
-  if (errorVacante) return respuesta.status(500).json({ error: 'No se pudo comprobar la vacante.' });
-  if (!vacante || vacante.estado !== 'Activa') return respuesta.status(404).json({ error: 'Esta vacante no está disponible.' });
-  const hoy = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/El_Salvador', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-  if (vacante.fecha_limite && vacante.fecha_limite < hoy) return respuesta.status(400).json({ error: 'El plazo de esta vacante ya finalizó.' });
-  const { data: existente, error: errorConsulta } = await contexto.supabase
-    .from('postulaciones').select('id').eq('candidato_id', contexto.perfil.id).eq('vacante_id', vacanteId).limit(1);
-  if (errorConsulta) return respuesta.status(500).json({ error: 'No se pudo comprobar si ya te postulaste.' });
-  if (existente.length) return respuesta.status(409).json({ error: 'Ya te postulaste a esta vacante. Puedes revisarla en Mis postulaciones.' });
-  const { data, error } = await contexto.supabase.from('postulaciones').insert({
-    vacante_id: vacanteId,
-    candidato_id: contexto.perfil.id,
-    curriculum_url: contexto.perfil.curriculum_url,
-    estado: 'Nueva'
-  }).select('id, estado, creado_en').single();
-  if (error) return respuesta.status(500).json({ error: 'No se pudo guardar la postulación. Intenta nuevamente.' });
-  return respuesta.status(201).json(data);
-}));
+registrarFlujoPostulaciones(aplicacion, { conManejoErrores, obtenerCandidatoAutenticado, obtenerEmpresaAutenticada, reportarAutomaticamente });
 
 aplicacion.post('/api/candidato/:tipo', conManejoErrores(async (solicitud, respuesta) => {
   const contexto = await obtenerCandidatoAutenticado(solicitud, respuesta);
@@ -1002,13 +833,14 @@ aplicacion.post('/api/candidato/:tipo', conManejoErrores(async (solicitud, respu
   if (!configuracion || !registro) {
     return respuesta.status(400).json({ error: 'Los datos enviados no son válidos.' });
   }
-  const { data, error } = await contexto.supabase
+  const { data: datosRespuesta, error } = await contexto.supabase
     .from(configuracion.tabla)
     .insert({ ...registro, candidato_id: contexto.perfil.id })
     .select()
     .single();
   if (error) return respuesta.status(400).json({ error: 'No se pudo guardar el elemento.' });
-  return respuesta.status(201).json(data);
+  await reportarAutomaticamente(contexto.supabase, { texto: Object.values(registro).filter(v => typeof v === 'string').join(' '), tipo: 'reporte', categoria: 'Reportes', origen: configuracion.tabla, id: datosRespuesta.id, autor: contexto.usuario.nombre });
+  return respuesta.status(201).json(datosRespuesta);
 }));
 
 aplicacion.put('/api/candidato/:tipo/:id', conManejoErrores(async (solicitud, respuesta) => {
@@ -1021,7 +853,7 @@ aplicacion.put('/api/candidato/:tipo/:id', conManejoErrores(async (solicitud, re
   if (!configuracion || !registro || !Object.keys(registro).length) {
     return respuesta.status(400).json({ error: 'Los datos enviados no son válidos.' });
   }
-  const { data, error } = await contexto.supabase
+  const { data: datosRespuesta, error } = await contexto.supabase
     .from(configuracion.tabla)
     .update(registro)
     .eq('id', solicitud.params.id)
@@ -1029,8 +861,9 @@ aplicacion.put('/api/candidato/:tipo/:id', conManejoErrores(async (solicitud, re
     .select()
     .maybeSingle();
   if (error) return respuesta.status(400).json({ error: 'No se pudo actualizar el elemento.' });
-  if (!data) return respuesta.status(404).json({ error: 'El elemento no existe en tu perfil.' });
-  return respuesta.json(data);
+  if (!datosRespuesta) return respuesta.status(404).json({ error: 'El elemento no existe en tu perfil.' });
+  await reportarAutomaticamente(contexto.supabase, { texto: Object.values(registro).filter(v => typeof v === 'string').join(' '), tipo: 'reporte', categoria: 'Reportes', origen: configuracion.tabla, id: datosRespuesta.id, autor: contexto.usuario.nombre });
+  return respuesta.json(datosRespuesta);
 }));
 
 aplicacion.delete('/api/candidato/:tipo/:id', conManejoErrores(async (solicitud, respuesta) => {
@@ -1040,7 +873,7 @@ aplicacion.delete('/api/candidato/:tipo/:id', conManejoErrores(async (solicitud,
     ? tablasCandidato[solicitud.params.tipo]
     : null;
   if (!configuracion) return respuesta.status(404).json({ error: 'Tipo de elemento no válido.' });
-  const { data, error } = await contexto.supabase
+  const { data: datosRespuesta, error } = await contexto.supabase
     .from(configuracion.tabla)
     .delete()
     .eq('id', solicitud.params.id)
@@ -1048,17 +881,15 @@ aplicacion.delete('/api/candidato/:tipo/:id', conManejoErrores(async (solicitud,
     .select('id')
     .maybeSingle();
   if (error) return respuesta.status(400).json({ error: 'No se pudo eliminar el elemento.' });
-  if (!data) return respuesta.status(404).json({ error: 'El elemento no existe en tu perfil.' });
+  if (!datosRespuesta) return respuesta.status(404).json({ error: 'El elemento no existe en tu perfil.' });
   return respuesta.json({ eliminado: true });
 }));
-
-// ==================== RUTAS PARA GESTIÓN DE EMPRESA ====================
 
 aplicacion.get('/api/empresa/perfil', conManejoErrores(async (solicitud, respuesta) => {
   const contexto = await obtenerEmpresaAutenticada(solicitud, respuesta);
   if (!contexto) return;
 
-  const [resVacantes, resPostulaciones] = await Promise.all([
+  const [resultadoVacantes, resultadoPostulaciones] = await Promise.all([
     contexto.supabase
       .from('vacantes')
       .select('id, titulo, estado, sector, modalidad, creado_en')
@@ -1078,8 +909,8 @@ aplicacion.get('/api/empresa/perfil', conManejoErrores(async (solicitud, respues
 
   return respuesta.json({
     empresa: contexto.empresa,
-    conteoVacantes: resVacantes.data?.length || 0,
-    conteoPostulaciones: resPostulaciones.data?.length || 0,
+    conteoVacantes: resultadoVacantes.data?.length || 0,
+    conteoPostulaciones: resultadoPostulaciones.data?.length || 0,
     usuario: usuario || contexto.usuario
   });
 }));
@@ -1093,7 +924,7 @@ aplicacion.put('/api/empresa/perfil', conManejoErrores(async (solicitud, respues
   const sector = typeof datos.sector === 'string' ? datos.sector.trim() : '';
   const departamento = typeof datos.departamento === 'string' ? datos.departamento.trim() : '';
   const municipio = typeof datos.municipio === 'string' ? datos.municipio.trim() : '';
-  const contactoEmail = typeof datos.contacto_email === 'string' ? datos.contacto_email.trim().toLowerCase() : '';
+  const correoContacto = typeof datos.contacto_email === 'string' ? datos.contacto_email.trim().toLowerCase() : '';
   const telefono = typeof datos.telefono === 'string' ? datos.telefono.trim() : '';
 
   if (nombreComercial.length < 3 || nombreComercial.length > 120) {
@@ -1105,10 +936,10 @@ aplicacion.put('/api/empresa/perfil', conManejoErrores(async (solicitud, respues
   if (!departamento || !municipio) {
     return respuesta.status(400).json({ error: 'Selecciona departamento y municipio válidos.' });
   }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactoEmail)) {
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correoContacto)) {
     return respuesta.status(400).json({ error: 'Escribe un correo de contacto válido.' });
   }
-  if (telefono.length < 7) {
+  if (!esTelefono(telefono, true)) {
     return respuesta.status(400).json({ error: 'Escribe un número de teléfono válido (mínimo 7 caracteres).' });
   }
 
@@ -1121,12 +952,16 @@ aplicacion.put('/api/empresa/perfil', conManejoErrores(async (solicitud, respues
     municipio,
     direccion: typeof datos.direccion === 'string' ? datos.direccion.trim() || null : null,
     tamano: typeof datos.tamano === 'string' ? datos.tamano.trim() || '51-200 empleados' : '51-200 empleados',
-    contacto_email: contactoEmail,
+    contacto_email: correoContacto,
     telefono,
     sitio_web: typeof datos.sitio_web === 'string' ? datos.sitio_web.trim() || null : null,
-    descripcion: typeof datos.descripcion === 'string' ? datos.descripcion.trim() || null : null,
-    estado_verificacion: 'Verificada'
+    descripcion: typeof datos.descripcion === 'string' ? datos.descripcion.trim() || null : null
   };
+  if (!esUrlWeb(camposActualizar.sitio_web) || !esTexto(camposActualizar.razon_social, 3, 120) ||
+      !esTexto(camposActualizar.nit, 10, 25) || (camposActualizar.descripcion && camposActualizar.descripcion.length > 10000) ||
+      (camposActualizar.direccion && camposActualizar.direccion.length > 250)) {
+    return respuesta.status(400).json({ error: 'Revisa razón social, NIT, sitio web y los límites de descripción y dirección.' });
+  }
 
   const { data: empresaActualizada, error: errorEmpresa } = await contexto.supabase
     .from('empresas')
@@ -1138,8 +973,6 @@ aplicacion.put('/api/empresa/perfil', conManejoErrores(async (solicitud, respues
   if (errorEmpresa) {
     return respuesta.status(400).json({ error: 'No se pudo actualizar el perfil de la empresa: ' + errorEmpresa.message });
   }
-
-  // Sincronizar en la tabla usuarios para que el nombre comercial y teléfono coincidan
   await contexto.supabase
     .from('usuarios')
     .update({
@@ -1149,6 +982,7 @@ aplicacion.put('/api/empresa/perfil', conManejoErrores(async (solicitud, respues
     })
     .eq('id', contexto.usuario.id);
 
+  await reportarAutomaticamente(contexto.supabase, { texto: [nombreComercial, camposActualizar.descripcion].join(' '), tipo: 'reporte', categoria: 'Reportes', origen: 'empresas', id: empresaActualizada.id, autor: contexto.usuario.nombre });
   return respuesta.json({ guardado: true, empresa: empresaActualizada });
 }));
 
@@ -1168,7 +1002,7 @@ aplicacion.post(
 
     const rutaArchivo = `empresas/${contexto.empresa.id}/logo.${extension}`;
     const { error: errorSubida } = await contexto.supabase.storage
-      .from(bucketFotosCandidatos)
+      .from(depositoFotosCandidatos)
       .upload(rutaArchivo, solicitud.body, { contentType: tipo, upsert: true });
     if (errorSubida) {
       return respuesta.status(/bucket not found/i.test(errorSubida.message || '') ? 503 : 400).json({
@@ -1178,7 +1012,7 @@ aplicacion.post(
       });
     }
     const { data: urlPublica } = contexto.supabase.storage
-      .from(bucketFotosCandidatos)
+      .from(depositoFotosCandidatos)
       .getPublicUrl(rutaArchivo);
 
     const logoUrl = urlPublica.publicUrl;
@@ -1214,6 +1048,12 @@ aplicacion.post('/api/empresa/vacantes', conManejoErrores(async (solicitud, resp
   const salarioMin = datos.salario_min !== undefined && datos.salario_min !== null && datos.salario_min !== '' ? Number(datos.salario_min) : null;
   const salarioMax = datos.salario_max !== undefined && datos.salario_max !== null && datos.salario_max !== '' ? Number(datos.salario_max) : null;
   const descripcion = typeof datos.descripcion === 'string' ? datos.descripcion.trim() : '';
+  if (!esNumeroCampo(datos.salario_min) || !esNumeroCampo(datos.salario_max) ||
+      (datos.plazas !== undefined && (!esNumeroCampo(datos.plazas) || Number(datos.plazas) < 1)) ||
+      [datos.funciones, datos.requisitos, datos.beneficios].some((lista) => lista !== undefined &&
+        typeof lista !== 'string' && (!Array.isArray(lista) || lista.some((v) => typeof v !== 'string')))) {
+    return respuesta.status(400).json({ error: 'Revisa los salarios, plazas y las listas de funciones, requisitos y beneficios.' });
+  }
 
   if (titulo.length < 5 || titulo.length > 120) {
     return respuesta.status(400).json({ error: 'El título debe tener entre 5 y 120 caracteres.' });
@@ -1224,14 +1064,16 @@ aplicacion.post('/api/empresa/vacantes', conManejoErrores(async (solicitud, resp
     return respuesta.status(400).json({ error: 'Selecciona una modalidad válida (Presencial, Híbrido, Remoto).' });
   }
   if (!tipoContrato) return respuesta.status(400).json({ error: 'Selecciona el tipo de contrato.' });
-  if (plazas < 1 || !Number.isInteger(plazas)) return respuesta.status(400).json({ error: 'El número de plazas debe ser al menos 1.' });
-  if (salarioMin === null || salarioMax === null || salarioMin < 0 || salarioMax < salarioMin) {
+  if (plazas < 1 || plazas > 10000 || !Number.isInteger(plazas)) return respuesta.status(400).json({ error: 'El número de plazas debe ser entre 1 y 10000.' });
+  if (salarioMin === null || salarioMax === null || !Number.isFinite(salarioMin) || !Number.isFinite(salarioMax) || salarioMin < 0 || salarioMax < salarioMin || salarioMax > 1000000) {
     return respuesta.status(400).json({ error: 'El salario mínimo y máximo deben ser válidos y el máximo debe ser mayor o igual al mínimo.' });
   }
-  if (descripcion.length < 10) return respuesta.status(400).json({ error: 'Ingresa una descripción de al menos 10 caracteres.' });
+  if (!esTexto(descripcion, 10, 10000)) return respuesta.status(400).json({ error: 'La descripción debe tener entre 10 y 10000 caracteres.' });
+  const hoyVacante = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/El_Salvador', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  if (datos.fecha_limite && (!esFecha(datos.fecha_limite) || datos.fecha_limite < hoyVacante)) return respuesta.status(400).json({ error: 'Selecciona una fecha límite válida que no haya pasado.' });
 
   const procesarLista = (campo) => {
-    if (Array.isArray(campo)) return campo.map((item) => String(item).trim()).filter(Boolean);
+    if (Array.isArray(campo)) return campo.map((elementoLista) => String(elementoLista).trim()).filter(Boolean);
     if (typeof campo === 'string') {
       return campo.split(/\r?\n/).map((linea) => linea.replace(/^[-*•]\s*/, '').trim()).filter(Boolean);
     }
@@ -1241,6 +1083,9 @@ aplicacion.post('/api/empresa/vacantes', conManejoErrores(async (solicitud, resp
   const funciones = procesarLista(datos.funciones);
   const requisitos = procesarLista(datos.requisitos);
   const beneficios = procesarLista(datos.beneficios);
+  if ([funciones, requisitos, beneficios].some((lista) => lista.length > 100 || lista.some((texto) => texto.length > 1000))) {
+    return respuesta.status(400).json({ error: 'Cada lista admite hasta 100 elementos de un máximo de 1000 caracteres.' });
+  }
 
   if (!funciones.length) return respuesta.status(400).json({ error: 'Escribe al menos una función o responsabilidad del puesto.' });
   if (!requisitos.length) return respuesta.status(400).json({ error: 'Escribe al menos un requisito para el puesto.' });
@@ -1272,6 +1117,7 @@ aplicacion.post('/api/empresa/vacantes', conManejoErrores(async (solicitud, resp
     return respuesta.status(400).json({ error: 'No se pudo publicar la vacante: ' + errorVacante.message });
   }
 
+  await reportarAutomaticamente(contexto.supabase, { texto: [titulo, descripcion, ...funciones, ...requisitos, ...beneficios].join(' '), tipo: 'reporte', categoria: 'Reportes', origen: 'vacantes', id: vacante.id, autor: contexto.usuario.nombre });
   return respuesta.status(201).json({ guardado: true, vacante });
 }));
 
@@ -1279,7 +1125,7 @@ aplicacion.get('/api/empresa/vacantes', conManejoErrores(async (solicitud, respu
   const contexto = await obtenerEmpresaAutenticada(solicitud, respuesta);
   if (!contexto) return;
 
-  const { data, error } = await contexto.supabase
+  const { data: datosRespuesta, error } = await contexto.supabase
     .from('vacantes')
     .select('*')
     .eq('empresa_id', contexto.empresa.id)
@@ -1289,7 +1135,7 @@ aplicacion.get('/api/empresa/vacantes', conManejoErrores(async (solicitud, respu
     return respuesta.status(400).json({ error: 'No se pudieron consultar las vacantes: ' + error.message });
   }
 
-  return respuesta.json({ vacantes: data || [] });
+  return respuesta.json({ vacantes: datosRespuesta || [] });
 }));
 
 aplicacion.put('/api/empresa/vacantes/:id/estado', conManejoErrores(async (solicitud, respuesta) => {
@@ -1301,24 +1147,24 @@ aplicacion.put('/api/empresa/vacantes/:id/estado', conManejoErrores(async (solic
     return respuesta.status(400).json({ error: 'Estado no válido. Debe ser Activa o Inactiva.' });
   }
 
-  const { data: vacante, error: errorVac } = await contexto.supabase
+  const { data: vacante, error: errorVacanteConsulta } = await contexto.supabase
     .from('vacantes')
     .select('id, empresa_id')
     .eq('id', solicitud.params.id)
     .eq('empresa_id', contexto.empresa.id)
     .maybeSingle();
 
-  if (errorVac || !vacante) {
+  if (errorVacanteConsulta || !vacante) {
     return respuesta.status(404).json({ error: 'Vacante no encontrada o no pertenece a tu empresa.' });
   }
 
-  const { error: errorUpdate } = await contexto.supabase
+  const { error: errorActualizacion } = await contexto.supabase
     .from('vacantes')
     .update({ estado: nuevoEstado })
     .eq('id', solicitud.params.id);
 
-  if (errorUpdate) {
-    return respuesta.status(400).json({ error: 'No se pudo actualizar el estado de la vacante: ' + errorUpdate.message });
+  if (errorActualizacion) {
+    return respuesta.status(400).json({ error: 'No se pudo actualizar el estado de la vacante: ' + errorActualizacion.message });
   }
 
   return respuesta.json({ actualizado: true, nuevoEstado });
@@ -1328,30 +1174,28 @@ aplicacion.delete('/api/empresa/vacantes/:id', conManejoErrores(async (solicitud
   const contexto = await obtenerEmpresaAutenticada(solicitud, respuesta);
   if (!contexto) return;
 
-  const { data: vacante, error: errorVac } = await contexto.supabase
+  const { data: vacante, error: errorVacanteConsulta } = await contexto.supabase
     .from('vacantes')
     .select('id, empresa_id')
     .eq('id', solicitud.params.id)
     .eq('empresa_id', contexto.empresa.id)
     .maybeSingle();
 
-  if (errorVac || !vacante) {
+  if (errorVacanteConsulta || !vacante) {
     return respuesta.status(404).json({ error: 'Vacante no encontrada o no pertenece a tu empresa.' });
   }
-
-  // Eliminar postulaciones asociadas primero
   await contexto.supabase
     .from('postulaciones')
     .delete()
     .eq('vacante_id', solicitud.params.id);
 
-  const { error: errorDelete } = await contexto.supabase
+  const { error: errorEliminacionRemota } = await contexto.supabase
     .from('vacantes')
     .delete()
     .eq('id', solicitud.params.id);
 
-  if (errorDelete) {
-    return respuesta.status(400).json({ error: 'No se pudo eliminar la vacante: ' + errorDelete.message });
+  if (errorEliminacionRemota) {
+    return respuesta.status(400).json({ error: 'No se pudo eliminar la vacante: ' + errorEliminacionRemota.message });
   }
 
   return respuesta.json({ eliminado: true });
@@ -1361,7 +1205,7 @@ aplicacion.get('/api/empresa/postulaciones', conManejoErrores(async (solicitud, 
   const contexto = await obtenerEmpresaAutenticada(solicitud, respuesta);
   if (!contexto) return;
 
-  const { data, error } = await contexto.supabase
+  const { data: datosRespuesta, error } = await contexto.supabase
     .from('postulaciones')
     .select(`
       id,
@@ -1380,11 +1224,15 @@ aplicacion.get('/api/empresa/postulaciones', conManejoErrores(async (solicitud, 
     return respuesta.status(400).json({ error: 'No se pudieron obtener las postulaciones: ' + error.message });
   }
 
-  const postulaciones = (data || []).map((p) => ({
+  const { data: ocultas, error: errorOcultas } = await contexto.supabase.from('moderacion_reportes')
+    .select('referencia').eq('estado', 'Oculto').like('detalles', 'Origen: postulaciones\n%');
+  if (errorOcultas) return respuesta.status(503).json({ error: 'No se pudo comprobar la moderación de las postulaciones.' });
+  const idsOcultos = new Set((ocultas || []).map((r) => r.referencia));
+  const postulaciones = (datosRespuesta || []).filter((p) => !idsOcultos.has(p.id)).map((p) => ({
     id: p.id,
     estado: p.estado,
     creado_en: p.creado_en,
-    curriculum_url: p.curriculum_url,
+    curriculum_url: p.curriculum_url ? `/api/empresa/postulaciones/${p.id}/curriculum` : null,
     vacante: {
       id: p.vacantes?.id,
       titulo: p.vacantes?.titulo,
@@ -1429,30 +1277,28 @@ aplicacion.put('/api/empresa/postulaciones/:id/estado', conManejoErrores(async (
     return respuesta.status(400).json({ error: 'Estado de postulación no válido.' });
   }
 
-  const { data: postulacion, error: errorP } = await contexto.supabase
+  const { data: postulacion, error: errorPostulacion } = await contexto.supabase
     .from('postulaciones')
     .select('id, vacantes!inner(empresa_id)')
     .eq('id', solicitud.params.id)
     .eq('vacantes.empresa_id', contexto.empresa.id)
     .maybeSingle();
 
-  if (errorP || !postulacion) {
+  if (errorPostulacion || !postulacion) {
     return respuesta.status(404).json({ error: 'Postulación no encontrada o no pertenece a tu empresa.' });
   }
 
-  const { error: errorUpdate } = await contexto.supabase
+  const { error: errorActualizacion } = await contexto.supabase
     .from('postulaciones')
     .update({ estado: nuevoEstado, actualizado_en: new Date().toISOString() })
     .eq('id', solicitud.params.id);
 
-  if (errorUpdate) {
-    return respuesta.status(400).json({ error: 'No se pudo actualizar el estado: ' + errorUpdate.message });
+  if (errorActualizacion) {
+    return respuesta.status(400).json({ error: 'No se pudo actualizar el estado: ' + errorActualizacion.message });
   }
 
   return respuesta.json({ actualizado: true, nuevoEstado });
 }));
-
-// Estado de configuración de la base de datos (sin exponer secretos)
 aplicacion.get('/api/estado-bd', (_solicitud, respuesta) => {
   const estado = verificarConfiguracionBaseDatos();
   respuesta.json({
@@ -1460,8 +1306,6 @@ aplicacion.get('/api/estado-bd', (_solicitud, respuesta) => {
     tablas: Object.values(configuracionBaseDatos.tablas)
   });
 });
-
-// Obtener datos públicos o, para administración, el panel completo.
 aplicacion.get('/api/datos', async (solicitud, respuesta) => {
   respuesta.set('Cache-Control', 'no-store');
   const contexto = await obtenerContextoAutenticado(solicitud, respuesta, true);
@@ -1472,13 +1316,13 @@ aplicacion.get('/api/datos', async (solicitud, respuesta) => {
 
   try {
     const [
-      resUsuarios,
-      resEmpresas,
-      resVacantes,
-      resPostulaciones,
-      resModeracion,
-      resVerificaciones,
-      resRecursos
+      resultadoUsuarios,
+      resultadoEmpresas,
+      resultadoVacantes,
+      resultadoPostulaciones,
+      resultadoModeracion,
+      resultadoVerificaciones,
+      resultadoRecursos
     ] = await Promise.all([
       esAdministrador
         ? supabase.from('usuarios').select('*').order('creado_en', { ascending: false })
@@ -1497,8 +1341,9 @@ aplicacion.get('/api/datos', async (solicitud, respuesta) => {
             .order('creado_en', { ascending: false })
         : supabase
             .from('vacantes')
-            .select('*, empresas(nombre_comercial)')
+            .select('*, empresas!inner(nombre_comercial, estado_verificacion)')
             .eq('estado', 'Activa')
+            .eq('empresas.estado_verificacion', 'Verificada')
             .order('creado_en', { ascending: false }),
       esAdministrador
         ? supabase.from('postulaciones').select('id, estado, creado_en')
@@ -1527,20 +1372,20 @@ aplicacion.get('/api/datos', async (solicitud, respuesta) => {
     ]);
 
     const errores = [
-      resUsuarios.error,
-      resEmpresas.error,
-      resVacantes.error,
-      resPostulaciones.error,
-      resModeracion.error,
-      resVerificaciones.error,
-      resRecursos.error
+      resultadoUsuarios.error,
+      resultadoEmpresas.error,
+      resultadoVacantes.error,
+      resultadoPostulaciones.error,
+      resultadoModeracion.error,
+      resultadoVerificaciones.error,
+      resultadoRecursos.error
     ].filter(Boolean);
 
     if (errores.length > 0) {
       return respuesta.status(500).json({ error: errores[0].message });
     }
 
-    const vacantesMapeadas = (resVacantes.data || []).map(mapearVacante);
+    const vacantesMapeadas = (resultadoVacantes.data || []).map(mapearVacante);
     const conteoVacantesPorEmpresa = new Map();
     for (const vac of vacantesMapeadas) {
       conteoVacantesPorEmpresa.set(
@@ -1549,8 +1394,8 @@ aplicacion.get('/api/datos', async (solicitud, respuesta) => {
       );
     }
 
-    const usuarios = (resUsuarios.data || []).map(mapearUsuario);
-    const empresas = (resEmpresas.data || []).map((fila) => {
+    const usuarios = (resultadoUsuarios.data || []).map(mapearUsuario);
+    const empresas = (resultadoEmpresas.data || []).map((fila) => {
       const empresa = mapearEmpresa(fila, conteoVacantesPorEmpresa.get(fila.id) || 0);
       if (!esAdministrador) {
         empresa.razonSocial = '';
@@ -1560,15 +1405,15 @@ aplicacion.get('/api/datos', async (solicitud, respuesta) => {
       }
       return empresa;
     });
-    const elementosModeracion = (resModeracion.data || []).map(mapearModeracion);
-    const solicitudesVerificacion = (resVerificaciones.data || []).map(
+    const elementosModeracion = (resultadoModeracion.data || []).map(mapearModeracion);
+    const solicitudesVerificacion = (resultadoVerificaciones.data || []).map(
       mapearSolicitudVerificacion
     );
-    const recursosLaborales = (resRecursos.data || []).map((fila) =>
+    const recursosLaborales = (resultadoRecursos.data || []).map((fila) =>
       mapearRecurso(esAdministrador ? fila : { ...fila, usuarios: null })
     );
-    const estadisticasDashboard = construirEstadisticasDashboard(
-      resPostulaciones.data || [],
+    const estadisticasResumen = construirEstadisticasResumen(
+      resultadoPostulaciones.data || [],
       vacantesMapeadas
     );
 
@@ -1579,22 +1424,23 @@ aplicacion.get('/api/datos', async (solicitud, respuesta) => {
       elementosModeracion,
       solicitudesVerificacion,
       recursosLaborales,
-      estadisticasDashboard
+      estadisticasResumen
     });
   } catch (error) {
     return respuesta.status(500).json({ error: error.message || 'Error consultando Supabase.' });
   }
 });
-
-// Actualizar datos de un usuario (P12)
 aplicacion.put('/api/usuarios/:id', async (solicitud, respuesta) => {
   const supabase = obtenerClienteOError(respuesta);
   if (!supabase) return;
 
   const { id } = solicitud.params;
   const { nombre, correo, rol } = solicitud.body || {};
+  if (!esTexto(nombre, 3, 80) || !esCorreo(correo) || !['candidato', 'empresa', 'administrador'].includes(normalizarRol(rol))) {
+    return respuesta.status(400).json({ error: 'Revisa nombre, correo y rol del usuario.' });
+  }
 
-  const { data, error } = await supabase
+  const { data: datosRespuesta, error } = await supabase
     .from('usuarios')
     .update({
       nombre: typeof nombre === 'string' ? nombre.trim() : undefined,
@@ -1610,10 +1456,8 @@ aplicacion.put('/api/usuarios/:id', async (solicitud, respuesta) => {
     return respuesta.status(400).json({ error: error.message });
   }
 
-  return respuesta.json(mapearUsuario(data));
+  return respuesta.json(mapearUsuario(datosRespuesta));
 });
-
-// Alternar estado activo/inactivo de un usuario (P12)
 aplicacion.patch('/api/usuarios/:id/estado', async (solicitud, respuesta) => {
   const supabase = obtenerClienteOError(respuesta);
   if (!supabase) return;
@@ -1632,7 +1476,7 @@ aplicacion.patch('/api/usuarios/:id/estado', async (solicitud, respuesta) => {
 
   const nuevoEstado = actual.estado === 'Activo' ? 'Inactivo' : 'Activo';
 
-  const { data, error } = await supabase
+  const { data: datosRespuesta, error } = await supabase
     .from('usuarios')
     .update({
       estado: nuevoEstado,
@@ -1646,10 +1490,8 @@ aplicacion.patch('/api/usuarios/:id/estado', async (solicitud, respuesta) => {
     return respuesta.status(400).json({ error: error.message });
   }
 
-  return respuesta.json(mapearUsuario(data));
+  return respuesta.json(mapearUsuario(datosRespuesta));
 });
-
-// Cambiar estado de verificación de una empresa (P13)
 aplicacion.patch('/api/empresas/:id/estado', async (solicitud, respuesta) => {
   const supabase = obtenerClienteOError(respuesta);
   if (!supabase) return;
@@ -1662,7 +1504,7 @@ aplicacion.patch('/api/empresas/:id/estado', async (solicitud, respuesta) => {
     return respuesta.status(400).json({ error: 'Estado empresarial inválido.' });
   }
 
-  const { data, error } = await supabase
+  const { data: datosRespuesta, error } = await supabase
     .from('empresas')
     .update({ estado_verificacion: estado })
     .eq('id', id)
@@ -1673,15 +1515,13 @@ aplicacion.patch('/api/empresas/:id/estado', async (solicitud, respuesta) => {
     return respuesta.status(400).json({ error: error.message });
   }
 
-  const { count } = await supabase
+  const { count: cantidadRegistros } = await supabase
     .from('vacantes')
     .select('id', { count: 'exact', head: true })
     .eq('empresa_id', id);
 
-  return respuesta.json(mapearEmpresa(data, count || 0));
+  return respuesta.json(mapearEmpresa(datosRespuesta, cantidadRegistros || 0));
 });
-
-// Actualizar información de una vacante (P14)
 aplicacion.put('/api/vacantes/:id', async (solicitud, respuesta) => {
   const supabase = obtenerClienteOError(respuesta);
   if (!supabase) return;
@@ -1689,8 +1529,15 @@ aplicacion.put('/api/vacantes/:id', async (solicitud, respuesta) => {
   const { id } = solicitud.params;
   const { titulo, salarioMin, salarioMax, modalidad, tipoContrato, descripcion } =
     solicitud.body || {};
+  if (!esTexto(titulo, 3, 120) || !esTexto(descripcion, 10, 10000) ||
+      !['Presencial', 'Híbrido', 'Remoto'].includes(modalidad) || !esTexto(tipoContrato, 2, 80) ||
+      !esNumeroCampo(salarioMin) || !esNumeroCampo(salarioMax) ||
+      !Number.isFinite(Number(salarioMin)) || !Number.isFinite(Number(salarioMax)) ||
+      Number(salarioMin) < 0 || Number(salarioMax) < Number(salarioMin) || Number(salarioMax) > 1000000) {
+    return respuesta.status(400).json({ error: 'Revisa título, descripción, modalidad, contrato y rango salarial.' });
+  }
 
-  const { data, error } = await supabase
+  const { data: datosRespuesta, error } = await supabase
     .from('vacantes')
     .update({
       titulo: typeof titulo === 'string' ? titulo.trim() : undefined,
@@ -1708,10 +1555,8 @@ aplicacion.put('/api/vacantes/:id', async (solicitud, respuesta) => {
     return respuesta.status(400).json({ error: error.message });
   }
 
-  return respuesta.json(mapearVacante(data));
+  return respuesta.json(mapearVacante(datosRespuesta));
 });
-
-// Cambiar estado de una vacante (P14)
 aplicacion.patch('/api/vacantes/:id/estado', async (solicitud, respuesta) => {
   const supabase = obtenerClienteOError(respuesta);
   if (!supabase) return;
@@ -1724,7 +1569,7 @@ aplicacion.patch('/api/vacantes/:id/estado', async (solicitud, respuesta) => {
     return respuesta.status(400).json({ error: 'Estado de vacante inválido.' });
   }
 
-  const { data, error } = await supabase
+  const { data: datosRespuesta, error } = await supabase
     .from('vacantes')
     .update({ estado })
     .eq('id', id)
@@ -1735,42 +1580,38 @@ aplicacion.patch('/api/vacantes/:id/estado', async (solicitud, respuesta) => {
     return respuesta.status(400).json({ error: error.message });
   }
 
-  return respuesta.json(mapearVacante(data));
+  return respuesta.json(mapearVacante(datosRespuesta));
 });
-
-// Actualizar estado de un elemento de moderación (P15)
 aplicacion.patch('/api/moderacion/:id/estado', async (solicitud, respuesta) => {
   const supabase = obtenerClienteOError(respuesta);
   if (!supabase) return;
 
   const { id } = solicitud.params;
   const { estado } = solicitud.body || {};
-  const estadosValidos = ['Pendiente', 'Aprobado', 'Oculto', 'Desestimado'];
+  const estadosValidos = ['Aprobado', 'Oculto'];
 
   if (!estadosValidos.includes(estado)) {
     return respuesta.status(400).json({ error: 'Estado de moderación inválido.' });
   }
 
-  const { data, error } = await supabase
-    .from('moderacion_reportes')
-    .update({ estado })
-    .eq('id', id)
-    .select('*')
-    .single();
+  const { data: datosRespuesta, error } = await supabase.from('moderacion_reportes').select('*').eq('id', id).single();
 
   if (error) {
     return respuesta.status(400).json({ error: error.message });
   }
 
-  if (data.tipo === 'foro' && data.referencia) {
-  await supabase.from('foros_temas')
-    .update({ estado: estado === 'Oculto' ? 'Oculto' : 'Activo' })
-    .eq('id', data.referencia);
-}
-  return respuesta.json(mapearModeracion(data));
+  const destino = destinoModeracion(datosRespuesta);
+  if (destino) {
+    const { error: errorContenido } = await supabase.from(destino.tabla)
+      .update({ estado: estado === 'Oculto' ? destino.oculto : destino.visible })
+      .eq('id', datosRespuesta.referencia);
+    if (errorContenido) return respuesta.status(503).json({ error: 'No se pudo cambiar la visibilidad del contenido. Intenta de nuevo.' });
+  }
+  const { data: actualizado, error: errorEstado } = await supabase.from('moderacion_reportes')
+    .update({ estado }).eq('id', id).select('*').single();
+  if (errorEstado) return respuesta.status(503).json({ error: 'No se pudo actualizar el reporte. Intenta de nuevo.' });
+  return respuesta.json(mapearModeracion(actualizado));
 });
-
-// Eliminar un elemento de moderación (P15)
 aplicacion.delete('/api/moderacion/:id', async (solicitud, respuesta) => {
   const supabase = obtenerClienteOError(respuesta);
   if (!supabase) return;
@@ -1785,8 +1626,6 @@ aplicacion.delete('/api/moderacion/:id', async (solicitud, respuesta) => {
 
   return respuesta.json({ eliminado: true, id });
 });
-
-// Actualizar estado de una solicitud de verificación (P16)
 aplicacion.patch('/api/verificaciones/:id/estado', async (solicitud, respuesta) => {
   const supabase = obtenerClienteOError(respuesta);
   if (!supabase) return;
@@ -1835,17 +1674,17 @@ aplicacion.patch('/api/verificaciones/:id/estado', async (solicitud, respuesta) 
       .eq('id', solicitudActualizada.empresa_id);
   }
 
-  const [resEmpresas, resVacantes] = await Promise.all([
+  const [resultadoEmpresas, resultadoVacantes] = await Promise.all([
     supabase.from('empresas').select('*').order('creado_en', { ascending: false }),
     supabase.from('vacantes').select('id, empresa_id')
   ]);
 
   const conteos = new Map();
-  for (const vac of resVacantes.data || []) {
+  for (const vac of resultadoVacantes.data || []) {
     conteos.set(vac.empresa_id, (conteos.get(vac.empresa_id) || 0) + 1);
   }
 
-  const empresas = (resEmpresas.data || []).map((fila) =>
+  const empresas = (resultadoEmpresas.data || []).map((fila) =>
     mapearEmpresa(fila, conteos.get(fila.id) || 0)
   );
 
@@ -1854,18 +1693,23 @@ aplicacion.patch('/api/verificaciones/:id/estado', async (solicitud, respuesta) 
     empresas
   });
 });
-
-// Crear nuevo recurso laboral (P19)
 aplicacion.post('/api/recursos', async (solicitud, respuesta) => {
   const supabase = obtenerClienteOError(respuesta);
   if (!supabase) return;
 
   const datos = solicitud.body || {};
-  if (!datos.titulo || datos.titulo.trim().length < 8) {
-    return respuesta.status(400).json({ error: 'El título debe tener al menos 8 caracteres.' });
+  if (!esTexto(datos.titulo, 8, 160) || !esTexto(datos.resumen, 20, 500) || !esTexto(datos.contenido, 30, 10000) ||
+      !['Artículo', 'Consejo', 'Tutorial', 'Noticia'].includes(datos.categoria) ||
+      !['Básico', 'Intermedio', 'Avanzado'].includes(datos.nivelLectura) ||
+      !Number.isInteger(datos.tiempoLecturaMin) || datos.tiempoLecturaMin < 1 || datos.tiempoLecturaMin > 60 ||
+      !['Publicado', 'Borrador'].includes(datos.estadoPublicacion) ||
+      !Array.isArray(datos.audiencia) || !datos.audiencia.length || datos.audiencia.length > 10 || datos.audiencia.some((v) => !esTexto(v, 1, 80)) ||
+      !esPortadaRecurso(datos.imagenPortadaUrl) ||
+      (datos.etiquetas !== undefined && (!Array.isArray(datos.etiquetas) || datos.etiquetas.length > 30 || datos.etiquetas.some((v) => !esTexto(v, 1, 80))))) {
+    return respuesta.status(400).json({ error: 'Revisa los campos obligatorios, la URL, el estado y la audiencia del recurso.' });
   }
 
-  const { data, error } = await supabase
+  const { data: datosRespuesta, error } = await supabase
     .from('recursos_laborales')
     .insert({
       titulo: datos.titulo.trim(),
@@ -1889,7 +1733,7 @@ aplicacion.post('/api/recursos', async (solicitud, respuesta) => {
     return respuesta.status(400).json({ error: error.message });
   }
 
-  return respuesta.status(201).json(mapearRecurso(data));
+  return respuesta.status(201).json(mapearRecurso(datosRespuesta));
 });
 
 const CATEGORIAS_FORO = ['Búsqueda de empleo', 'Desarrollo profesional', 'Experiencias laborales'];
@@ -1898,13 +1742,13 @@ aplicacion.get('/api/foros/temas', conManejoErrores(async (_solicitud, respuesta
   const supabase = obtenerClienteOError(respuesta);
   if (!supabase) return;
   respuesta.set('Cache-Control', 'no-store');
-  const { data, error } = await supabase
+  const { data: datosRespuesta, error } = await supabase
     .from('foros_temas')
     .select('id, titulo, categoria, mensaje, creado_en, usuarios(nombre, foto_url), foros_respuestas(id, estado)')
     .eq('estado', 'Activo')
     .order('creado_en', { ascending: false });
   if (error) return respuesta.status(400).json({ error: 'No se pudieron cargar los temas.' });
-  return respuesta.json((data || []).map((t) => {
+  return respuesta.json((datosRespuesta || []).map((t) => {
     const respuestasActivas = Array.isArray(t.foros_respuestas)
       ? t.foros_respuestas.filter((r) => r.estado === 'Activo').length
       : 0;
@@ -1925,14 +1769,17 @@ aplicacion.get('/api/foros/temas/:id/respuestas', conManejoErrores(async (solici
   const supabase = obtenerClienteOError(respuesta);
   if (!supabase) return;
   respuesta.set('Cache-Control', 'no-store');
-  const { data, error } = await supabase
+  const { data: tema, error: errorTema } = await supabase.from('foros_temas').select('id').eq('id', solicitud.params.id).eq('estado', 'Activo').maybeSingle();
+  if (errorTema) return respuesta.status(503).json({ error: 'No se pudo comprobar el tema.' });
+  if (!tema) return respuesta.status(404).json({ error: 'El tema no está disponible.' });
+  const { data: datosRespuesta, error } = await supabase
     .from('foros_respuestas')
     .select('id, respuesta, creado_en, usuarios(nombre, foto_url)')
     .eq('tema_id', solicitud.params.id)
     .eq('estado', 'Activo')
     .order('creado_en', { ascending: true });
   if (error) return respuesta.status(400).json({ error: 'No se pudieron cargar las respuestas.' });
-  return respuesta.json((data || []).map((r) => ({
+  return respuesta.json((datosRespuesta || []).map((r) => ({
     id: r.id,
     autor: r.usuarios?.nombre || 'Usuario',
     fotoUrl: r.usuarios?.foto_url || '',
@@ -1944,6 +1791,8 @@ aplicacion.get('/api/foros/temas/:id/respuestas', conManejoErrores(async (solici
 aplicacion.post('/api/foros/temas', conManejoErrores(async (solicitud, respuesta) => {
   const contexto = await exigirRol(solicitud, respuesta, ['candidato', 'empresa', 'administrador']);
   if (!contexto) return;
+  if (typeof solicitud.body?.titulo !== 'string' || typeof solicitud.body?.categoria !== 'string' ||
+      typeof (solicitud.body?.descripcion ?? solicitud.body?.mensaje) !== 'string') return respuesta.status(400).json({ error: 'Escribe título, categoría y descripción válidos.' });
   const titulo = String(solicitud.body?.titulo ?? '').trim();
   const categoria = String(solicitud.body?.categoria ?? '').trim();
   const mensaje = String(solicitud.body?.descripcion ?? solicitud.body?.mensaje ?? '').trim();
@@ -1951,36 +1800,42 @@ aplicacion.post('/api/foros/temas', conManejoErrores(async (solicitud, respuesta
       mensaje.length < 20 || mensaje.length > 2000) {
     return respuesta.status(400).json({ error: 'Revisa título, categoría y descripción (mínimo 20 caracteres).' });
   }
-  const { data, error } = await contexto.supabase
+  const { data: datosRespuesta, error } = await contexto.supabase
     .from('foros_temas')
     .insert({ titulo, categoria, mensaje, autor_id: contexto.usuario.id, estado: 'Activo' })
     .select('id, titulo, categoria, mensaje, creado_en').single();
   if (error) return respuesta.status(400).json({ error: 'No se pudo publicar el tema: ' + error.message });
-  return respuesta.status(201).json(data);
+  await reportarAutomaticamente(contexto.supabase, { texto: `${titulo} ${mensaje}`, tipo: 'foro', categoria: 'Foros', id: datosRespuesta.id, autor: contexto.usuario.nombre });
+  return respuesta.status(201).json(datosRespuesta);
 }));
 
 aplicacion.post('/api/foros/temas/:id/respuestas', conManejoErrores(async (solicitud, respuesta) => {
   const contexto = await exigirRol(solicitud, respuesta, ['candidato', 'empresa', 'administrador']);
   if (!contexto) return;
+  if (typeof (solicitud.body?.contenido ?? solicitud.body?.respuesta) !== 'string') return respuesta.status(400).json({ error: 'Escribe una respuesta válida.' });
+  const { data: tema, error: errorTema } = await contexto.supabase.from('foros_temas').select('id').eq('id', solicitud.params.id).eq('estado', 'Activo').maybeSingle();
+  if (errorTema) return respuesta.status(503).json({ error: 'No se pudo comprobar el tema.' });
+  if (!tema) return respuesta.status(404).json({ error: 'El tema no está disponible para responder.' });
   const texto = String(solicitud.body?.contenido ?? solicitud.body?.respuesta ?? '').trim();
   if (texto.length < 5 || texto.length > 1000) {
     return respuesta.status(400).json({ error: 'La respuesta debe tener entre 5 y 1000 caracteres.' });
   }
-  const { data, error } = await contexto.supabase.from('foros_respuestas').insert({
+  const { data: datosRespuesta, error } = await contexto.supabase.from('foros_respuestas').insert({
     tema_id: solicitud.params.id,
     autor_id: contexto.usuario.id,
     respuesta: texto,
     estado: 'Activo'
   }).select('id, respuesta, creado_en, usuarios(nombre, foto_url)').single();
   if (error) return respuesta.status(400).json({ error: 'No se pudo guardar tu respuesta: ' + error.message });
+  await reportarAutomaticamente(contexto.supabase, { texto, tipo: 'comentario', categoria: 'Comentarios', id: datosRespuesta.id, autor: contexto.usuario.nombre });
   return respuesta.status(201).json({
     guardada: true,
     respuesta: {
-      id: data?.id,
-      autor: data?.usuarios?.nombre || contexto.usuario.nombre || 'Usuario',
-      fotoUrl: data?.usuarios?.foto_url || contexto.usuario.foto_url || '',
-      contenido: data?.respuesta || texto,
-      creadoEn: data?.creado_en
+      id: datosRespuesta?.id,
+      autor: datosRespuesta?.usuarios?.nombre || contexto.usuario.nombre || 'Usuario',
+      fotoUrl: datosRespuesta?.usuarios?.foto_url || contexto.usuario.foto_url || '',
+      contenido: datosRespuesta?.respuesta || texto,
+      creadoEn: datosRespuesta?.creado_en
     }
   });
 }));
@@ -2003,8 +1858,45 @@ aplicacion.post('/api/foros/temas/:id/reportar', conManejoErrores(async (solicit
   if (error) return respuesta.status(400).json({ error: 'No se pudo enviar el reporte: ' + error.message });
   return respuesta.status(201).json({ reportado: true });
 }));
+aplicacion.post('/api/reportes', conManejoErrores(async (solicitud, respuesta) => {
+  const contexto = await exigirRol(solicitud, respuesta, ['candidato', 'empresa', 'administrador']);
+  if (!contexto) return;
+  const { origen, id, motivo } = solicitud.body || {};
+  const destinos = {
+    foros_temas: { tipo: 'foro', categoria: 'Foros', campos: 'id, titulo' },
+    foros_respuestas: { tipo: 'comentario', categoria: 'Comentarios', campos: 'id, respuesta' },
+    valoraciones_empresas: { tipo: 'valoracion', categoria: 'Valoraciones', campos: 'id, comentario' },
+    postulaciones: { tipo: 'reporte', categoria: 'Reportes', campos: 'id, vacantes!inner(empresa_id)' },
+    usuarios: { tipo: 'reporte', categoria: 'Reportes', campos: 'id, nombre' },
+    vacantes: { tipo: 'reporte', categoria: 'Reportes', campos: 'id, titulo' }
+  };
+  const destino = Object.hasOwn(destinos, origen) ? destinos[origen] : null;
+  if (!destino || !esUuidValoracion(id) || typeof motivo !== 'string' || motivo.trim().length < 5 || motivo.length > 1000) {
+    return respuesta.status(400).json({ error: 'Selecciona contenido válido y escribe el motivo (5 a 1000 caracteres).' });
+  }
+  const { data: contenido, error } = await contexto.supabase.from(origen).select(destino.campos).eq('id', id).maybeSingle();
+  if (error) return respuesta.status(503).json({ error: 'No se pudo consultar el contenido.' });
+  if (!contenido) return respuesta.status(404).json({ error: 'El contenido no existe.' });
+  if (origen === 'postulaciones' && contexto.rol !== 'administrador') {
+    const { data: empresa, error: errorEmpresa } = await contexto.supabase.from('empresas').select('id')
+      .eq('usuario_id', contexto.usuario.id).eq('id', contenido.vacantes.empresa_id).maybeSingle();
+    if (errorEmpresa || !empresa) return respuesta.status(403).json({ error: 'Solo puedes reportar postulaciones recibidas por tu empresa.' });
+  }
+  const { error: errorReporte } = await contexto.supabase.from('moderacion_reportes').insert({
+    reportado_por: contexto.usuario.id,
+    tipo: destino.tipo,
+    categoria: destino.categoria,
+    referencia: id,
+    motivo_titulo: motivo.trim(),
+    autor_nombre: contexto.usuario.nombre,
+    detalles: `Origen: ${origen}\nReporte manual: ${motivo.trim()}`,
+    estado: 'Pendiente'
+  });
+  if (errorReporte) return respuesta.status(503).json({ error: 'No se pudo guardar el reporte.' });
+  return respuesta.status(201).json({ reportado: true });
+}));
 
-// Manejador 404 para rutas /api no definidas
+registrarGestionContenido(aplicacion, { exigirRol, conManejoErrores, mapearRecurso, reportarAutomaticamente });
 aplicacion.all('/api/*', (_solicitud, respuesta) => {
   respuesta.status(404).json({ error: 'Ruta de API no encontrada.' });
 });
@@ -2016,13 +1908,11 @@ aplicacion.use((error, _solicitud, respuesta, _siguiente) => {
     error: codigo === 400 ? 'La solicitud tiene un formato inválido.' : 'Error interno del servidor.'
   });
 });
-
-// En ejecución local / servidor tradicional servimos archivos estáticos y escuchamos el puerto
 if (!process.env.VERCEL) {
-  aplicacion.use(express.static(path.join(__directorioActual, 'publico')));
+  aplicacion.use(express.static(rutasArchivos.join(__directorioActual, 'publico')));
 
   aplicacion.get('*', (_solicitud, respuesta) => {
-    respuesta.sendFile(path.join(__directorioActual, 'publico', 'index.html'));
+    respuesta.sendFile(rutasArchivos.join(__directorioActual, 'publico', 'index.html'));
   });
 
   aplicacion.listen(puerto, '0.0.0.0', () => {

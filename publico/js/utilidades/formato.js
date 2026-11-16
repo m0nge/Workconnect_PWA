@@ -1,4 +1,3 @@
-// Utilidades de formato y seguridad HTML para evitar inyecciones al renderizar plantillas
 
 export function escaparHtml(valor) {
   if (valor === null || valor === undefined) return '';

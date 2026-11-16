@@ -1,4 +1,3 @@
-// Catálogo geográfico y listas estandarizadas para WorkConnect en El Salvador
 
 export const DEPARTAMENTOS_EL_SALVADOR = [
   'San Salvador',
@@ -333,36 +332,30 @@ export const NIVELES_EDUCATIVOS = [
   'Doctorado'
 ];
 
-/**
- * Rellena las opciones de un select de departamentos.
- */
-export function poblarSelectDepartamentos(select, seleccionado = '') {
-  if (!select) return;
-  const actual = seleccionado || select.value || 'San Salvador';
-  select.innerHTML = '<option value="">Selecciona departamento</option>' +
+export function poblarSelectDepartamentos(selectorEntrada, seleccionado = '') {
+  if (!selectorEntrada) return;
+  const actual = seleccionado || selectorEntrada.value || 'San Salvador';
+  selectorEntrada.innerHTML = '<option value="">Selecciona departamento</option>' +
     DEPARTAMENTOS_EL_SALVADOR.map((d) => `<option value="${d}" ${d === actual ? 'selected' : ''}>${d}</option>`).join('');
 }
 
-/**
- * Actualiza dinámicamente el select de municipios cuando cambia el departamento.
- */
-export function sincronizarMunicipios(departamentoSelect, municipioSelect, municipioPreseleccionado = '') {
-  if (!departamentoSelect || !municipioSelect) return;
+export function sincronizarMunicipios(selectorDepartamento, selectorMunicipio, municipioPreseleccionado = '') {
+  if (!selectorDepartamento || !selectorMunicipio) return;
   const actualizar = () => {
-    const depto = departamentoSelect.value;
+    const depto = selectorDepartamento.value;
     const municipios = MUNICIPIOS_POR_DEPARTAMENTO[depto] || [];
     if (!municipios.length) {
-      municipioSelect.innerHTML = '<option value="">Selecciona departamento primero</option>';
-      municipioSelect.disabled = true;
+      selectorMunicipio.innerHTML = '<option value="">Selecciona departamento primero</option>';
+      selectorMunicipio.disabled = true;
       return;
     }
-    municipioSelect.disabled = false;
-    const seleccionado = municipioPreseleccionado || municipioSelect.value || municipios[0];
-    municipioSelect.innerHTML = '<option value="">Selecciona municipio</option>' +
+    selectorMunicipio.disabled = false;
+    const seleccionado = municipioPreseleccionado || selectorMunicipio.value || municipios[0];
+    selectorMunicipio.innerHTML = '<option value="">Selecciona municipio</option>' +
       municipios.map((m) => `<option value="${m}" ${m === seleccionado ? 'selected' : ''}>${m}</option>`).join('');
   };
 
-  departamentoSelect.addEventListener('change', () => {
+  selectorDepartamento.addEventListener('change', () => {
     municipioPreseleccionado = '';
     actualizar();
   });

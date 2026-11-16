@@ -1,3 +1,4 @@
+import { reportarContenido } from '../utilidades/reportes.js';
 import { escaparHtml } from '../utilidades/formato.js';
 
 export function renderizarP03Detalle(
@@ -9,7 +10,7 @@ export function renderizarP03Detalle(
   usuarioActual
 ) {
   const vacante =
-    datos.vacantes.find((item) => String(item.id) === String(idVacante));
+    datos.vacantes.find((elementoLista) => String(elementoLista.id) === String(idVacante));
 
   if (!vacante) {
     contenedor.innerHTML = `
@@ -42,14 +43,14 @@ export function renderizarP03Detalle(
     indice < Math.round(calificacion) ? '★' : '☆'
   ).join('');
 
-  const listaDetalle = (items) => {
-    if (!Array.isArray(items) || items.length === 0) {
+  const listaDetalle = (elementosLista) => {
+    if (!Array.isArray(elementosLista) || elementosLista.length === 0) {
       return '<p class="texto-secundario">Información no especificada.</p>';
     }
 
     return `
       <ul class="lista-detalle-empleo">
-        ${items.map((item) => `<li>${escaparHtml(item)}</li>`).join('')}
+        ${elementosLista.map((elementoLista) => `<li>${escaparHtml(elementoLista)}</li>`).join('')}
       </ul>
     `;
   };
@@ -135,7 +136,7 @@ export function renderizarP03Detalle(
                   <label><input type="radio" name="calificacion" value="5"><span aria-hidden="true">★</span><span class="valoracion-lectura">5 estrellas</span></label>
                 </fieldset>
                 <label class="campo-formulario"><span>Tu comentario *</span><textarea name="comentario" required minlength="3" maxlength="2000" rows="4"></textarea></label>
-                <button type="submit" class="boton-principal">Enviar valoración</button><p class="texto-secundario">Tu valoración quedará pendiente de revisión.</p>
+                <button type="submit" class="boton-principal">Enviar valoración</button><p class="texto-secundario">Tu opinión se publica directamente y puede reportarse para revisión.</p>
               </form>
             </section>
           </section>
@@ -234,12 +235,16 @@ export function renderizarP03Detalle(
     if (!formulario.hidden) formulario.querySelector('input').focus();
   });
   formulario.addEventListener('submit', async evento => {
-    evento.preventDefault(); const boton = formulario.querySelector('button[type="submit"]'); boton.disabled = true;
+    evento.preventDefault();
+    if (!usuarioActual) { mostrarNotificacion('Inicia sesión para valorar una empresa.'); alNavegar('AUTH_LOGIN'); return; }
+    if (usuarioActual.rol !== 'candidato') { mostrarNotificacion('Solo las cuentas de candidato pueden valorar empresas.'); return; }
+    if (!formulario.reportValidity()) return;
+    const boton = formulario.querySelector('button[type="submit"]'); boton.disabled = true;
     try {
       const datos = new FormData(formulario);
       const r = await fetch('/api/candidato/valoraciones', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({empresa_id:vacante.empresaId,calificacion:Number(datos.get('calificacion')),comentario:datos.get('comentario')})});
       const resultado = await r.json().catch(() => ({})); if(!r.ok) throw new Error(resultado.error || 'No se pudo enviar tu valoración.');
-      formulario.reset(); formulario.hidden = true; mostrarNotificacion('Valoración enviada. Quedó pendiente de revisión.');
+      formulario.reset(); formulario.hidden = true; mostrarNotificacion('Valoración publicada.');
     } catch(error) { mostrarNotificacion(error.message); } finally { boton.disabled = false; }
   });
   const lista = contenedor.querySelector('#lista-valoraciones');
@@ -249,7 +254,10 @@ export function renderizarP03Detalle(
       const promedio = opiniones.length ? opiniones.reduce((total,v) => total + v.calificacion,0) / opiniones.length : 0;
       const estrellas = '★'.repeat(Math.round(promedio)) + '☆'.repeat(5-Math.round(promedio));
       contenedor.querySelector('#resumen-valoraciones').innerHTML = '<strong>' + promedio.toFixed(1) + '</strong><div><span class="estrellas-valoracion">' + estrellas + '</span><span class="texto-secundario"> ' + opiniones.length + ' valoración(es) publicadas</span></div>';
-      lista.innerHTML = opiniones.length ? opiniones.map(v => '<article class="valoracion-item"><span class="estrellas-valoracion">' + '★'.repeat(v.calificacion) + '☆'.repeat(5-v.calificacion) + '</span><p>' + escaparHtml(v.comentario) + '</p></article>').join('') : '<p class="texto-secundario">Aún no hay valoraciones publicadas.</p>';
+      lista.innerHTML = opiniones.length ? opiniones.map(v => '<article class="valoracion-item"><span class="estrellas-valoracion">' + '★'.repeat(v.calificacion) + '☆'.repeat(5-v.calificacion) + '</span><p>' + escaparHtml(v.comentario) + '</p>' + (usuarioActual ? '<button type="button" class="boton" data-reportar-valoracion="' + escaparHtml(v.id) + '">Reportar</button>' : '') + '</article>').join('') : '<p class="texto-secundario">Aún no hay valoraciones publicadas.</p>';
+      lista.querySelectorAll('[data-reportar-valoracion]').forEach((boton) => {
+        boton.addEventListener('click', () => reportarContenido('valoraciones_empresas', boton.dataset.reportarValoracion, mostrarNotificacion));
+      });
     }).catch(() => { lista.textContent = 'No se pudieron cargar las valoraciones.'; });
   else lista.textContent = 'Esta vacante no tiene una empresa vinculada.';
 }

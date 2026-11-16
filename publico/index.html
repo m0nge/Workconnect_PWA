@@ -3,6 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <script src="/js/apariencia.js"></script>
     <title>WorkConnect - Administración del Portal</title>
     <meta
       name="description"
@@ -28,23 +30,22 @@
     />
     <link rel="stylesheet" href="/css/estilos.css" />
     <link rel="stylesheet" href="/css/miPerfil.css" />
+    <link rel="stylesheet" href="/css/apariencia.css" />
   </head>
   <body>
     <div class="aplicacion-raiz">
-      <!-- 1. Barra de navegación superior -->
+
       <header id="encabezado-principal" class="encabezado"></header>
 
-      <!-- 2. Notificación flotante de confirmación -->
       <div id="notificacion-flotante" class="notificacion-flotante oculto" role="status" aria-live="polite">
         <span class="notificacion-punto"></span>
         <span id="notificacion-texto"></span>
       </div>
 
-      <!-- 3. Contenedor principal -->
       <main class="contenedor-principal">
         <div class="disposicion-panel">
           <nav id="navegacion-cuenta-integrada" class="mi-perfil-navegacion" aria-label="Secciones de tu cuenta" hidden></nav>
-          <!-- Área de trabajo dinámica -->
+
           <section id="area-contenido" class="area-contenido" aria-live="polite">
             <div class="tarjeta-estado-carga">Cargando WorkConnect...</div>
           </section>
@@ -84,7 +85,6 @@
       </footer>
     </div>
 
-    <!-- 5. Contenedor global de ventana modal -->
     <div id="modal-raiz"></div>
 
     <script type="module" src="/js/aplicacion.js"></script>

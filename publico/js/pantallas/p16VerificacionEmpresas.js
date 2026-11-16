@@ -56,18 +56,18 @@ export function renderizarP16VerificacionEmpresas(contenedor, solicitudes, accio
                 <td>
                   <p class="titulo-fila">${escaparHtml(sol.nombreComercial)}</p>
                   <p class="subtitulo-fila">${escaparHtml(sol.razonSocial)}</p>
-                  <p class="texto-mono" style="margin:0.15rem 0 0; font-size:10px; color:#94a3b8;">
+                  <p class="texto-mono" style="margin:0.15rem 0 0; font-size:10px; color:var(--color-texto-sutil);">
                     NIT: ${escaparHtml(sol.nit)}
                   </p>
                 </td>
-                <td style="color:#334155; font-weight:500;">${escaparHtml(sol.sector)}</td>
+                <td style="color:var(--color-texto-secundario); font-weight:500;">${escaparHtml(sol.sector)}</td>
                 <td>
                   <div>
                     <span class="insignia-documento">📄 ${escaparHtml(sol.documentoInscripcion)}</span><br />
                     <span class="insignia-documento">🪪 ${escaparHtml(sol.documentoIdentidad)}</span>
                   </div>
                 </td>
-                <td class="texto-mono" style="color:#475569; font-size:11px;">
+                <td class="texto-mono" style="color:var(--color-texto-secundario); font-size:11px;">
                   ${escaparHtml(sol.fechaEnvio)}
                 </td>
                 <td>
@@ -201,12 +201,12 @@ function abrirModalFichaSolicitud(solicitud) {
     subtitulo: 'Detalles completos de la solicitud',
     contenidoHtml: `
       <div class="pila-compacta" style="font-size:0.75rem;">
-        <div class="caja-dato-modal" style="background:#f8fafc; padding:0.75rem;">
-          <h4 style="margin:0; font-weight:700; color:#0f172a; font-size:0.875rem;">
+        <div class="caja-dato-modal" style="background:var(--color-superficie-secundaria); padding:0.75rem;">
+          <h4 style="margin:0; font-weight:700; color:var(--color-texto); font-size:0.875rem;">
             ${escaparHtml(solicitud.nombreComercial)}
           </h4>
-          <p style="margin:0.15rem 0 0; color:#475569;">${escaparHtml(solicitud.razonSocial)}</p>
-          <p class="texto-mono" style="margin:0.25rem 0 0; color:#64748b;">
+          <p style="margin:0.15rem 0 0; color:var(--color-texto-secundario);">${escaparHtml(solicitud.razonSocial)}</p>
+          <p class="texto-mono" style="margin:0.25rem 0 0; color:var(--color-texto-atenuado);">
             NIT: ${escaparHtml(solicitud.nit)}
           </p>
         </div>
@@ -230,8 +230,8 @@ function abrirModalFichaSolicitud(solicitud) {
         ${
           solicitud.observaciones
             ? `
-            <div class="caja-dato-modal" style="background:#fffbeb; border-color:#fde68a; color:#78350f;">
-              <span class="dato-etiqueta" style="color:#92400e;">Observaciones</span>
+            <div class="caja-dato-modal" style="background:var(--color-ambar-fondo); border-color:var(--color-ambar-borde); color:var(--color-ambar);">
+              <span class="dato-etiqueta" style="color:var(--color-ambar);">Observaciones</span>
               <p style="margin:0.2rem 0 0;">${escaparHtml(solicitud.observaciones)}</p>
             </div>
           `
@@ -259,16 +259,16 @@ function abrirModalRevisarSolicitud(solicitud, alCambiarEstadoSolicitud) {
       <div class="pila-compacta">
         <div id="error-revision-solicitud" class="alerta-error-formulario oculto"></div>
 
-        <div class="caja-dato-modal" style="background:#f8fafc; padding:0.875rem; border-radius:0.5rem;">
-          <div style="display:flex; align-items:center; justify-content:space-between;">
-            <h4 style="margin:0; font-weight:700; font-size:1rem; color:#0f172a;">
+        <div class="caja-dato-modal" style="background:var(--color-superficie-secundaria); padding:0.875rem; border-radius:0.5rem;">
+          <div style="display:flex; align-elementos:center; justify-content:space-between;">
+            <h4 style="margin:0; font-weight:700; font-size:1rem; color:var(--color-texto);">
               ${escaparHtml(solicitud.nombreComercial)}
             </h4>
-            <span class="etiqueta-cuadrada texto-mono" style="background:#e2e8f0; color:#1e293b; border-color:#cbd5e1;">
+            <span class="etiqueta-cuadrada texto-mono" style="background:var(--color-borde); color:var(--color-texto); border-color:var(--color-borde-suave);">
               ${escaparHtml(solicitud.estado)}
             </span>
           </div>
-          <p style="margin:0.2rem 0 0; font-size:0.75rem; color:#475569;">
+          <p style="margin:0.2rem 0 0; font-size:0.75rem; color:var(--color-texto-secundario);">
             ${escaparHtml(solicitud.razonSocial)}
           </p>
           <div class="cuadricula-campos-2" style="margin-top:0.5rem; font-size:0.75rem;">
@@ -284,36 +284,36 @@ function abrirModalRevisarSolicitud(solicitud, alCambiarEstadoSolicitud) {
         </div>
 
         <div>
-          <h5 style="margin:0 0 0.4rem; font-size:0.75rem; font-weight:700; color:#1e293b; text-transform:uppercase;">
+          <h5 style="margin:0 0 0.4rem; font-size:0.75rem; font-weight:700; color:var(--color-texto); text-transform:uppercase;">
             Archivos adjuntos recibidos
           </h5>
           <div class="pila-compacta" style="gap:0.5rem;">
-            <div class="caja-resumen-modal" style="background:#ffffff; padding:0.625rem;">
-              <div style="display:flex; align-items:center; gap:0.5rem;">
-                <span style="color:#be123c; font-weight:700; font-size:0.75rem;">PDF</span>
+            <div class="caja-resumen-modal" style="background:var(--color-superficie-base); padding:0.625rem;">
+              <div style="display:flex; align-elementos:center; gap:0.5rem;">
+                <span style="color:var(--color-rosa); font-weight:700; font-size:0.75rem;">PDF</span>
                 <div>
                   <p class="titulo-fila" style="font-size:0.75rem;">${escaparHtml(solicitud.documentoInscripcion)}</p>
                   <p class="subtitulo-fila" style="font-size:10px;">Constancia de inscripción en Registro de Comercio</p>
                 </div>
               </div>
-              <span style="font-size:11px; color:#831843; font-weight:600;">Documento verificado</span>
+              <span style="font-size:11px; color:var(--color-vino); font-weight:600;">Documento verificado</span>
             </div>
 
-            <div class="caja-resumen-modal" style="background:#ffffff; padding:0.625rem;">
-              <div style="display:flex; align-items:center; gap:0.5rem;">
-                <span style="color:#2563eb; font-weight:700; font-size:0.75rem;">PDF</span>
+            <div class="caja-resumen-modal" style="background:var(--color-superficie-base); padding:0.625rem;">
+              <div style="display:flex; align-elementos:center; gap:0.5rem;">
+                <span style="color:var(--color-info); font-weight:700; font-size:0.75rem;">PDF</span>
                 <div>
                   <p class="titulo-fila" style="font-size:0.75rem;">${escaparHtml(solicitud.documentoIdentidad)}</p>
                   <p class="subtitulo-fila" style="font-size:10px;">DUI / Cédula del Representante Legal</p>
                 </div>
               </div>
-              <span style="font-size:11px; color:#831843; font-weight:600;">Documento verificado</span>
+              <span style="font-size:11px; color:var(--color-vino); font-weight:600;">Documento verificado</span>
             </div>
           </div>
         </div>
 
         <div class="caja-lista-verificacion">
-          <h5 style="margin:0; font-size:0.75rem; font-weight:700; color:#1e293b; text-transform:uppercase;">
+          <h5 style="margin:0; font-size:0.75rem; font-weight:700; color:var(--color-texto); text-transform:uppercase;">
             Criterios de verificación (Checklist)
           </h5>
           <label class="item-verificacion">

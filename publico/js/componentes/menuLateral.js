@@ -8,11 +8,11 @@ export function renderizarMenuLateral(
   if (!contenedor) return;
   const elementos = [
     { id: 'P02', etiqueta: 'Resultados', descripcion: 'Buscar vacantes', roles: ['visitante', 'candidato', 'empresa', 'administrador'] },
-    { id: 'P04', etiqueta: 'Recursos', descripcion: 'Consejos y tutoriales', roles: ['visitante', 'candidato', 'empresa', 'administrador'] },
+    { id: 'P04', etiqueta: 'Recursos', descripcion: 'Consejos y tutoriales', roles: ['visitante', 'candidato', 'empresa'] },
     { id: 'P05', etiqueta: 'Foros', descripcion: 'Comunidad laboral', roles: ['visitante', 'candidato', 'empresa', 'administrador'] },
-    { id: 'P17', etiqueta: 'Publicados', descripcion: 'Catálogo de recursos', roles: ['visitante', 'candidato', 'empresa', 'administrador'] },
+    { id: 'P17', etiqueta: 'Publicados', descripcion: 'Catálogo de recursos', roles: ['visitante', 'candidato', 'empresa'] },
     { id: 'P28', etiqueta: 'Crear tema', descripcion: 'Abrir discusión', roles: ['candidato', 'administrador'] },
-    { id: 'P11', etiqueta: 'Dashboard', descripcion: 'Métricas generales', roles: ['administrador'] },
+    { id: 'P11', etiqueta: 'Resumen', descripcion: 'Métricas generales', roles: ['administrador'] },
     { id: 'P12', etiqueta: 'Usuarios', descripcion: 'Gestión de cuentas', roles: ['administrador'] },
     {
       id: 'P13',
@@ -35,35 +35,28 @@ export function renderizarMenuLateral(
       roles: ['administrador'],
       pendiente: conteosPendientes.moderacion
     },
-    {
-      id: 'P16',
-      etiqueta: 'Verificación Empresas',
-      descripcion: 'Revisión documental',
-      roles: ['administrador'],
-      pendiente: conteosPendientes.verificaciones
-    },
-    { id: 'P19', etiqueta: 'Crear Recurso', descripcion: 'Publicar artículos', roles: ['administrador'] }
+    { id: 'P19', etiqueta: 'Recursos', descripcion: 'Publicar artículos', roles: ['administrador'] }
   ];
 
   const htmlElementos = elementos
-    .filter((item) => item.roles.includes(rolActual))
-    .map((item) => {
-      const esActivo = pantallaActual === item.id;
+    .filter((elementoLista) => elementoLista.roles.includes(rolActual))
+    .map((elementoLista) => {
+      const esActivo = pantallaActual === elementoLista.id;
       const insignia =
-        item.pendiente && item.pendiente > 0
-          ? `<span class="insignia-pendiente" title="${item.pendiente} pendientes">${item.pendiente}</span>`
+        elementoLista.pendiente && elementoLista.pendiente > 0
+          ? `<span class="insignia-pendiente" title="${elementoLista.pendiente} pendientes">${elementoLista.pendiente}</span>`
           : '';
 
       return `
         <button
           type="button"
           class="boton-menu-lateral ${esActivo ? 'activo' : ''}"
-          data-pantalla="${item.id}"
+          data-pantalla="${elementoLista.id}"
         >
           <div class="boton-menu-izquierda">
             <div class="menu-textos">
-              <span class="menu-etiqueta">${item.etiqueta}</span>
-              <span class="menu-descripcion">${item.descripcion}</span>
+              <span class="menu-etiqueta">${elementoLista.etiqueta}</span>
+              <span class="menu-descripcion">${elementoLista.descripcion}</span>
             </div>
           </div>
           ${insignia}

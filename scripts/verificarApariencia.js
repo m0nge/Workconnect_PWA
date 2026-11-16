@@ -1,0 +1,151 @@
+import { createServer as crearServidor } from 'node:http';
+import { spawn as iniciarProceso } from 'node:child_process';
+import * as archivos from 'node:fs/promises';
+import { existsSync as existeArchivo } from 'node:fs';
+import * as rutas from 'node:path';
+import { tmpdir as directorioTemporal } from 'node:os';
+import { respuestaRevision } from './datosRevision.js';
+import { paginaRevision, codigoPaginaRevision } from './paginaRevision.js';
+
+const raiz = rutas.resolve('publico');
+const navegador = [process.env.NAVEGADOR_REVISION, 'C:/Program Files/Google/Chrome/Application/chrome.exe', 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'].find((ruta) => ruta && existeArchivo(ruta));
+if (!navegador) throw new Error('Configura NAVEGADOR_REVISION con la ruta de Chrome o Edge.');
+const esperar = (milisegundos) => new Promise((resolver) => setTimeout(resolver, milisegundos));
+const directorioPerfil = await archivos.mkdtemp(rutas.join(directorioTemporal(), 'workconnect-apariencia-'));
+console.log('Preparando navegador y servidor de revisión.');
+const directorioCapturas = rutas.resolve('revision-interfaz');
+await archivos.mkdir(directorioCapturas, { recursive: true });
+const servidor = crearServidor(async (solicitud, respuesta) => {
+  const url = new URL(solicitud.url, 'http://localhost');
+  const enviar = (tipo, contenido) => { respuesta.writeHead(200, { 'Content-Type': tipo }); respuesta.end(contenido); };
+  if (url.pathname === '/revision') return enviar('text/html; charset=utf-8', paginaRevision(url.searchParams.get('tema')));
+  if (url.pathname === '/') {
+    const pagina = (await archivos.readFile(rutas.join(raiz, 'index.html'), 'utf8')).replace(/<link\b[^>]*href="https:[^>]*>/g, '');
+    return enviar('text/html; charset=utf-8', pagina);
+  }
+  if (url.pathname === '/revision/pagina.js') return enviar('text/javascript; charset=utf-8', codigoPaginaRevision);
+  if (url.pathname === '/revision/datos.js') return enviar('text/javascript; charset=utf-8', await archivos.readFile(new URL('./datosRevision.js', import.meta.url)));
+  if (url.pathname.startsWith('/api/')) {
+    const referencia = new URL(solicitud.headers.referer || 'http://localhost');
+    return enviar('application/json', JSON.stringify(respuestaRevision(url.pathname, referencia.searchParams.get('vista'))));
+  }
+  const ruta = rutas.resolve(raiz, '.' + url.pathname);
+  if (!ruta.startsWith(raiz + rutas.sep)) { respuesta.writeHead(403); respuesta.end(); return; }
+  try {
+    const tipos = { '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png' };
+    enviar(tipos[rutas.extname(ruta)] || 'application/octet-stream', await archivos.readFile(ruta));
+  } catch { respuesta.writeHead(404); respuesta.end(); }
+});
+await new Promise((resolver) => servidor.listen(0, '127.0.0.1', resolver));
+console.log('Servidor de revisión iniciado.');
+const origen = `http://127.0.0.1:${servidor.address().port}`;
+const proceso = iniciarProceso(navegador, ['--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check', '--disable-extensions', '--disable-background-networking', '--remote-debugging-port=0', `--user-data-dir=${directorioPerfil}`, 'about:blank'], { windowsHide: true, stdio: 'ignore' });
+let conexion;
+try {
+  const rutaPuerto = rutas.join(directorioPerfil, 'DevToolsActivePort');
+  for (let intento = 0; intento < 150 && !existeArchivo(rutaPuerto); intento++) await esperar(100);
+  if (!existeArchivo(rutaPuerto)) throw new Error('El navegador no inició la revisión.');
+  console.log('Navegador iniciado.');
+  const puerto = (await archivos.readFile(rutaPuerto, 'utf8')).split('\n')[0];
+  const paginas = await (await fetch(`http://127.0.0.1:${puerto}/json/list`)).json();
+  conexion = new WebSocket(paginas.find((pagina) => pagina.type === 'page').webSocketDebuggerUrl);
+  await new Promise((resolver, rechazar) => { conexion.addEventListener('open', resolver, { once: true }); conexion.addEventListener('error', rechazar, { once: true }); });
+  let secuencia = 0;
+  const pendientes = new Map();
+  const erroresNavegador = [];
+  conexion.addEventListener('message', (evento) => {
+    const mensaje = JSON.parse(evento.data);
+    if (mensaje.id) {
+      const pendiente = pendientes.get(mensaje.id);
+      pendientes.delete(mensaje.id);
+      if (mensaje.error) pendiente?.rechazar(new Error(mensaje.error.message)); else pendiente?.resolver(mensaje.result);
+    } else if (mensaje.method === 'Runtime.exceptionThrown') erroresNavegador.push(mensaje.params.exceptionDetails.exception?.description || mensaje.params.exceptionDetails.text);
+  });
+  function ordenar(metodo, parametros = {}) {
+    return new Promise((resolver, rechazar) => {
+      const identificador = ++secuencia;
+      const temporizador = setTimeout(() => { pendientes.delete(identificador); rechazar(new Error(`El navegador no respondió a ${metodo}.`)); }, 10000);
+      pendientes.set(identificador, { resolver: (valor) => { clearTimeout(temporizador); resolver(valor); }, rechazar: (error) => { clearTimeout(temporizador); rechazar(error); } });
+      conexion.send(JSON.stringify({ id: identificador, method: metodo, params: parametros }));
+    });
+  }
+  async function evaluar(expresion) {
+    const resultado = await ordenar('Runtime.evaluate', { expression: expresion, awaitPromise: true, returnByValue: true });
+    if (resultado.exceptionDetails) throw new Error(resultado.exceptionDetails.exception?.description || resultado.exceptionDetails.text);
+    return resultado.result.value;
+  }
+  await ordenar('Runtime.enable');
+  await ordenar('Page.enable');
+  await ordenar('Emulation.setDeviceMetricsOverride', { width: 1365, height: 1000, deviceScaleFactor: 1, mobile: false });
+  const vistas = ['P01', 'P02', 'P03', 'P04', 'P05', 'P05-publico', 'P07', 'P08', 'P09', 'P10', 'P11', 'P12', 'P13', 'P14', 'P15', 'P16', 'P19', 'P28', 'ingreso', 'registro', 'registro-empresa', 'P19&formulario=recurso', 'P19&ventana=edicion', 'P05&ventana=edicion', 'P05&ventana=dialogo'];
+  const informes = [];
+  const estilosAcciones = new Map();
+  for (const pantalla of [
+    { ancho: 1365, alto: 1000, vistas },
+    { ancho: 390, alto: 844, vistas: ['P01', 'P03', 'P19', 'P09', 'registro-empresa', 'P05&ventana=dialogo'] },
+    { ancho: 320, alto: 844, vistas: ['P19', 'P01', 'registro-empresa'] }
+  ]) {
+    await ordenar('Emulation.setDeviceMetricsOverride', { width: pantalla.ancho, height: pantalla.alto, deviceScaleFactor: 1, mobile: pantalla.ancho < 600 });
+    for (const tema of ['claro', 'oscuro']) {
+    for (const vista of pantalla.vistas) {
+      erroresNavegador.length = 0;
+      await ordenar('Page.navigate', { url: `${origen}/revision?vista=${vista}&tema=${tema}` });
+      let lista = false;
+      for (let intento = 0; intento < 100; intento++) {
+        await esperar(50);
+        try { lista = await evaluar('({ lista: !!window.revisionLista, error: window.errorRevision })'); } catch { continue; }
+        if (lista.error) throw new Error(`${vista}: ${lista.error}`);
+        if (lista.lista) break;
+      }
+      if (!lista?.lista) throw new Error(`${vista}: la pantalla no terminó de cargar.`);
+      await esperar(150);
+      const informe = await evaluar(`(() => {
+        const visibles = [...document.querySelectorAll('input:not([type="hidden"]), select, textarea, .tarjeta, .mi-perfil-tarjeta, .modal-ventana, dialog, .encabezado, .pie-pagina')].filter(e => e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden');
+        const superficiesClaras = visibles.filter(e => !e.matches('input[type="checkbox"], input[type="radio"]') && /^rgb\\(/.test(getComputedStyle(e).backgroundColor) && getComputedStyle(e).backgroundColor.match(/\\d+/g).slice(0,3).every(n => Number(n) > 220)).map(e => e.className || e.tagName);
+        const acciones = [...document.querySelectorAll('[data-accion-visual]')].filter(e => e.getClientRects().length).map(e => { const estilo = getComputedStyle(e); return { accion: e.dataset.accionVisual, texto: e.textContent.trim(), estilo: [estilo.backgroundColor, estilo.color, estilo.borderColor, estilo.borderRadius, estilo.fontSize, estilo.fontWeight, estilo.paddingTop, estilo.paddingBottom].join('|') }; });
+        const campos = visibles.filter(e => e.matches('input, select, textarea')).map(e => ({ fondo: getComputedStyle(e).backgroundColor, texto: getComputedStyle(e).color }));
+        const controlesFuera = [...document.querySelectorAll('#encabezado-principal button')].filter(e => e.getClientRects().length && (e.getBoundingClientRect().right > innerWidth + 1 || e.getBoundingClientRect().left < -1)).map(e => e.textContent.trim());
+        return { tema: document.documentElement.dataset.tema, superficiesClaras, acciones, campos, controlesFuera, ancho: document.documentElement.scrollWidth, ventana: innerWidth };
+      })()`);
+      if (informe.tema !== tema) throw new Error(`${vista}: tema incorrecto.`);
+      if (tema === 'oscuro' && informe.superficiesClaras.length) throw new Error(`${vista}: superficies claras en modo oscuro: ${informe.superficiesClaras.join(', ')}`);
+      if (informe.ancho > informe.ventana + 1) throw new Error(`${vista}: contenido fuera del ancho de pantalla (${informe.ancho}/${informe.ventana}).`);
+      if (informe.controlesFuera.length) throw new Error(`${vista}: controles del encabezado fuera de pantalla: ${informe.controlesFuera.join(', ')}.`);
+      for (const accion of informe.acciones) {
+        const clave = `${tema}-${accion.accion}`;
+        if (!estilosAcciones.has(clave)) estilosAcciones.set(clave, accion.estilo);
+        if (estilosAcciones.get(clave) !== accion.estilo) throw new Error(`${vista}: estilo diferente para ${accion.texto}: ${accion.estilo} / ${estilosAcciones.get(clave)}`);
+      }
+      if (erroresNavegador.length) throw new Error(`${vista}: ${erroresNavegador.join('\n')}`);
+      informes.push({ vista, tema, ancho: pantalla.ancho, campos: informe.campos.length, acciones: informe.acciones.length });
+      if (informes.length % 5 === 0) console.log(`${informes.length} vistas verificadas.`);
+      if (tema === 'oscuro' && ['P19', 'registro-empresa', 'P01', 'P05&ventana=edicion'].includes(vista)) {
+        const captura = await ordenar('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
+        await archivos.writeFile(rutas.join(directorioCapturas, `${vista.replace(/[^a-z0-9]/gi, '-')}-${tema}-${pantalla.ancho}.png`), Buffer.from(captura.data, 'base64'));
+      }
+    }
+    console.log(`Modo ${tema}, ancho ${pantalla.ancho}: ${pantalla.vistas.length} vistas y formularios revisados.`);
+    }
+  }
+  await evaluar("document.querySelector('[data-alternar-tema]').click()");
+  await ordenar('Page.navigate', { url: `${origen}/revision?vista=P19` });
+  await esperar(350);
+  if (await evaluar('document.documentElement.dataset.tema') !== 'claro') throw new Error('La preferencia de tema no se conservó.');
+  await ordenar('Emulation.setDeviceMetricsOverride', { width: 1365, height: 1000, deviceScaleFactor: 1, mobile: false });
+  erroresNavegador.length = 0;
+  await ordenar('Page.navigate', { url: origen + '/' });
+  await esperar(750);
+  const inicioCorrecto = await evaluar("document.querySelector('#area-contenido h1')?.textContent");
+  if (!inicioCorrecto || erroresNavegador.length) throw new Error(`La aplicación no inició correctamente: ${erroresNavegador.join(', ')}`);
+  await archivos.writeFile(rutas.join(directorioCapturas, 'resultado.json'), JSON.stringify({ informes, variantes: estilosAcciones.size, persistencia: true }, null, 2));
+  console.log(`Revisión completa: ${informes.length} vistas, ${estilosAcciones.size} variantes de acciones y preferencia persistente.`);
+} finally {
+  conexion?.close();
+  proceso.kill();
+  servidor.close();
+  await esperar(400);
+  const temporal = rutas.resolve(directorioTemporal()) + rutas.sep;
+  if (rutas.resolve(directorioPerfil).startsWith(temporal) && rutas.basename(directorioPerfil).startsWith('workconnect-apariencia-')) {
+    await archivos.rm(directorioPerfil, { recursive: true, force: true, maxRetries: 3, retryDelay: 250 }).catch(() => {});
+  }
+}

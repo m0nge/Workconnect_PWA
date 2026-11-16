@@ -5,6 +5,7 @@ const estadoModeracion = {
 };
 
 export function renderizarP15Moderacion(contenedor, elementos, acciones) {
+  elementos = elementos.filter((e) => !['Aprobado', 'Desestimado'].includes(e.estado));
   const conteoTodoPend = elementos.filter((e) => e.estado === 'Pendiente').length;
   const conteoForosPend = elementos.filter(
     (e) => e.categoria === 'Foros' && e.estado === 'Pendiente'
@@ -16,7 +17,7 @@ export function renderizarP15Moderacion(contenedor, elementos, acciones) {
     (e) => e.categoria === 'Valoraciones' && e.estado === 'Pendiente'
   ).length;
   const conteoReportesPend = elementos.filter(
-    (e) => e.categoria === 'Reportes' && e.estado === 'Pendiente'
+    (e) => e.categoria === 'Postulaciones' && e.estado === 'Pendiente'
   ).length;
 
   const pestanas = [
@@ -24,7 +25,7 @@ export function renderizarP15Moderacion(contenedor, elementos, acciones) {
     { clave: 'Foros', etiqueta: `Foros · ${conteoForosPend} pend.` },
     { clave: 'Comentarios', etiqueta: `Comentarios · ${conteoComentariosPend} pend.` },
     { clave: 'Valoraciones', etiqueta: `Valoraciones · ${conteoValoracionesPend} pend.` },
-    { clave: 'Reportes', etiqueta: `Reportes · ${conteoReportesPend} pend.` }
+    { clave: 'Postulaciones', etiqueta: `Postulaciones · ${conteoReportesPend} pend.` }
   ];
 
   const htmlPestanas = pestanas
@@ -49,30 +50,30 @@ export function renderizarP15Moderacion(contenedor, elementos, acciones) {
   const htmlTarjetas =
     elementosFiltrados.length === 0
       ? `
-        <div class="tarjeta tarjeta-espaciado texto-centro" style="color:#64748b; font-size:0.75rem; padding:2rem;">
+        <div class="tarjeta tarjeta-espaciado texto-centro" style="color:var(--color-texto-atenuado); font-size:0.75rem; padding:2rem;">
           No hay contenido pendiente de moderación en esta categoría.
         </div>
       `
       : elementosFiltrados
-          .map((item) => {
+          .map((elementoLista) => {
             const estiloEstado =
-              item.estado === 'Pendiente'
-                ? 'background:#fffbeb; color:#92400e; border-color:#fde68a;'
-                : item.estado === 'Aprobado'
-                ? 'background:#ecfdf5; color:#047857; border-color:#a7f3d0;'
-                : item.estado === 'Oculto'
-                ? 'background:#f1f5f9; color:#334155; border-color:#cbd5e1;'
-                : 'background:#fff1f2; color:#9f1239; border-color:#fecdd3;';
+              elementoLista.estado === 'Pendiente'
+                ? 'background:var(--color-ambar-fondo); color:var(--color-ambar); border-color:var(--color-ambar-borde);'
+                : elementoLista.estado === 'Aprobado'
+                ? 'background:var(--color-esmeralda-fondo); color:var(--color-esmeralda); border-color:var(--color-esmeralda-borde);'
+                : elementoLista.estado === 'Oculto'
+                ? 'background:var(--color-superficie-elevada); color:var(--color-texto-secundario); border-color:var(--color-borde-suave);'
+                : 'background:var(--color-rosa-fondo); color:var(--color-rosa); border-color:var(--color-rosa-borde);';
 
             return `
               <div class="tarjeta-moderacion">
                 <div class="barra-tarjeta-moderacion">
-                  <div style="display:flex; align-items:center; gap:0.5rem;">
-                    <span class="etiqueta-cuadrada" style="background:#f1f5f9; color:#475569; border-color:#e2e8f0;">
-                      ${escaparHtml(item.tipo)}
+                  <div style="display:flex; align-elementos:center; gap:0.5rem;">
+                    <span class="etiqueta-cuadrada" style="background:var(--color-superficie-elevada); color:var(--color-texto-secundario); border-color:var(--color-borde);">
+                      ${escaparHtml(elementoLista.tipo)}
                     </span>
                     <span class="etiqueta-cuadrada" style="${estiloEstado}">
-                      ${escaparHtml(item.estado)}
+                      ${escaparHtml(elementoLista.estado)}
                     </span>
                   </div>
 
@@ -81,33 +82,24 @@ export function renderizarP15Moderacion(contenedor, elementos, acciones) {
                       type="button"
                       class="boton"
                       data-estado-mod="Aprobado"
-                      data-id="${escaparHtml(item.id)}"
+                      data-id="${escaparHtml(elementoLista.id)}"
                       title="Conserva o restablece el contenido autorizado"
                     >
-                      Aprobar
+                      Marcar revisado
                     </button>
                     <button
                       type="button"
                       class="boton"
-                      data-estado-mod="Desestimado"
-                      data-id="${escaparHtml(item.id)}"
-                      title="Descarta el reporte si no hay infracción"
+                      data-estado-mod="${elementoLista.estado === 'Oculto' ? 'Aprobado' : 'Oculto'}"
+                      data-id="${escaparHtml(elementoLista.id)}"
+                      title="${elementoLista.estado === 'Oculto' ? 'Restablece la visibilidad del contenido' : 'Oculta el contenido reportado'}"
                     >
-                      Desestimar
-                    </button>
-                    <button
-                      type="button"
-                      class="boton"
-                      data-estado-mod="Oculto"
-                      data-id="${escaparHtml(item.id)}"
-                      title="Retira de la vista pública el contenido señalado"
-                    >
-                      Ocultar
+                      ${elementoLista.estado === 'Oculto' ? 'Desocultar' : 'Ocultar'}
                     </button>
                     <button
                       type="button"
                       class="boton boton-peligro"
-                      data-eliminar-mod="${escaparHtml(item.id)}"
+                      data-eliminar-mod="${escaparHtml(elementoLista.id)}"
                       title="Suprime el elemento de la plataforma"
                     >
                       Eliminar
@@ -117,13 +109,13 @@ export function renderizarP15Moderacion(contenedor, elementos, acciones) {
 
                 <div>
                   <p class="titulo-fila" style="font-size:0.75rem;">
-                    ${escaparHtml(item.motivoOTitulo)}
+                    ${escaparHtml(elementoLista.motivoOTitulo)}
                   </p>
                   <p class="subtitulo-fila">
-                    ${escaparHtml(item.referencia)} · ${escaparHtml(item.autor)} · ${escaparHtml(item.fecha)}
+                    ${escaparHtml(elementoLista.referencia)} · ${escaparHtml(elementoLista.autor)} · ${escaparHtml(elementoLista.fecha)}
                   </p>
                   <div class="caja-detalle-moderacion">
-                    ${escaparHtml(item.detalles)}
+                    ${escaparHtml(elementoLista.detalles)}
                   </div>
                 </div>
               </div>
@@ -136,7 +128,7 @@ export function renderizarP15Moderacion(contenedor, elementos, acciones) {
       <div class="cabecera-pantalla">
         <h1 class="titulo-pantalla">Moderación</h1>
         <p class="subtitulo-pantalla">
-          Aprueba, oculta o elimina foros, comentarios, valoraciones y reportes.
+          Revisa reportes de foros, comentarios, valoraciones y postulaciones.
         </p>
       </div>
 

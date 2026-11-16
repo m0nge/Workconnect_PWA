@@ -9,7 +9,7 @@
   align-items: center;
   gap: 0.65rem;
   min-width: 0;
-  color: var(--color-carbon);
+  color: var(--color-texto);
   text-decoration: none;
 }
 
@@ -30,7 +30,7 @@
   height: 2.25rem;
   place-items: center;
   border-radius: var(--radio-pequeno);
-  background: var(--color-vino);
+  background: var(--color-acento-solido);
   color: var(--color-blanco);
   font-weight: 800;
 }
@@ -44,7 +44,7 @@
   padding: 0.55rem 0.85rem;
   border: 1px solid var(--color-vino);
   border-radius: var(--radio-pequeno);
-  background: var(--color-vino);
+  background: var(--color-acento-solido);
   color: var(--color-blanco);
   font-size: 0.8rem;
   font-weight: 700;
@@ -59,7 +59,7 @@
 
 .mi-perfil-volver:hover {
   border-color: var(--color-vino-oscuro);
-  background: var(--color-vino-oscuro);
+  background: var(--color-acento-intenso);
   color: var(--color-blanco);
 }
 
@@ -131,7 +131,7 @@
   line-height: 1.45;
 }
 
-.mi-perfil-error-inline {
+.mi-perfil-error-en-linea {
   color: var(--color-vino);
   font-size: 0.78rem;
 }
@@ -151,7 +151,7 @@
   padding: 1.25rem;
   border: 1px solid var(--color-borde);
   border-radius: var(--radio-mediano);
-  background: var(--color-blanco);
+  background: var(--color-superficie-base);
   box-shadow: var(--sombra-suave);
 }
 
@@ -175,16 +175,9 @@
 }
 
 .mi-perfil-completitud span {
-  color: var(--color-carbon);
+  color: var(--color-texto);
   font-weight: 700;
-}
-
-.mi-perfil-edicion {
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--color-borde-suave);
-}
-
+}.mi-perfil-edicion,
 .mi-perfil-formulario-edicion {
   margin-top: 1rem;
   padding-top: 1rem;
@@ -296,7 +289,7 @@
   flex: 0 0 auto;
   place-items: center;
   border-radius: 50%;
-  background: var(--color-vino);
+  background: var(--color-acento-solido);
   color: var(--color-blanco);
   font-size: 1.25rem;
   font-weight: 800;
@@ -350,7 +343,7 @@
 .mi-perfil-tarjeta h2,
 .mi-perfil-tarjeta h3 {
   margin: 0 0 0.35rem;
-  color: var(--color-carbon);
+  color: var(--color-texto);
 }
 
 .mi-perfil-tarjeta h2 {
@@ -409,8 +402,8 @@
   padding: 0.65rem 0.75rem;
   border: 1px solid var(--color-borde);
   border-radius: var(--radio-mediano);
-  background: var(--color-blanco);
-  color: var(--color-carbon);
+  background: var(--color-superficie-base);
+  color: var(--color-texto);
   font-size: 0.875rem;
 }
 
@@ -447,21 +440,14 @@
   gap: 0.6rem;
   align-items: center;
   margin-top: 1rem;
-}
-
-#perfil-cv-guardar,
-#perfil-cv-descargar {
-  border-color: var(--color-vino);
-  background-color: var(--color-vino);
-  color: var(--color-blanco);
-}
-
+}#perfil-cv-guardar,
+#perfil-cv-descargar,
 .mi-perfil-formulario[data-lista="experiencia"] button[type="submit"],
 .mi-perfil-formulario[data-lista="estudios"] button[type="submit"],
 .mi-perfil-formulario[data-lista="habilidades"] button[type="submit"],
 .mi-perfil-formulario[data-lista="alertas"] button[type="submit"] {
   border-color: var(--color-vino);
-  background-color: var(--color-vino);
+  background-color: var(--color-acento-solido);
   color: var(--color-blanco);
 }
 
@@ -472,7 +458,7 @@
 .mi-perfil-formulario[data-lista="habilidades"] button[type="submit"]:hover,
 .mi-perfil-formulario[data-lista="alertas"] button[type="submit"]:hover {
   border-color: var(--color-vino-oscuro);
-  background-color: var(--color-vino-oscuro);
+  background-color: var(--color-acento-intenso);
   color: var(--color-blanco);
 }
 
@@ -609,7 +595,7 @@
 
 .mi-perfil-estadistica strong {
   display: block;
-  color: var(--color-carbon);
+  color: var(--color-texto);
   font-size: 1.25rem;
 }
 
@@ -687,18 +673,16 @@
 }
 
 #postulaciones-candidato-lista li:not(.mi-perfil-vacio) { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
-.mi-perfil-ver-detalle { display: inline-flex; align-items: center; justify-content: center; padding: .5rem .9rem; border: 1px solid #80143c; border-radius: .4rem; color: #80143c; background: #fff; text-decoration: none; font-size: .8rem; font-weight: 600; }
-.mi-perfil-ver-detalle:hover { color: #fff; background: #80143c; }
-.mi-perfil-ver-detalle:focus-visible { outline: 2px solid #80143c; outline-offset: 3px; }
+.mi-perfil-ver-detalle { display: inline-flex; align-items: center; justify-content: center; padding: .5rem .9rem; border: 1px solid var(--color-vino); border-radius: .4rem; color: var(--color-vino); background: var(--color-superficie-base); text-decoration: none; font-size: .8rem; font-weight: 600; }
+.mi-perfil-ver-detalle:hover { color: var(--color-texto-inverso); background: var(--color-acento-solido); }
+.mi-perfil-ver-detalle:focus-visible { outline: 2px solid var(--color-vino); outline-offset: 3px; }
 
-/* ==========================================================================
-   Pestañas de Candidato (Perfil vs Postulaciones)
-   ========================================================================== */
+/* Pestañas de Candidato (Perfil vs Postulaciones) */
 .mi-perfil-pestanas {
   display: flex;
   gap: 0.5rem;
   margin-bottom: 1.5rem;
-  border-bottom: 2px solid var(--color-borde, #e2e8f0);
+  border-bottom: 2px solid var(--color-borde, var(--color-borde));
   padding-bottom: 0.25rem;
 }
 
@@ -709,7 +693,7 @@
   padding: 0.65rem 1.25rem;
   border: none;
   background: transparent;
-  color: var(--color-texto-secundario, #64748b);
+  color: var(--color-texto-secundario, var(--color-texto-atenuado));
   font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
@@ -719,12 +703,12 @@
 }
 
 .mi-perfil-pestana:hover {
-  color: var(--color-vino, #80143c);
+  color: var(--color-vino, var(--color-vino));
   background: rgba(128, 20, 60, 0.04);
 }
 
 .mi-perfil-pestana.activa {
-  color: var(--color-vino, #80143c);
+  color: var(--color-vino, var(--color-vino));
   font-weight: 700;
 }
 
@@ -735,11 +719,11 @@
   left: 0;
   right: 0;
   height: 3px;
-  background: var(--color-vino, #80143c);
+  background: var(--color-vino, var(--color-acento-solido));
   border-radius: 3px;
 }
 
-.insignia-conteo-tab {
+.insignia-conteo-pestana {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -749,8 +733,8 @@
   font-size: 0.72rem;
   font-weight: 700;
   border-radius: 999px;
-  background: var(--color-vino, #80143c);
-  color: #fff;
+  background: var(--color-vino, var(--color-acento-solido));
+  color: var(--color-texto-inverso);
 }
 
 .estadistica-interactiva {
@@ -763,21 +747,19 @@
   background: rgba(128, 20, 60, 0.05);
 }
 
-/* ==========================================================================
-   Panel de Postulaciones del Candidato
-   ========================================================================== */
+/* Panel de Postulaciones del Candidato */
 .mi-perfil-panel-postulaciones {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
 }
 
-.postulaciones-hero-tarjeta {
-  background: linear-gradient(135deg, #ffffff 0%, #fdf8f9 100%);
-  border: 1px solid var(--color-borde-suave, #e2e8f0);
+.postulaciones-presentacion-tarjeta {
+  background: linear-gradient(135deg, var(--color-superficie-base) 0%, var(--color-vino-suave) 100%);
+  border: 1px solid var(--color-borde-suave, var(--color-borde));
 }
 
-.postulaciones-hero-cabecera {
+.postulaciones-presentacion-cabecera {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -798,8 +780,8 @@
   align-items: center;
   justify-content: center;
   padding: 0.85rem 0.5rem;
-  background: #ffffff;
-  border: 1px solid var(--color-borde-suave, #e2e8f0);
+  background: var(--color-superficie-base);
+  border: 1px solid var(--color-borde-suave, var(--color-borde));
   border-radius: var(--radio-pequeno, 6px);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
 }
@@ -807,13 +789,13 @@
 .postulacion-kpi-num {
   font-size: 1.6rem;
   font-weight: 800;
-  color: var(--color-vino, #80143c);
+  color: var(--color-vino, var(--color-vino));
   line-height: 1.1;
 }
 
 .postulacion-kpi-etiqueta {
   font-size: 0.76rem;
-  color: var(--color-texto-atenuado, #64748b);
+  color: var(--color-texto-atenuado, var(--color-texto-atenuado));
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.03em;
@@ -836,14 +818,14 @@
   align-items: center;
   gap: 1rem;
   padding: 1.1rem 1.25rem;
-  background: #ffffff;
-  border: 1px solid var(--color-borde-suave, #e2e8f0);
+  background: var(--color-superficie-base);
+  border: 1px solid var(--color-borde-suave, var(--color-borde));
   border-radius: var(--radio-pequeno, 6px);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .tarjeta-postulacion-candidato:hover {
-  border-color: #cbd5e1;
+  border-color: var(--color-borde-suave);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
 }
 
@@ -865,14 +847,14 @@
 .tarjeta-postulacion-titulo {
   font-size: 1rem;
   font-weight: 700;
-  color: var(--color-carbon, #1e293b);
+  color: var(--color-carbon, var(--color-texto));
 }
 
 .tarjeta-postulacion-detalles {
   display: flex;
   gap: 1.25rem;
   font-size: 0.82rem;
-  color: var(--color-texto-secundario, #64748b);
+  color: var(--color-texto-secundario, var(--color-texto-atenuado));
   flex-wrap: wrap;
 }
 
@@ -897,33 +879,33 @@
 }
 
 .insignia-estado-nueva {
-  background: #e0f2fe;
-  color: #0369a1;
+  background: var(--color-info-fondo);
+  color: var(--color-info);
 }
 
 .insignia-estado-revision {
-  background: #fef3c7;
-  color: #b45309;
+  background: var(--color-ambar-fondo);
+  color: var(--color-ambar);
 }
 
 .insignia-estado-entrevista {
-  background: #ede9fe;
-  color: #6d28d9;
+  background: var(--color-violeta-fondo);
+  color: var(--color-violeta);
 }
 
 .insignia-estado-contratada {
-  background: #dcfce7;
-  color: #15803d;
+  background: var(--color-esmeralda-fondo);
+  color: var(--color-esmeralda);
 }
 
 .insignia-estado-rechazada {
-  background: #fee2e2;
-  color: #b91c1c;
+  background: var(--color-rosa-fondo);
+  color: var(--color-rosa);
 }
 
 .insignia-estado-defecto {
-  background: #f1f5f9;
-  color: #475569;
+  background: var(--color-superficie-elevada);
+  color: var(--color-texto-secundario);
 }
 
 /* Estado Vacío de Postulaciones */
@@ -933,9 +915,7 @@
   align-items: center;
   text-align: center;
   padding: 3rem 1.5rem;
-  background: #f8fafc;
+  background: var(--color-superficie-secundaria);
   border-radius: var(--radio-pequeno, 6px);
-  border: 1px dashed var(--color-borde, #cbd5e1);
+  border: 1px dashed var(--color-borde, var(--color-borde-suave));
 }
-
-

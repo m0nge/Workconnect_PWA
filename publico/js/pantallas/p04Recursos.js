@@ -7,7 +7,7 @@ export function renderizarP04Recursos(contenedor, datos, titulo = 'Recursos labo
 
   contenedor.innerHTML = `
     <div class="pila-vertical recursos-pantalla">
-      <div class="cabecera-pantalla recursos-hero">
+      <div class="cabecera-pantalla recursos-presentacion">
         <span class="etiqueta-cuadrada">DESARROLLO PROFESIONAL</span>
         <h1 class="titulo-pantalla">${escaparHtml(titulo)}</h1>
         <p class="subtitulo-pantalla">

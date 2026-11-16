@@ -75,7 +75,7 @@ export function renderizarP14Vacantes(contenedor, vacantes, acciones) {
     </div>
   `;
 
-  const inputBusqueda = contenedor.querySelector('#busqueda-vacantes');
+  const entradaBusqueda = contenedor.querySelector('#busqueda-vacantes');
   const cuerpoTabla = contenedor.querySelector('#cuerpo-tabla-vacantes');
 
   const actualizarTabla = () => {
@@ -120,7 +120,7 @@ export function renderizarP14Vacantes(contenedor, vacantes, acciones) {
 
         const botonEstado =
           vacante.estado === 'Pendiente'
-            ? `<button type="button" class="boton boton-primario" data-aprobar="${escaparHtml(vacante.id)}">Aprobar</button>`
+            ? `<button type="button" class="boton boton-primario" data-aprobar="${escaparHtml(vacante.id)}">Activar</button>`
             : `<button
                 type="button"
                 class="boton ${vacante.estado === 'Activa' ? '' : 'boton-exito'}"
@@ -137,10 +137,10 @@ export function renderizarP14Vacantes(contenedor, vacantes, acciones) {
                 ${escaparHtml(vacante.empresa)} · ${escaparHtml(vacante.municipio)}
               </p>
             </td>
-            <td class="texto-mono" style="font-weight:500; color:#1e293b;">
+            <td class="texto-mono" style="font-weight:500; color:var(--color-texto);">
               $${vacante.salarioMin} – $${vacante.salarioMax}
             </td>
-            <td class="texto-mono" style="color:#475569; font-size:11px;">
+            <td class="texto-mono" style="color:var(--color-texto-secundario); font-size:11px;">
               ${escaparHtml(vacante.fechaPublicacion)}
             </td>
             <td>
@@ -203,7 +203,7 @@ export function renderizarP14Vacantes(contenedor, vacantes, acciones) {
     });
   });
 
-  inputBusqueda.addEventListener('input', (e) => {
+  entradaBusqueda.addEventListener('input', (e) => {
     estadoFiltrosVacantes.terminoBusqueda = e.target.value;
     actualizarTabla();
   });
@@ -218,7 +218,7 @@ function abrirModalDetalleVacante(vacante, alCambiarEstadoVacante) {
 
   const botonAccionHtml =
     vacante.estado === 'Pendiente'
-      ? `<button type="button" id="accion-estado-vacante-modal" class="boton boton-mediano boton-primario">Aprobar y publicar</button>`
+      ? `<button type="button" id="accion-estado-vacante-modal" class="boton boton-mediano boton-primario">Activar publicación</button>`
       : `<button type="button" id="accion-estado-vacante-modal" class="boton boton-mediano boton-neutro">
           ${vacante.estado === 'Activa' ? 'Desactivar publicación' : 'Activar publicación'}
         </button>`;
@@ -228,55 +228,55 @@ function abrirModalDetalleVacante(vacante, alCambiarEstadoVacante) {
     subtitulo: 'Revisa la información completa antes de aprobarla o desactivarla',
     contenidoHtml: `
       <div class="pila-compacta">
-        <div class="caja-dato-modal" style="background:#f8fafc; padding:0.75rem; border-radius:0.5rem;">
-          <div style="display:flex; align-items:center; justify-content:space-between;">
-            <span style="font-size:0.75rem; font-weight:600; color:#64748b; text-transform:uppercase;">
+        <div class="caja-dato-modal" style="background:var(--color-superficie-secundaria); padding:0.75rem; border-radius:0.5rem;">
+          <div style="display:flex; align-elementos:center; justify-content:space-between;">
+            <span style="font-size:0.75rem; font-weight:600; color:var(--color-texto-atenuado); text-transform:uppercase;">
               ${escaparHtml(vacante.empresa)}
             </span>
             <span class="etiqueta-cuadrada" style="${
               vacante.estado === 'Activa'
-                ? 'background:#0f172a; color:#ffffff; border-color:#0f172a;'
-                : 'background:#fef3c7; color:#92400e; border-color:#fde68a;'
+                ? 'background:var(--color-carbon); color:var(--color-texto-inverso); border-color:var(--color-texto);'
+                : 'background:var(--color-ambar-fondo); color:var(--color-ambar); border-color:var(--color-ambar-borde);'
             }">
               ${escaparHtml(vacante.estado)}
             </span>
           </div>
-          <h3 style="margin:0.25rem 0 0; font-size:1rem; font-weight:700; color:#0f172a;">
+          <h3 style="margin:0.25rem 0 0; font-size:1rem; font-weight:700; color:var(--color-texto);">
             ${escaparHtml(vacante.titulo)}
           </h3>
-          <p style="margin:0.2rem 0 0; font-size:0.75rem; color:#475569;">
+          <p style="margin:0.2rem 0 0; font-size:0.75rem; color:var(--color-texto-secundario);">
             ${escaparHtml(vacante.municipio)}, ${escaparHtml(vacante.departamento)} · ${escaparHtml(vacante.modalidad)} · ${escaparHtml(vacante.tipoContrato)}
           </p>
-          <p class="texto-mono" style="margin:0.375rem 0 0; font-size:0.75rem; font-weight:700; color:#831843;">
+          <p class="texto-mono" style="margin:0.375rem 0 0; font-size:0.75rem; font-weight:700; color:var(--color-vino);">
             Salario: $${vacante.salarioMin} – $${vacante.salarioMax} / mes
           </p>
         </div>
 
         <div>
-          <h4 style="margin:0; font-size:0.75rem; font-weight:700; color:#1e293b; text-transform:uppercase;">
+          <h4 style="margin:0; font-size:0.75rem; font-weight:700; color:var(--color-texto); text-transform:uppercase;">
             Descripción del puesto
           </h4>
-          <p style="margin:0.25rem 0 0; font-size:0.75rem; color:#334155; line-height:1.5;">
+          <p style="margin:0.25rem 0 0; font-size:0.75rem; color:var(--color-texto-secundario); line-height:1.5;">
             ${escaparHtml(vacante.descripcion)}
           </p>
         </div>
 
         <div>
-          <h4 style="margin:0; font-size:0.75rem; font-weight:700; color:#1e293b; text-transform:uppercase;">
+          <h4 style="margin:0; font-size:0.75rem; font-weight:700; color:var(--color-texto); text-transform:uppercase;">
             Funciones principales
           </h4>
           <ul class="lista-vineta">${funcionesHtml}</ul>
         </div>
 
         <div>
-          <h4 style="margin:0; font-size:0.75rem; font-weight:700; color:#1e293b; text-transform:uppercase;">
+          <h4 style="margin:0; font-size:0.75rem; font-weight:700; color:var(--color-texto); text-transform:uppercase;">
             Requisitos
           </h4>
           <ul class="lista-vineta">${requisitosHtml}</ul>
         </div>
 
         <div>
-          <h4 style="margin:0; font-size:0.75rem; font-weight:700; color:#1e293b; text-transform:uppercase;">
+          <h4 style="margin:0; font-size:0.75rem; font-weight:700; color:var(--color-texto); text-transform:uppercase;">
             Beneficios
           </h4>
           <ul class="lista-vineta">${beneficiosHtml}</ul>

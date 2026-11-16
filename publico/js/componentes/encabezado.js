@@ -1,4 +1,3 @@
-// Componente del encabezado superior de WorkConnect (Barra de navegación principal adaptada por rol)
 import { escaparHtml } from '../utilidades/formato.js';
 
 let limpiarMenuUsuarioAnterior = null;
@@ -45,8 +44,6 @@ export function renderizarEncabezado(
     cantidad && cantidad > 0
       ? `<span class="insignia-nav-pendiente" title="${cantidad} pendientes">${cantidad}</span>`
       : '';
-
-  // Opciones de navegación superior según el rol
   let enlacesNav = '';
 
   if (!usuario || rolUsuario === 'visitante') {
@@ -78,23 +75,16 @@ export function renderizarEncabezado(
   } else if (rolUsuario === 'administrador') {
     enlacesNav = `
       <div class="nav-admin-grupo">
-        <button type="button" class="enlace-nav-superior ${pantallaActual === 'P11' ? 'activo' : ''}" data-pantalla="P11">Dashboard</button>
+        <button type="button" class="enlace-nav-superior ${pantallaActual === 'P11' ? 'activo' : ''}" data-pantalla="P11">Resumen</button>
         <button type="button" class="enlace-nav-superior ${pantallaActual === 'P12' ? 'activo' : ''}" data-pantalla="P12">Usuarios</button>
         <button type="button" class="enlace-nav-superior ${pantallaActual === 'P13' ? 'activo' : ''}" data-pantalla="P13">Empresas${badge(conteosPendientes.empresas)}</button>
         <button type="button" class="enlace-nav-superior ${pantallaActual === 'P14' ? 'activo' : ''}" data-pantalla="P14">Vacantes${badge(conteosPendientes.vacantes)}</button>
         <button type="button" class="enlace-nav-superior ${pantallaActual === 'P15' ? 'activo' : ''}" data-pantalla="P15">Moderación${badge(conteosPendientes.moderacion)}</button>
-        <button type="button" class="enlace-nav-superior ${pantallaActual === 'P16' ? 'activo' : ''}" data-pantalla="P16">Verificaciones${badge(conteosPendientes.verificaciones)}</button>
         <button type="button" class="enlace-nav-superior ${pantallaActual === 'P19' ? 'activo' : ''}" data-pantalla="P19">Recursos</button>
         <button type="button" class="enlace-nav-superior ${['P05', 'P28'].includes(pantallaActual) ? 'activo' : ''}" data-pantalla="P05">Foros</button>
       </div>
-      <button type="button" class="enlace-nav-superior enlace-nav-portal ${pantallaActual === 'P01' ? 'activo' : ''}" data-pantalla="P01" title="Ver portal público de empleos">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.3rem;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-        Ver sitio
-      </button>
     `;
   }
-
-  // Opciones del menú desplegable del avatar
   const opcionesUsuario =
     rolUsuario === 'candidato'
       ? `
@@ -115,21 +105,19 @@ export function renderizarEncabezado(
           `
         : rolUsuario === 'administrador'
           ? `
-              <button type="button" role="menuitem" data-pantalla="P11">Panel de control (Dashboard)</button>
+              <button type="button" role="menuitem" data-pantalla="P11">Panel de control (Resumen)</button>
               <button type="button" role="menuitem" data-pantalla="P12">Gestión de usuarios</button>
               <button type="button" role="menuitem" data-pantalla="P13">Directorio de empresas</button>
               <button type="button" role="menuitem" data-pantalla="P14">Gestión de vacantes</button>
               <button type="button" role="menuitem" data-pantalla="P15">Moderación de contenidos</button>
-              <button type="button" role="menuitem" data-pantalla="P16">Verificación de empresas</button>
               <button type="button" role="menuitem" data-pantalla="P19">Publicar recurso</button>
               <button type="button" role="menuitem" data-pantalla="P05">Foros de la comunidad</button>
-              <button type="button" role="menuitem" data-pantalla="P01">Ver portal de empleos</button>
             `
           : '';
 
   contenedor.innerHTML = `
     <div class="encabezado-interior">
-      <div style="display:flex; align-items:center; gap:0.75rem;">
+      <div class="marca-navegacion">
         <button
           type="button"
           id="boton-menu-movil"
@@ -158,6 +146,7 @@ export function renderizarEncabezado(
       </nav>
 
       <div class="zona-usuario-encabezado">
+        <button type="button" class="boton boton-tema" data-alternar-tema aria-label="Cambiar tema" aria-pressed="false">Modo oscuro</button>
         <div class="acciones-publicas-encabezado">
           ${
             usuario
@@ -166,7 +155,7 @@ export function renderizarEncabezado(
                   <button
                     type="button"
                     id="boton-menu-usuario"
-                    class="perfil-usuario-trigger"
+                    class="perfil-usuario-activador"
                     aria-haspopup="menu"
                     aria-expanded="false"
                     aria-controls="menu-usuario"
@@ -207,18 +196,18 @@ export function renderizarEncabezado(
     </div>
   `;
 
-  const navSuperior = contenedor.querySelector('#navegacion-superior');
+  const navegacionSuperior = contenedor.querySelector('#navegacion-superior');
   const botonMovil = contenedor.querySelector('#boton-menu-movil');
 
-  if (botonMovil && navSuperior) {
+  if (botonMovil && navegacionSuperior) {
     botonMovil.addEventListener('click', () => {
-      const abierto = navSuperior.classList.toggle('abierto-movil');
+      const abierto = navegacionSuperior.classList.toggle('abierto-movil');
       botonMovil.setAttribute('aria-expanded', String(abierto));
     });
   }
 
   const cerrarMenuMovil = () => {
-    if (navSuperior) navSuperior.classList.remove('abierto-movil');
+    if (navegacionSuperior) navegacionSuperior.classList.remove('abierto-movil');
     if (botonMovil) botonMovil.setAttribute('aria-expanded', 'false');
   };
 
@@ -229,8 +218,6 @@ export function renderizarEncabezado(
       alCambiarPantalla('P01');
     });
   }
-
-  // Enlaces directos de navegación (pantallas públicas y de administración)
   contenedor.querySelectorAll('[data-pantalla]').forEach((boton) => {
     if (!boton.closest('#menu-usuario')) {
       boton.addEventListener('click', () => {
@@ -239,8 +226,6 @@ export function renderizarEncabezado(
       });
     }
   });
-
-  // Enlaces a secciones de cuenta (candidato/empresa) en la barra superior
   contenedor.querySelectorAll('[data-seccion-cuenta]').forEach((boton) => {
     if (!boton.closest('#menu-usuario')) {
       boton.addEventListener('click', () => {
@@ -249,8 +234,6 @@ export function renderizarEncabezado(
       });
     }
   });
-
-  // Enlaces de acciones especiales de usuario en la barra superior
   contenedor.querySelectorAll('[data-accion-usuario]').forEach((boton) => {
     if (!boton.closest('#menu-usuario')) {
       boton.addEventListener('click', () => {
@@ -276,8 +259,6 @@ export function renderizarEncabezado(
       alCambiarPantalla('AUTH_REGISTRO');
     });
   }
-
-  // Menú desplegable de perfil de usuario
   const botonMenu = contenedor.querySelector('#boton-menu-usuario');
   const menuUsuario = contenedor.querySelector('#menu-usuario');
   if (!botonMenu || !menuUsuario) return;

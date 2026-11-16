@@ -70,14 +70,14 @@ export function renderizarP12Usuarios(contenedor, usuarios, acciones) {
     </div>
   `;
 
-  const inputBusqueda = contenedor.querySelector('#busqueda-usuarios');
-  const selectRol = contenedor.querySelector('#filtro-rol-usuarios');
-  const selectEstado = contenedor.querySelector('#filtro-estado-usuarios');
+  const entradaBusqueda = contenedor.querySelector('#busqueda-usuarios');
+  const selectorRol = contenedor.querySelector('#filtro-rol-usuarios');
+  const selectorEstado = contenedor.querySelector('#filtro-estado-usuarios');
   const resumenFiltros = contenedor.querySelector('#resumen-filtros-usuarios');
   const cuerpoTabla = contenedor.querySelector('#cuerpo-tabla-usuarios');
 
-  selectRol.value = estadoFiltrosUsuarios.filtroRol;
-  selectEstado.value = estadoFiltrosUsuarios.filtroEstado;
+  selectorRol.value = estadoFiltrosUsuarios.filtroRol;
+  selectorEstado.value = estadoFiltrosUsuarios.filtroEstado;
 
   const actualizarTabla = () => {
     const texto = estadoFiltrosUsuarios.terminoBusqueda.trim().toLowerCase();
@@ -101,7 +101,7 @@ export function renderizarP12Usuarios(contenedor, usuarios, acciones) {
 
     resumenFiltros.innerHTML = `
       <span>
-        Mostrando <strong style="color:#1e293b;">${filtrados.length}</strong> de ${usuarios.length} cuentas
+        Mostrando <strong style="color:var(--color-texto);">${filtrados.length}</strong> de ${usuarios.length} cuentas
       </span>
       ${
         hayFiltros
@@ -116,9 +116,9 @@ export function renderizarP12Usuarios(contenedor, usuarios, acciones) {
         estadoFiltrosUsuarios.terminoBusqueda = '';
         estadoFiltrosUsuarios.filtroRol = 'Todos los roles';
         estadoFiltrosUsuarios.filtroEstado = 'Todos los estados';
-        inputBusqueda.value = '';
-        selectRol.value = 'Todos los roles';
-        selectEstado.value = 'Todos los estados';
+        entradaBusqueda.value = '';
+        selectorRol.value = 'Todos los roles';
+        selectorEstado.value = 'Todos los estados';
         actualizarTabla();
       });
     }
@@ -164,8 +164,8 @@ function renderizarAvatarUsuario(usuario, claseExtra = '') {
                 </div>
               </div>
             </td>
-            <td style="color:#334155; font-weight:500;">${escaparHtml(usuario.rol)}</td>
-            <td class="texto-mono" style="color:#475569; font-size:11px;">
+            <td style="color:var(--color-texto-secundario); font-weight:500;">${escaparHtml(usuario.rol)}</td>
+            <td class="texto-mono" style="color:var(--color-texto-secundario); font-size:11px;">
               ${escaparHtml(usuario.fechaRegistro)}
             </td>
             <td>
@@ -213,17 +213,17 @@ function renderizarAvatarUsuario(usuario, claseExtra = '') {
     });
   };
 
-  inputBusqueda.addEventListener('input', (e) => {
+  entradaBusqueda.addEventListener('input', (e) => {
     estadoFiltrosUsuarios.terminoBusqueda = e.target.value;
     actualizarTabla();
   });
 
-  selectRol.addEventListener('change', (e) => {
+  selectorRol.addEventListener('change', (e) => {
     estadoFiltrosUsuarios.filtroRol = e.target.value;
     actualizarTabla();
   });
 
-  selectEstado.addEventListener('change', (e) => {
+  selectorEstado.addEventListener('change', (e) => {
     estadoFiltrosUsuarios.filtroEstado = e.target.value;
     actualizarTabla();
   });
@@ -240,13 +240,13 @@ function abrirModalDetalleUsuario(usuario) {
         <div class="caja-resumen-modal" style="justify-content:flex-start;">
           ${renderizarAvatarUsuario(usuario, 'grande')}
           <div>
-            <h4 style="margin:0; font-weight:700; font-size:0.875rem; color:#0f172a;">
+            <h4 style="margin:0; font-weight:700; font-size:0.875rem; color:var(--color-texto);">
               ${escaparHtml(usuario.nombre)}
             </h4>
-            <p style="margin:0.1rem 0 0; font-size:0.75rem; color:#475569;">
+            <p style="margin:0.1rem 0 0; font-size:0.75rem; color:var(--color-texto-secundario);">
               ${escaparHtml(usuario.correo)}
             </p>
-            <span style="font-size:10px; color:#64748b; font-weight:500;">
+            <span style="font-size:10px; color:var(--color-texto-atenuado); font-weight:500;">
               ID: ${escaparHtml(usuario.id)}
             </span>
           </div>
@@ -255,11 +255,11 @@ function abrirModalDetalleUsuario(usuario) {
         <div class="cuadricula-campos-2">
           <div class="caja-dato-modal">
             <span class="dato-etiqueta">Rol</span>
-            <strong style="color:#1e293b;">${escaparHtml(usuario.rol)}</strong>
+            <strong style="color:var(--color-texto);">${escaparHtml(usuario.rol)}</strong>
           </div>
           <div class="caja-dato-modal">
             <span class="dato-etiqueta">Estado</span>
-            <strong style="color:${usuario.estado === 'Activo' ? '#047857' : '#475569'};">
+            <strong style="color:${usuario.estado === 'Activo' ? 'var(--color-esmeralda)' : 'var(--color-texto-secundario)'};">
               ${escaparHtml(usuario.estado)}
             </strong>
           </div>

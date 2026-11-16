@@ -1,6 +1,4 @@
 import { escaparHtml } from '../utilidades/formato.js';
-
-// Controlador de ventana modal reutilizable
 export function abrirModal({ titulo, subtitulo = '', contenidoHtml, alMontar }) {
   const modalRaiz = document.getElementById('modal-raiz');
   if (!modalRaiz) return;

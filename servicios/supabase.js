@@ -96,7 +96,7 @@ export function mapearModeracion(fila) {
   return {
     id: fila.id,
     tipo: fila.tipo,
-    categoria: fila.categoria,
+    categoria: fila.detalles?.startsWith('Origen: postulaciones\n') ? 'Postulaciones' : fila.categoria,
     motivoOTitulo: fila.motivo_titulo,
     referencia: fila.referencia,
     autor: fila.autor_nombre,
@@ -153,15 +153,15 @@ export function mapearRecurso(fila) {
   };
 }
 
-export function construirEstadisticasDashboard(postulaciones, vacantes) {
+export function construirEstadisticasResumen(postulaciones, vacantes) {
   const totalPostulaciones = postulaciones.length;
   const contrataciones = postulaciones.filter((p) => p.estado === 'Contratada').length;
 
   const nombresMeses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
   const mapaMeses = new Map();
 
-  for (const post of postulaciones) {
-    const fecha = new Date(post.creado_en);
+  for (const postulacionRegistro of postulaciones) {
+    const fecha = new Date(postulacionRegistro.creado_en);
     if (Number.isNaN(fecha.getTime())) continue;
     const clave = `${fecha.getUTCFullYear()}-${String(fecha.getUTCMonth()).padStart(2, '0')}`;
     const etiqueta = nombresMeses[fecha.getUTCMonth()];
@@ -173,9 +173,9 @@ export function construirEstadisticasDashboard(postulaciones, vacantes) {
   let postulacionesPorMes = Array.from(mapaMeses.values())
     .sort((a, b) => a.clave.localeCompare(b.clave))
     .slice(-6)
-    .map((item, indice, arreglo) => ({
-      mes: item.mes,
-      cantidad: item.cantidad,
+    .map((elementoLista, indice, arreglo) => ({
+      mes: elementoLista.mes,
+      cantidad: elementoLista.cantidad,
       destacado: indice === arreglo.length - 1
     }));
 
