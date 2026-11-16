@@ -1,4 +1,5 @@
 import { validarVacanteEmpresa, registrarEdicionVacanteEmpresa } from './servicios/vacantesEmpresa.js';
+import { crearUsuarioRegistrado, eliminarRegistroIncompleto } from './servicios/registro.js';
 import 'dotenv/config';
 import express from 'express';
 import { registrarFlujoPostulaciones } from './servicios/flujoPostulaciones.js';
@@ -211,7 +212,7 @@ async function asegurarPerfilEmpresa(supabase, usuario, datosExtra = {}) {
     .maybeSingle();
 
   if (errorConsulta) {
-    console.error('Error al comprobar empresa existente:', errorConsulta);
+    throw new Error('No se pudo consultar el perfil de la empresa.');
   }
   if (existente) return existente;
 
@@ -238,7 +239,7 @@ async function asegurarPerfilEmpresa(supabase, usuario, datosExtra = {}) {
     .maybeSingle();
 
   if (error) {
-    console.error('Error al registrar perfil de empresa:', error);
+    throw new Error('No se pudo crear el perfil de la empresa.');
   }
   return datosRespuesta;
 }
@@ -413,21 +414,16 @@ aplicacion.post('/api/auth/registro', conManejoErrores(async (solicitud, respues
     });
   }
   const ubicacion = [municipio, departamento].filter((valor) => typeof valor === 'string' && valor.trim()).join(', ') || null;
-  const { data: datosRespuesta, error } = await supabase.rpc('registro_prueba', {
-    p_nombre: nombreLimpio,
-    p_email: correo,
-    p_password: contrasenaSolicitud,
-    p_rol: rol,
-    p_telefono: typeof telefono === 'string' ? telefono.trim() : null,
-    p_ubicacion: ubicacion
+  const { data: usuario, error } = await crearUsuarioRegistrado(supabase, {
+    nombre: nombreLimpio, correo, contrasena: contrasenaSolicitud, rol,
+    telefono: typeof telefono === 'string' ? telefono.trim() : null, ubicacion
   });
   if (error) {
-    console.error('Error ejecutando registro_prueba.', { code: error.code });
+    if (error.code !== '23505') console.error('Error al crear la cuenta.', { code: error.code });
     return respuesta.status(error.code === '23505' ? 409 : 503).json({
       error: error.code === '23505' ? 'Ya existe una cuenta con ese correo.' : 'No se pudo crear la cuenta. Verifica la configuración de registro.'
     });
   }
-  const usuario = Array.isArray(datosRespuesta) ? datosRespuesta[0] : datosRespuesta;
   if (!usuario?.id) return respuesta.status(503).json({ error: 'No se pudo obtener la cuenta creada.' });
   try {
     if (rol === 'candidato') {
@@ -439,9 +435,14 @@ aplicacion.post('/api/auth/registro', conManejoErrores(async (solicitud, respues
       if (!empresa) throw new Error('No se pudo preparar el perfil de empresa.');
     }
   } catch {
-    return respuesta.status(503).json({ error: 'La cuenta se creó, pero no se pudo preparar el perfil. Intenta iniciar sesión.' });
+    const eliminado = await eliminarRegistroIncompleto(supabase, usuario.id);
+    return respuesta.status(503).json({ error: eliminado
+      ? 'No se pudo preparar el perfil y no se guardó la cuenta. Intenta de nuevo.'
+      : 'No se pudo completar el perfil. La cuenta quedó creada; intenta iniciar sesión.' });
   }
-  await reportarAutomaticamente(supabase, { texto: nombreLimpio, tipo: 'reporte', categoria: 'Reportes', origen: 'usuarios', id: usuario.id, autor: usuario.nombre });
+  try {
+    await reportarAutomaticamente(supabase, { texto: nombreLimpio, tipo: 'reporte', categoria: 'Reportes', origen: 'usuarios', id: usuario.id, autor: usuario.nombre });
+  } catch { console.error('La cuenta se guardó, pero no se pudo generar su reporte de moderación.'); }
   respuesta.set('Cache-Control', 'no-store');
   guardarCookiesSesion(solicitud, respuesta, usuario);
   return respuesta.status(201).json({ usuario: mapearCuenta(usuario), confirmacionRequerida: false });
@@ -486,7 +487,8 @@ aplicacion.post('/api/auth/login', conManejoErrores(async (solicitud, respuesta)
     try {
       await asegurarPerfilEmpresa(supabase, usuario);
     } catch (errorEmpresa) {
-      console.error('No se pudo asegurar perfil de empresa:', errorEmpresa);
+      console.error('No se pudo asegurar el perfil de empresa.');
+      return respuesta.status(503).json({ error: 'No se pudo preparar el perfil de empresa. Intenta de nuevo.' });
     }
   }
 
@@ -1109,7 +1111,8 @@ aplicacion.put('/api/empresa/vacantes/:id/estado', conManejoErrores(async (solic
     .eq('empresa_id', contexto.empresa.id)
     .maybeSingle();
 
-  if (errorVacanteConsulta || !vacante) {
+  if (errorVacanteConsulta) return respuesta.status(503).json({ error: 'No se pudo consultar la vacante.' });
+  if (!vacante) {
     return respuesta.status(404).json({ error: 'Vacante no encontrada o no pertenece a tu empresa.' });
   }
 
@@ -1136,18 +1139,21 @@ aplicacion.delete('/api/empresa/vacantes/:id', conManejoErrores(async (solicitud
     .eq('empresa_id', contexto.empresa.id)
     .maybeSingle();
 
-  if (errorVacanteConsulta || !vacante) {
+  if (errorVacanteConsulta) return respuesta.status(503).json({ error: 'No se pudo consultar la vacante.' });
+  if (!vacante) {
     return respuesta.status(404).json({ error: 'Vacante no encontrada o no pertenece a tu empresa.' });
   }
-  await contexto.supabase
+  const { error: errorPostulaciones } = await contexto.supabase
     .from('postulaciones')
     .delete()
     .eq('vacante_id', solicitud.params.id);
+  if (errorPostulaciones) return respuesta.status(503).json({ error: 'No se pudieron eliminar las postulaciones de la vacante.' });
 
   const { error: errorEliminacionRemota } = await contexto.supabase
     .from('vacantes')
     .delete()
-    .eq('id', solicitud.params.id);
+    .eq('id', solicitud.params.id)
+    .eq('empresa_id', contexto.empresa.id);
 
   if (errorEliminacionRemota) {
     return respuesta.status(400).json({ error: 'No se pudo eliminar la vacante: ' + errorEliminacionRemota.message });
