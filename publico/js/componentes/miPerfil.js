@@ -1,3 +1,4 @@
+import { formatosFoto, subirFoto } from '../utilidades/fotos.js';
 import { confirmarAccion, mostrarAviso } from './dialogos.js';
 import { reportarContenido } from '../utilidades/reportes.js';
 import { escaparHtml } from '../utilidades/formato.js';
@@ -144,8 +145,8 @@ function renderizarPerfilCandidato(seccion = null) {
         <div id="perfil-edicion-datos" class="mi-perfil-edicion" hidden>
           <div class="mi-perfil-foto">
             <label for="perfil-foto">Foto de perfil</label>
-            <input id="perfil-foto" type="file" accept="image/jpeg,image/png,image/webp" />
-            <small>JPG, PNG o WebP. Máximo 10 MB.</small>
+            <input id="perfil-foto" type="file" accept="${formatosFoto}" />
+            <small>JPG, PNG, WebP, GIF, BMP o AVIF. Máximo 10 MB. Se guarda sin animación.</small>
             <p id="perfil-foto-mensaje" class="mi-perfil-ayuda" role="status"></p>
           </div>
           <form class="mi-perfil-formulario" data-formulario="perfil">
@@ -764,23 +765,12 @@ function enlazarPerfilCandidato(alCambiarPantalla = () => {}, alCambiarSeccion =
   selectorFoto.addEventListener('change', async () => {
     const archivo = selectorFoto.files[0];
     if (!archivo) return;
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(archivo.type) || archivo.size > 10 * 1024 * 1024) {
-      selectorFoto.value = '';
-      estadoFoto.textContent = 'Selecciona una imagen JPG, PNG o WebP de máximo 10 MB.';
-      return;
-    }
-    vistaFoto.src = URL.createObjectURL(archivo);
-    vistaFoto.classList.remove('oculto');
-    avatarFoto.classList.add('oculto');
-    estadoFoto.textContent = 'Guardando foto…';
+    selectorFoto.disabled = true;
+    estadoFoto.textContent = 'Guardando foto...';
     try {
-      const respuesta = await fetch('/api/candidato/foto', {
-        method: 'POST',
-        headers: { 'Content-Type': archivo.type },
-        body: archivo
-      });
-      const resultado = await respuesta.json().catch(() => ({}));
-      if (!respuesta.ok) throw new Error(resultado.error || 'No se pudo guardar la foto.');
+      const resultado = await subirFoto('/api/candidato/foto', archivo);
+      vistaFoto.classList.remove('oculto');
+      avatarFoto.classList.add('oculto');
       vistaFoto.src = resultado.foto_url;
       const avatarEncabezado = document.querySelector('#boton-menu-usuario .avatar-circular');
       if (avatarEncabezado && resultado.foto_url) {
@@ -797,6 +787,9 @@ function enlazarPerfilCandidato(alCambiarPantalla = () => {}, alCambiarSeccion =
       estadoFoto.textContent = 'Foto guardada correctamente.';
     } catch (error) {
       estadoFoto.textContent = error.message || 'No se pudo guardar la foto.';
+    } finally {
+      selectorFoto.disabled = false;
+      selectorFoto.value = '';
     }
   });
   const actualizarProgreso = () => {
@@ -1024,8 +1017,8 @@ function renderizarEmpresa() {
           <label for="empresa-logo-entrada" class="boton boton-secundario" style="cursor: pointer; font-size: 0.8rem; padding: 0.35rem 0.75rem; display: inline-block;">
             Cambiar logo
           </label>
-          <input id="empresa-logo-entrada" type="file" accept="image/jpeg,image/png,image/webp" style="display: none;" />
-          <p id="empresa-logo-mensaje" class="mi-perfil-ayuda" style="margin: 0.35rem 0 0; font-size: 0.75rem;">JPG, PNG o WebP. Máximo 10 MB.</p>
+          <input id="empresa-logo-entrada" type="file" accept="${formatosFoto}" style="display: none;" />
+          <p id="empresa-logo-mensaje" class="mi-perfil-ayuda" style="margin: 0.35rem 0 0; font-size: 0.75rem;">JPG, PNG, WebP, GIF, BMP o AVIF. Máximo 10 MB. Se guarda sin animación.</p>
         </div>
         <strong id="empresa-previa-nombre">Nombre comercial</strong>
         <p id="empresa-previa-sector" class="mi-perfil-ayuda">Sector · Ubicación</p>
@@ -1165,26 +1158,16 @@ async function enlazarEmpresa(alCambiarPantalla = () => {}) {
   entradaLogo?.addEventListener('change', async () => {
     const archivo = entradaLogo.files[0];
     if (!archivo) return;
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(archivo.type) || archivo.size > 10 * 1024 * 1024) {
-      entradaLogo.value = '';
-      if (mensajeLogo) mensajeLogo.textContent = 'Selecciona una imagen JPG, PNG o WebP de máximo 10 MB.';
-      return;
-    }
+    entradaLogo.disabled = true;
     if (mensajeLogo) {
       mensajeLogo.textContent = 'Guardando logo...';
       mensajeLogo.style.color = 'var(--color-vino)';
     }
     try {
-      const respuestaHttp = await fetch('/api/empresa/logo', {
-        method: 'POST',
-        headers: { 'Content-Type': archivo.type },
-        body: archivo
-      });
-      const resultadoJson = await respuestaHttp.json().catch(() => ({}));
-      if (!respuestaHttp.ok) throw new Error(resultadoJson.error || 'No se pudo guardar el logo.');
+      const resultadoJson = await subirFoto('/api/empresa/logo', archivo);
       aplicarLogo(resultadoJson.logo_url);
       if (mensajeLogo) {
-        mensajeLogo.textContent = '✓ Logo actualizado exitosamente.';
+        mensajeLogo.textContent = 'Logo actualizado correctamente.';
         mensajeLogo.style.color = 'var(--color-esmeralda)';
       }
     } catch (errorLogo) {
@@ -1192,6 +1175,9 @@ async function enlazarEmpresa(alCambiarPantalla = () => {}) {
         mensajeLogo.textContent = errorLogo.message || 'Error al guardar el logo.';
         mensajeLogo.style.color = 'var(--color-rosa)';
       }
+    } finally {
+      entradaLogo.disabled = false;
+      entradaLogo.value = '';
     }
   });
 

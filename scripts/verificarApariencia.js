@@ -164,6 +164,34 @@ try {
   await evaluar("document.querySelector('#navegacion-superior [data-seccion-cuenta=\"P08\"]').click()");
   if (!await evaluar("!!document.querySelector('#formulario-autenticacion')")) throw new Error('Para empresas no abre el inicio de sesión.');
   console.log('Portada pública: orden, navegación por secciones y acceso de empresas verificados.');
+  const formatosVerificados = await evaluar(`(async () => {
+    const { prepararFoto } = await import('/js/utilidades/fotos.js');
+    const lienzo = document.createElement('canvas');
+    lienzo.width = 1800; lienzo.height = 900;
+    lienzo.getContext('2d').fillRect(0, 0, 1800, 900);
+    const archivos = [];
+    for (const [tipo, extension] of [['image/jpeg', 'jpg'], ['image/png', 'png'], ['image/webp', 'webp']]) {
+      const contenido = await new Promise(resolver => lienzo.toBlob(resolver, tipo));
+      archivos.push(new File([contenido], 'foto.' + extension, { type: tipo }));
+    }
+    archivos.push(new File([Uint8Array.from(atob('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'), caracter => caracter.charCodeAt(0))], 'foto.gif', { type: 'image/gif' }));
+    const bmp = new ArrayBuffer(58); const vista = new DataView(bmp);
+    vista.setUint16(0, 0x4d42, true); vista.setUint32(2, 58, true); vista.setUint32(10, 54, true);
+    vista.setUint32(14, 40, true); vista.setInt32(18, 1, true); vista.setInt32(22, 1, true);
+    vista.setUint16(26, 1, true); vista.setUint16(28, 24, true); vista.setUint32(34, 4, true);
+    archivos.push(new File([bmp], 'foto.bmp', { type: 'image/bmp' }));
+    for (const archivo of archivos) {
+      const preparada = await prepararFoto(archivo);
+      const imagen = await createImageBitmap(preparada);
+      if (preparada.type !== 'image/webp' || imagen.width > 1200 || imagen.height > 1200) throw new Error('Conversion incorrecta de ' + archivo.type);
+      imagen.close();
+    }
+    let rechazo = false;
+    try { await prepararFoto(new File(['no es una imagen'], 'foto.png', { type: 'image/png' })); } catch { rechazo = true; }
+    if (!rechazo) throw new Error('Se acepto una imagen corrupta.');
+    return archivos.length;
+  })()`);
+  console.log(`Fotos: ${formatosVerificados} formatos convertidos y archivos corruptos rechazados en navegador.`);
   await archivos.writeFile(rutas.join(directorioCapturas, 'resultado.json'), JSON.stringify({ informes, variantes: estilosAcciones.size, persistencia: true }, null, 2));
   console.log(`Revisión completa: ${informes.length} vistas, ${estilosAcciones.size} variantes de acciones y preferencia persistente.`);
 } finally {

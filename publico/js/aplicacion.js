@@ -45,6 +45,11 @@ const estadoAplicacion = {
 };
 
 const contenedorEncabezado = document.getElementById('encabezado-principal');
+document.addEventListener('foto-actualizada', (evento) => {
+  if (estadoAplicacion.usuarioActual && typeof evento.detail === 'string') {
+    estadoAplicacion.usuarioActual.foto_url = evento.detail;
+  }
+});
 const contenedorContenido = document.getElementById('area-contenido');
 const notificacionElemento = document.getElementById('notificacion-flotante');
 const notificacionTexto = document.getElementById('notificacion-texto');

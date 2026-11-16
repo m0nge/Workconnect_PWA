@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import comprobar from 'node:assert/strict';
+import { readFile as leerArchivo } from 'node:fs/promises';
 import { randomUUID as crearIdentificador, randomBytes as crearBytes, randomInt as numeroAleatorio } from 'node:crypto';
 
 process.env.VERCEL = '1';
@@ -75,6 +76,14 @@ async function limpiar() {
   if (!identificadores.length) return;
   const perfiles = await consultar(cliente.from('perfiles_candidatos').select('id, curriculum_url').in('usuario_id', identificadores));
   const empresas = await consultar(cliente.from('empresas').select('id').in('usuario_id', identificadores));
+  for (const prefijo of [...identificadores, ...empresas.map((empresa) => `empresas/${empresa.id}`)]) {
+    const { data: imagenes, error: errorLista } = await cliente.storage.from('fotos-candidatos').list(prefijo);
+    if (errorLista) throw new Error('No se pudieron consultar las fotos temporales.');
+    if (imagenes.length) {
+      const { error } = await cliente.storage.from('fotos-candidatos').remove(imagenes.map((imagen) => `${prefijo}/${imagen.name}`));
+      if (error) throw new Error('No se pudieron retirar las fotos temporales.');
+    }
+  }
   const ofertas = empresas.length ? await consultar(cliente.from('vacantes').select('id').in('empresa_id', empresas.map((empresa) => empresa.id))) : [];
   const postulaciones = perfiles.length ? await consultar(cliente.from('postulaciones').select('id').in('candidato_id', perfiles.map((perfil) => perfil.id))) : [];
   [...identificadores, ...perfiles.map((p) => p.id), ...ofertas.map((v) => v.id), ...postulaciones.map((p) => p.id)].forEach((id) => referencias.add(id));
@@ -114,6 +123,19 @@ try {
   comprobar.equal(administradores.length, 1);
   const administracion = { cookie: `workconnect-session=${crearTokenSesion(administradores[0].id)}` };
   const candidata = candidatas[0]; const empresa = empresas[0];
+  const imagen = await leerArchivo(new URL('../publico/multimedia/icono.png', import.meta.url));
+  for (const [sesion, ruta, campo] of [[candidata, '/api/candidato/foto', 'foto_url'], [empresa, '/api/empresa/logo', 'logo_url']]) {
+    const primera = (await solicitar('POST', ruta, imagen, sesion, 200, { 'Content-Type': 'image/png' })).cuerpo[campo];
+    const segunda = (await solicitar('POST', ruta, imagen, sesion, 200, { 'Content-Type': 'image/png' })).cuerpo[campo];
+    comprobar.notEqual(primera, segunda);
+    const publicada = await fetch(segunda);
+    comprobar.equal(publicada.status, 200);
+    comprobar.deepEqual(Buffer.from(await publicada.arrayBuffer()), imagen);
+    const cuenta = await consultar(cliente.from('usuarios').select('foto_url').eq('id', sesion.id));
+    comprobar.equal(cuenta[0].foto_url, segunda);
+    await solicitar('POST', ruta, Buffer.from('archivo que no es una imagen'), sesion, 400, { 'Content-Type': 'image/png' });
+  }
+  console.log('Fotos y logos: reemplazo sin caché, persistencia y descarga correctos.');
   await solicitar('PUT', `/api/usuarios/${candidata.id}`, { nombre: 'Persona temporal actualizada', correo: candidata.datos.email, rol: 'Candidato/a' }, administracion);
   await solicitar('PATCH', `/api/usuarios/${candidata.id}/estado`, {}, administracion);
   await solicitar('GET', '/api/auth/sesion', undefined, candidata, 403);

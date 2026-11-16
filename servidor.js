@@ -1,3 +1,4 @@
+import { guardarFoto } from './servicios/fotos.js';
 import { validarVacanteEmpresa, registrarEdicionVacanteEmpresa } from './servicios/vacantesEmpresa.js';
 import { crearUsuarioRegistrado, eliminarRegistroIncompleto } from './servicios/registro.js';
 import 'dotenv/config';
@@ -29,7 +30,6 @@ const __directorioActual = rutasArchivos.dirname(__archivoActual);
 const aplicacion = express();
 const puerto = Number(process.env.PORT) || 3000;
 const depositoCurriculums = 'curriculums-candidatos';
-const depositoFotosCandidatos = 'fotos-candidatos';
 const tamanoMaximoCurriculum = 5 * 1024 * 1024;
 const tamanoMaximoFotoCandidato = 10 * 1024 * 1024;
 
@@ -207,7 +207,7 @@ async function asegurarPerfilCandidato(supabase, usuarioId) {
 async function asegurarPerfilEmpresa(supabase, usuario, datosExtra = {}) {
   const { data: existente, error: errorConsulta } = await supabase
     .from('empresas')
-    .select('id, usuario_id, nombre_comercial, razon_social, nit, sector, departamento, municipio, direccion, tamano, contacto_email, telefono, sitio_web, descripcion, estado_verificacion')
+    .select('id, usuario_id, nombre_comercial, razon_social, nit, sector, departamento, municipio, direccion, tamano, contacto_email, telefono, sitio_web, descripcion, estado_verificacion, logo_url')
     .eq('usuario_id', usuario.id)
     .maybeSingle();
 
@@ -577,37 +577,14 @@ aplicacion.post(
   conManejoErrores(async (solicitud, respuesta) => {
     const contexto = await obtenerCandidatoAutenticado(solicitud, respuesta);
     if (!contexto) return;
-    if (!Buffer.isBuffer(solicitud.body) || !solicitud.body.length) {
-      return respuesta.status(400).json({ error: 'Selecciona una imagen válida.' });
+    try {
+      const url = await guardarFoto(contexto, solicitud.body, false);
+      return respuesta.json({ guardado: true, foto_url: url });
+    } catch (error) {
+      return respuesta.status(400).json({ error: error.message });
     }
-    const tipo = solicitud.headers['content-type'];
-    const extensiones = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
-    const extension = extensiones[tipo];
-    if (!extension) return respuesta.status(400).json({ error: 'Solo se permiten imágenes JPG, PNG o WebP.' });
-
-    const rutaArchivo = `${contexto.usuario.id}/foto.${extension}`;
-    const { error: errorSubida } = await contexto.supabase.storage
-      .from(depositoFotosCandidatos)
-      .upload(rutaArchivo, solicitud.body, { contentType: tipo, upsert: true });
-    if (errorSubida) {
-      return respuesta.status(/bucket not found/i.test(errorSubida.message || '') ? 503 : 400).json({
-        error: /bucket not found/i.test(errorSubida.message || '')
-          ? 'Storage de fotos no está activado.'
-          : 'No se pudo guardar la foto.'
-      });
-    }
-    const { data: urlPublica } = contexto.supabase.storage
-      .from(depositoFotosCandidatos)
-      .getPublicUrl(rutaArchivo);
-    const { error: errorUsuario } = await contexto.supabase
-      .from('usuarios')
-      .update({ foto_url: urlPublica.publicUrl })
-      .eq('id', contexto.usuario.id);
-    if (errorUsuario) return respuesta.status(400).json({ error: 'La foto se subió, pero no se pudo guardar en el perfil.' });
-    return respuesta.json({ guardado: true, foto_url: urlPublica.publicUrl });
   })
 );
-
 aplicacion.post(
   '/api/candidato/curriculum',
   analizarArchivoPdf,
@@ -995,47 +972,14 @@ aplicacion.post(
   conManejoErrores(async (solicitud, respuesta) => {
     const contexto = await obtenerEmpresaAutenticada(solicitud, respuesta);
     if (!contexto) return;
-    if (!Buffer.isBuffer(solicitud.body) || !solicitud.body.length) {
-      return respuesta.status(400).json({ error: 'Selecciona una imagen válida.' });
-    }
-    const tipo = solicitud.headers['content-type'];
-    const extensiones = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
-    const extension = extensiones[tipo];
-    if (!extension) return respuesta.status(400).json({ error: 'Solo se permiten imágenes JPG, PNG o WebP.' });
-
-    const rutaArchivo = `empresas/${contexto.empresa.id}/logo.${extension}`;
-    const { error: errorSubida } = await contexto.supabase.storage
-      .from(depositoFotosCandidatos)
-      .upload(rutaArchivo, solicitud.body, { contentType: tipo, upsert: true });
-    if (errorSubida) {
-      return respuesta.status(/bucket not found/i.test(errorSubida.message || '') ? 503 : 400).json({
-        error: /bucket not found/i.test(errorSubida.message || '')
-          ? 'Storage no está activado.'
-          : 'No se pudo guardar el logo.'
-      });
-    }
-    const { data: urlPublica } = contexto.supabase.storage
-      .from(depositoFotosCandidatos)
-      .getPublicUrl(rutaArchivo);
-
-    const logoUrl = urlPublica.publicUrl;
-
-    await contexto.supabase
-      .from('usuarios')
-      .update({ foto_url: logoUrl })
-      .eq('id', contexto.usuario.id);
-
     try {
-      await contexto.supabase
-        .from('empresas')
-        .update({ logo_url: logoUrl })
-        .eq('id', contexto.empresa.id);
-    } catch (_) {}
-
-    return respuesta.json({ guardado: true, logo_url: logoUrl });
+      const url = await guardarFoto(contexto, solicitud.body, true);
+      return respuesta.json({ guardado: true, logo_url: url });
+    } catch (error) {
+      return respuesta.status(400).json({ error: error.message });
+    }
   })
 );
-
 aplicacion.post('/api/empresa/vacantes', conManejoErrores(async (solicitud, respuesta) => {
   const contexto = await obtenerEmpresaAutenticada(solicitud, respuesta);
   if (!contexto) return;
