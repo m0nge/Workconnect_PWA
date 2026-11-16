@@ -1,4 +1,7 @@
 import { escaparHtml, validarTexto } from '../utilidades/formato.js';
+import { renderizarP04Recursos } from './p04Recursos.js';
+import { renderizarP05Foros } from './p05Foros.js';
+import { observarSeccionesPortada } from '../utilidades/navegacionPortada.js';
 
 export function renderizarP01Inicio(
   contenedor,
@@ -6,7 +9,8 @@ export function renderizarP01Inicio(
   alNavegar,
   alBuscar,
   rolActual = 'visitante',
-  usuario = null
+  usuario = null,
+  mostrarNotificacion = () => {}
 ) {
   const vacantes = datos.vacantes.filter((vacante) => vacante.estado === 'Activa');
   const destacadas = vacantes.slice(0, 3);
@@ -29,8 +33,8 @@ export function renderizarP01Inicio(
   ];
 
   contenedor.innerHTML = `
-    <div class="pila-vertical">
-      <section class="tarjeta tarjeta-espaciado portada-publica">
+    <div class="pila-vertical portada-integrada">
+      <section id="inicio-empleos" data-seccion-portada class="tarjeta tarjeta-espaciado portada-publica">
         <div class="portada-contenido">
           <div class="portada-mensaje">
             <span class="portada-etiqueta">PORTAL DE EMPLEOS DE EL SALVADOR</span>
@@ -73,6 +77,17 @@ export function renderizarP01Inicio(
           ${destacadas.length ? destacadas.map((vacante) => tarjetaVacante(vacante)).join('') : '<p class="subtitulo-pantalla">No hay vacantes publicadas por el momento.</p>'}
         </div>
       </section>
+      <section id="inicio-recursos" data-seccion-portada class="seccion-portada" aria-label="Recursos laborales">
+        <div id="contenido-recursos-portada"></div>
+      </section>
+      <section id="inicio-foros" data-seccion-portada class="seccion-portada" aria-label="Foros de la comunidad">
+        <div id="contenido-foros-portada"><p class="subtitulo-pantalla">Cargando conversaciones...</p></div>
+      </section>
+      <section class="tarjeta tarjeta-espaciado portada-empresas" aria-labelledby="titulo-empresas-portada">
+        <div><h2 id="titulo-empresas-portada" class="titulo-pantalla">¿Buscas talento para tu empresa?</h2>
+          <p class="subtitulo-pantalla">Ingresa para publicar vacantes y gestionar tus postulaciones.</p></div>
+        <button type="button" class="boton-principal" data-ir="AUTH_EMPRESA">Ingresar como empresa</button>
+      </section>
     </div>
   `;
 
@@ -92,6 +107,9 @@ export function renderizarP01Inicio(
     const termino = boton.dataset.sector;
     alBuscar(termino, '');
   }));
+  renderizarP04Recursos(contenedor.querySelector('#contenido-recursos-portada'), datos, 'Recursos laborales', { integrado: true });
+  renderizarP05Foros(contenedor.querySelector('#contenido-foros-portada'), alNavegar, rolActual, mostrarNotificacion, { integrado: true });
+  if (rolActual !== 'administrador') observarSeccionesPortada(contenedor);
 }
 
 export function tarjetaVacante(vacante) {

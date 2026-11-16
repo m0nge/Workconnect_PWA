@@ -51,7 +51,7 @@ export function renderizarEncabezado(
       <button type="button" class="enlace-nav-superior ${['P01', 'P02', 'P03'].includes(pantallaActual) ? 'activo' : ''}" data-pantalla="P01">Buscar empleos</button>
       <button type="button" class="enlace-nav-superior ${['P17', 'P04'].includes(pantallaActual) ? 'activo' : ''}" data-pantalla="P17">Recursos</button>
       <button type="button" class="enlace-nav-superior ${['P05', 'P28'].includes(pantallaActual) ? 'activo' : ''}" data-pantalla="P05">Foros</button>
-      <button type="button" class="enlace-nav-superior ${pantallaActual === 'AUTH_REGISTRO' ? 'activo' : ''}" data-pantalla="AUTH_REGISTRO_EMPRESA">Para empresas</button>
+      <button type="button" class="enlace-nav-superior" data-seccion-cuenta="P08">Para empresas</button>
     `;
   } else if (rolUsuario === 'candidato') {
     const esMisPostulaciones = pantallaActual === 'P07' && seccionCuenta === 'postulaciones';

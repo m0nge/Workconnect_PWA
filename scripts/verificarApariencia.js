@@ -151,6 +151,19 @@ try {
   await esperar(750);
   const inicioCorrecto = await evaluar("document.querySelector('#area-contenido h1')?.textContent");
   if (!inicioCorrecto || erroresNavegador.length) throw new Error(`La aplicación no inició correctamente: ${erroresNavegador.join(', ')}`);
+  await ordenar('Page.navigate', { url: origen + '/?vista=portada-publica' });
+  await esperar(900);
+  const ordenCorrecto = await evaluar("[...document.querySelectorAll('[data-seccion-portada]')].map(seccion => seccion.id).join(',') === 'inicio-empleos,inicio-recursos,inicio-foros'");
+  if (!ordenCorrecto) throw new Error('La portada no muestra empleos, recursos y foros en orden.');
+  for (const [pantalla, seccion] of [['P17', 'inicio-recursos'], ['P05', 'inicio-foros'], ['P01', 'inicio-empleos']]) {
+    await evaluar(`document.querySelector('#navegacion-superior [data-pantalla="${pantalla}"]').click()`);
+    await esperar(850);
+    const visible = await evaluar(`(() => { const rectangulo = document.getElementById('${seccion}').getBoundingClientRect(); return rectangulo.top < innerHeight - 80 && rectangulo.bottom > 70; })()`);
+    if (!visible) throw new Error(`El menú no desplazó a ${seccion}.`);
+  }
+  await evaluar("document.querySelector('#navegacion-superior [data-seccion-cuenta=\"P08\"]').click()");
+  if (!await evaluar("!!document.querySelector('#formulario-autenticacion')")) throw new Error('Para empresas no abre el inicio de sesión.');
+  console.log('Portada pública: orden, navegación por secciones y acceso de empresas verificados.');
   await archivos.writeFile(rutas.join(directorioCapturas, 'resultado.json'), JSON.stringify({ informes, variantes: estilosAcciones.size, persistencia: true }, null, 2));
   console.log(`Revisión completa: ${informes.length} vistas, ${estilosAcciones.size} variantes de acciones y preferencia persistente.`);
 } finally {

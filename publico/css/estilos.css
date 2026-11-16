@@ -2996,6 +2996,19 @@ textarea {
 #formulario-valoracion textarea { width:100%; }
 
 .filtros-gestion-contenido { display:grid; grid-template-columns:2fr 1fr 1fr; gap:1rem; align-items:end; }
+
+[data-seccion-portada] { scroll-margin-top: 5.25rem; }
+.portada-integrada .seccion-portada { margin-top: 2.5rem; }
+.portada-integrada :is(.recursos-pantalla, .foros-pantalla) { min-height: 0; }
+.foros-integrados .foros-disposicion { display: block; }
+.foros-integrados .foros-categorias { position: static; margin-bottom: 1.25rem; }
+.foros-integrados .foros-categorias nav { display: flex; flex-wrap: wrap; gap: .5rem; }
+.foros-integrados .foros-categorias button { width: auto; }
+.portada-empresas { display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; margin-top: 2rem; }
+@media (max-width: 640px) {
+  .portada-empresas { align-items: stretch; flex-direction: column; }
+  .portada-integrada .seccion-portada { margin-top: 1.5rem; }
+}
 .filtros-gestion-contenido .campo-formulario { margin:0; }
 .tabla-gestion-contenido td:first-child { min-width:220px; }
 .tabla-gestion-contenido td:last-child { min-width:230px; }

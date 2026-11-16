@@ -15,8 +15,8 @@ function renderizarAvatarForo(autor, fotoUrl) {
   return `<span class="foro-avatar" aria-hidden="true">${iniciales}</span>`;
 }
 
-export async function renderizarP05Foros(contenedor, alNavegar, rolActual = 'visitante', mostrarNotificacion = () => {}) {
-  if (rolActual === 'administrador') return renderizarGestionForos(contenedor, alNavegar);
+export async function renderizarP05Foros(contenedor, alNavegar, rolActual = 'visitante', mostrarNotificacion = () => {}, { integrado = false } = {}) {
+  if (rolActual === 'administrador' && !integrado) return renderizarGestionForos(contenedor, alNavegar);
   try {
     const r = await fetch('/api/foros/temas');
     temas = r.ok ? await r.json() : [];
@@ -29,9 +29,9 @@ export async function renderizarP05Foros(contenedor, alNavegar, rolActual = 'vis
   const categorias = ['Todas las categorías', ...new Set(temas.map((tema) => tema.categoria))];
 
   contenedor.innerHTML = `
-    <div class="pila-vertical foros-pantalla">
+    <div class="pila-vertical foros-pantalla ${integrado ? 'foros-integrados' : ''}">
       <div class="cabecera-pantalla">
-        <h1 class="titulo-pantalla">Foros</h1>
+        <${integrado ? 'h2' : 'h1'} class="titulo-pantalla">Foros</${integrado ? 'h2' : 'h1'}>
         <p class="subtitulo-pantalla">
           Participa en conversaciones y comparte experiencias laborales.
         </p>
@@ -79,7 +79,7 @@ export async function renderizarP05Foros(contenedor, alNavegar, rolActual = 'vis
           ${renderizarAvatarForo(tema.autor, tema.fotoUrl)}
           <div>
             <span class="etiqueta-cuadrada">${escaparHtml(tema.categoria)}</span>
-            <h2 class="titulo-tarjeta">${escaparHtml(tema.titulo)}</h2>
+            <${integrado ? 'h3' : 'h2'} class="titulo-tarjeta">${escaparHtml(tema.titulo)}</${integrado ? 'h3' : 'h2'}>
             <p class="texto-secundario" data-conteo-id="${tema.id}">Por ${escaparHtml(tema.autor)} · ${tema.respuestas} respuestas</p>
           </div>
         </div>

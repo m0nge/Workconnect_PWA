@@ -1,7 +1,7 @@
 import { escaparHtml, textoSeguro } from '../utilidades/formato.js';
 import { abrirModal } from '../componentes/modal.js';
 
-export function renderizarP04Recursos(contenedor, datos, titulo = 'Recursos laborales') {
+export function renderizarP04Recursos(contenedor, datos, titulo = 'Recursos laborales', { integrado = false } = {}) {
   const recursos = datos.recursosLaborales || [];
   const categorias = [...new Set(recursos.map((recurso) => recurso.categoria).filter(Boolean))];
 
@@ -9,7 +9,7 @@ export function renderizarP04Recursos(contenedor, datos, titulo = 'Recursos labo
     <div class="pila-vertical recursos-pantalla">
       <div class="cabecera-pantalla recursos-presentacion">
         <span class="etiqueta-cuadrada">DESARROLLO PROFESIONAL</span>
-        <h1 class="titulo-pantalla">${escaparHtml(titulo)}</h1>
+        <${integrado ? 'h2' : 'h1'} class="titulo-pantalla">${escaparHtml(titulo)}</${integrado ? 'h2' : 'h1'}>
         <p class="subtitulo-pantalla">
           Contenido seleccionado para ayudarte a tomar mejores decisiones y avanzar en tu carrera.
         </p>
@@ -55,7 +55,7 @@ export function renderizarP04Recursos(contenedor, datos, titulo = 'Recursos labo
                 ` : ''}
                 <div class="tarjeta-recurso-cuerpo">
                   <span class="etiqueta-cuadrada">${escaparHtml(recurso.categoria || 'General')}</span>
-                  <h2 class="titulo-tarjeta" style="margin-top:0.25rem;">${escaparHtml(recurso.titulo || 'Recurso laboral')}</h2>
+                  <${integrado ? 'h3' : 'h2'} class="titulo-tarjeta" style="margin-top:0.25rem;">${escaparHtml(recurso.titulo || 'Recurso laboral')}</${integrado ? 'h3' : 'h2'}>
                   <p class="texto-secundario" style="flex:1;">
                     ${escaparHtml(recurso.resumen || 'Contenido para tu desarrollo profesional.')}
                   </p>

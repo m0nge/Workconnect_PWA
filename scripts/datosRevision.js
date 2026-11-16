@@ -38,6 +38,7 @@ export const datosRevision = {
 };
 
 export function respuestaRevision(ruta, vista) {
+  if (ruta === '/api/auth/sesion' && vista === 'portada-publica') return { autenticado: false, usuario: null };
   if (ruta === '/api/datos') return datosRevision;
   if (ruta === '/api/auth/sesion') return { autenticado: true, usuario: { ...usuarioRevision, rol: vista === 'P07' ? 'candidato' : ['P08', 'P09', 'P10'].includes(vista) ? 'empresa' : 'administrador' } };
   if (ruta === '/api/admin/foros' || ruta === '/api/foros/temas') return [temaRevision];

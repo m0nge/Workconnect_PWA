@@ -1,4 +1,5 @@
 import { solicitarApi } from './utilidades/solicitudes.js';
+import { seccionDePortada, desplazarASeccion, limpiarNavegacionPortada } from './utilidades/navegacionPortada.js';
 import { renderizarEncabezado } from './componentes/encabezado.js';
 import { renderizarP11Resumen } from './pantallas/p11Resumen.js';
 import { renderizarP12Usuarios } from './pantallas/p12Usuarios.js';
@@ -93,6 +94,7 @@ function navegarASeccionCuenta(pantalla) {
     estadoAplicacion.destinoCuentaPendiente = destino;
     estadoAplicacion.pantallaActual = 'AUTH_LOGIN';
     renderizarInterfaz();
+    window.scrollTo({ top: 0, behavior: 'auto' });
     return;
   }
 
@@ -129,6 +131,17 @@ function redireccionarAlPortalSegunRol(usuario) {
 }
 
 function cambiarPantalla(nuevaPantalla, idVacante = null, nuevoRol = estadoAplicacion.rolActual) {
+  if (nuevaPantalla === 'AUTH_EMPRESA') { navegarASeccionCuenta('P08'); return; }
+  const seccionPortada = seccionDePortada(nuevaPantalla);
+  const navegacionPublica = !estadoAplicacion.usuarioActual || (estadoAplicacion.pantallaActual === 'P01' && estadoAplicacion.rolActual !== 'administrador');
+  if (seccionPortada && navegacionPublica) {
+    if (estadoAplicacion.pantallaActual !== 'P01' || !document.getElementById(seccionPortada)) {
+      estadoAplicacion.pantallaActual = 'P01';
+      renderizarInterfaz();
+    }
+    desplazarASeccion(seccionPortada);
+    return;
+  }
   if (nuevaPantalla === 'AUTH_REGISTRO_EMPRESA') {
     estadoAplicacion.rolRegistro = 'empresa';
     nuevaPantalla = 'AUTH_REGISTRO';
@@ -387,6 +400,7 @@ function completarAutenticacion(cuenta) {
 }
 
 function renderizarInterfaz() {
+  limpiarNavegacionPortada();
   if (!estadoAplicacion.datos) return;
 
   document.body.classList.toggle(
@@ -446,7 +460,8 @@ function renderizarInterfaz() {
             cambiarPantalla
           ),
         estadoAplicacion.rolActual,
-        estadoAplicacion.usuarioActual
+        estadoAplicacion.usuarioActual,
+        mostrarNotificacion
       );
       break;
     case 'P02':
