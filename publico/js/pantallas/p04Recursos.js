@@ -47,24 +47,26 @@ export function renderizarP04Recursos(contenedor, datos, titulo = 'Recursos labo
       ? filtrados
           .map(
             (recurso) => `
-              <article class="tarjeta tarjeta-recurso-publico" style="display:flex; flex-direction:column; overflow:hidden;">
+              <article class="tarjeta tarjeta-recurso-publico">
                 ${recurso.imagenPortadaUrl ? `
-                  <div style="margin:-1.5rem -1.5rem 1rem -1.5rem; height:150px; overflow:hidden; background:#f1f5f9;">
-                    <img src="${escaparHtml(recurso.imagenPortadaUrl)}" alt="${escaparHtml(recurso.titulo)}" style="width:100%; height:100%; object-fit:cover;" onerror="this.parentElement.style.display='none'" />
+                  <div class="tarjeta-recurso-portada">
+                    <img src="${escaparHtml(recurso.imagenPortadaUrl)}" alt="${escaparHtml(recurso.titulo)}" onerror="this.parentElement.style.display='none'" />
                   </div>
                 ` : ''}
-                <span class="etiqueta-cuadrada">${escaparHtml(recurso.categoria || 'General')}</span>
-                <h2 class="titulo-tarjeta" style="margin-top:0.4rem;">${escaparHtml(recurso.titulo || 'Recurso laboral')}</h2>
-                <p class="texto-secundario" style="flex:1;">
-                  ${escaparHtml(recurso.resumen || 'Contenido para tu desarrollo profesional.')}
-                </p>
-                <p class="recurso-meta">
-                  ${escaparHtml(recurso.tiempoLecturaMin || 0)} min de lectura ·
-                  ${escaparHtml(recurso.nivelLectura || 'General')}
-                </p>
-                <button class="boton-secundario recurso-leer" type="button" data-recurso="${escaparHtml(recurso.id)}">
-                  Leer recurso
-                </button>
+                <div class="tarjeta-recurso-cuerpo">
+                  <span class="etiqueta-cuadrada">${escaparHtml(recurso.categoria || 'General')}</span>
+                  <h2 class="titulo-tarjeta" style="margin-top:0.25rem;">${escaparHtml(recurso.titulo || 'Recurso laboral')}</h2>
+                  <p class="texto-secundario" style="flex:1;">
+                    ${escaparHtml(recurso.resumen || 'Contenido para tu desarrollo profesional.')}
+                  </p>
+                  <p class="recurso-meta">
+                    ${escaparHtml(recurso.tiempoLecturaMin || 0)} min de lectura ·
+                    ${escaparHtml(recurso.nivelLectura || 'General')}
+                  </p>
+                  <button class="boton-secundario recurso-leer" type="button" data-recurso="${escaparHtml(recurso.id)}">
+                    Leer recurso
+                  </button>
+                </div>
               </article>
             `
           )

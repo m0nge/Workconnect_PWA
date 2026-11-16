@@ -683,7 +683,7 @@ textarea {
   }
 
   .tarjeta-recurso-publico {
-    padding: 1rem;
+    padding: 0;
   }
 
   .recursos-hero {
@@ -761,11 +761,40 @@ textarea {
     display: flex;
     min-height: 15rem;
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
     justify-content: space-between;
-    gap: .65rem;
+    padding: 0;
+    overflow: hidden;
     border-top: 3px solid var(--color-vino);
     transition: transform .15s ease, box-shadow .15s ease;
+  }
+
+  .tarjeta-recurso-portada {
+    width: 100%;
+    height: 185px;
+    overflow: hidden;
+    background: #f1f5f9;
+    flex-shrink: 0;
+    display: block;
+    position: relative;
+  }
+
+  .tarjeta-recurso-portada img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .tarjeta-recurso-cuerpo {
+    padding: 1.15rem;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: .65rem;
+    width: 100%;
   }
 
   .tarjeta-recurso-publico:hover {
