@@ -2,6 +2,7 @@ const identificador = '12345678-1234-1234-1234-123456789abc';
 
 export const usuarioRevision = { id: identificador, nombre: 'Ana López', correo: 'ana@example.com', email: 'ana@example.com', rol: 'administrador', estado: 'Activo', iniciales: 'AL', fechaRegistro: '16 nov 2026' };
 export const empresaRevision = {
+  logoUrl: '/multimedia/icono.png', logo_url: '/multimedia/icono.png',
   id: identificador, usuario_id: identificador, nombreComercial: 'Empresa de ejemplo', nombre_comercial: 'Empresa de ejemplo',
   razonSocial: 'Empresa de ejemplo S.A.', razon_social: 'Empresa de ejemplo S.A.', nit: '0614-010101-101-0',
   sector: 'Servicios', departamento: 'San Salvador', municipio: 'San Salvador', ubicacion: 'San Salvador',
@@ -28,7 +29,8 @@ export const temaRevision = { id: identificador, titulo: 'Consejos para una entr
 export const datosRevision = {
   usuarios: [usuarioRevision, { ...usuarioRevision, id: 'otro', nombre: 'Pedro Pérez', rol: 'Candidato/a', estado: 'Inactivo' }],
   empresas: [empresaRevision], vacantes: [vacanteRevision], recursosLaborales: [recursoRevision],
-  elementosModeracion: [{ id: identificador, tipo: 'foro', categoria: 'Foros', estado: 'Pendiente', motivoOTitulo: 'Reporte de contenido', referencia: identificador, autor: 'Sistema', fecha: '16 nov 2026', detalles: 'Contenido señalado para revisión.' }],
+  elementosModeracion: [{ id: identificador, tipo: 'foro', categoria: 'Foros', estado: 'Pendiente', motivoOTitulo: 'Reporte de contenido', referencia: identificador, autor: 'Sistema', fecha: '16 nov 2026', detalles: 'Contenido señalado para revisión.' },
+    { id: 'postulacion-revision', tipo: 'reporte', categoria: 'Postulaciones', estado: 'Pendiente', motivoOTitulo: 'Postulación reportada', referencia: identificador, autor: 'Empresa de ejemplo', candidatoNombre: 'Persona de ejemplo', fotoUrl: '/multimedia/icono.png', fecha: '16 nov 2026', detalles: 'Reporte temporal de revisión.' }],
   solicitudesVerificacion: [{ id: identificador, empresaId: identificador, razonSocial: empresaRevision.razonSocial, nombreComercial: empresaRevision.nombreComercial, nit: empresaRevision.nit, sector: 'Servicios', tamano: empresaRevision.tamano, documentoInscripcion: 'registro.pdf', documentoIdentidad: 'identidad.pdf', correoContacto: 'empresa@example.com', telefono: '2222-3333', fechaEnvio: '16 nov 2026', estado: 'Pendiente', criterios: {}, observaciones: '' }],
   estadisticasResumen: {
     totalPostulaciones: 8, contrataciones: 2, postulacionesPorMes: [{ mes: 'Oct', cantidad: 3 }, { mes: 'Nov', cantidad: 5, destacado: true }],
@@ -47,6 +49,6 @@ export function respuestaRevision(ruta, vista) {
   if (ruta === '/api/candidato/perfil') return { perfil: { ...usuarioRevision, titulo_profesional: 'Asistente administrativo', resumen_laboral: 'Experiencia en atención y organización.', telefono: '7777-8888', ubicacion: 'San Salvador' }, experiencias: [], estudios: [], habilidades: [], alertas: [], postulaciones: [] };
   if (ruta === '/api/empresa/perfil') return { empresa: empresaRevision, usuario: usuarioRevision, conteoVacantes: 2, conteoPostulaciones: 1 };
   if (ruta === '/api/empresa/vacantes') return { vacantes: [vacanteRevision] };
-  if (ruta === '/api/empresa/postulaciones') return { postulaciones: [{ id: identificador, estado: 'Nueva', creado_en: '2026-11-16', curriculum_url: '/api/empresa/postulaciones/' + identificador + '/curriculum', vacante: vacanteRevision, candidato: { nombre: usuarioRevision.nombre, email: usuarioRevision.email, telefono: '7777-8888' } }] };
+  if (ruta === '/api/empresa/postulaciones') return { postulaciones: [{ id: identificador, estado: 'Nueva', creado_en: '2026-11-16', curriculum_url: '/api/empresa/postulaciones/' + identificador + '/curriculum', vacante: vacanteRevision, candidato: { nombre: usuarioRevision.nombre, email: usuarioRevision.email, telefono: '7777-8888', foto_url: '/multimedia/icono.png' } }] };
   return {};
 }

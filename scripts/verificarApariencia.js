@@ -99,6 +99,21 @@ try {
       }
       if (!lista?.lista) throw new Error(`${vista}: la pantalla no terminó de cargar.`);
       await esperar(150);
+      if (['P10', 'P13', 'P15'].includes(vista)) {
+        const imagenesCorrectas = await evaluar(`(async () => {
+          const imagenes = [...document.querySelectorAll('#area-contenido .avatar-con-respaldo img')];
+          if (!imagenes.length) return false;
+          for (const imagen of imagenes) {
+            imagen.loading = 'eager';
+            await imagen.decode();
+            if (!imagen.naturalWidth || imagen.getBoundingClientRect().width < 25) return false;
+          }
+          imagenes[0].src = '/imagen-inexistente.png';
+          await new Promise(resolver => setTimeout(resolver, 100));
+          return !!document.querySelector('#area-contenido .avatar-con-respaldo > span');
+        })()`);
+        if (!imagenesCorrectas) throw new Error('No se muestran los avatares de empresas o postulaciones.');
+      }
       if (vista === 'registro-empresa') {
         const desplazamientoCorrecto = await evaluar(`(() => {
           const panel = document.querySelector('.acceso-presentacion');

@@ -1,4 +1,5 @@
 import { escaparHtml } from '../utilidades/formato.js';
+import { renderizarAvatar } from '../utilidades/avatar.js';
 
 const estadoModeracion = {
   categoriaSeleccionada: 'Todo'
@@ -67,6 +68,7 @@ export function renderizarP15Moderacion(contenedor, elementos, acciones) {
 
             return `
               <div class="tarjeta-moderacion">
+                ${elementoLista.categoria === 'Postulaciones' ? `<div class="celda-identidad postulacion-reportada-identidad">${renderizarAvatar({ nombre: elementoLista.candidatoNombre || 'Candidato/a', fotoUrl: elementoLista.fotoUrl })}<strong>${escaparHtml(elementoLista.candidatoNombre || 'Candidato/a')}</strong></div>` : ''}
                 <div class="barra-tarjeta-moderacion">
                   <div style="display:flex; align-elementos:center; gap:0.5rem;">
                     <span class="etiqueta-cuadrada" style="background:var(--color-superficie-elevada); color:var(--color-texto-secundario); border-color:var(--color-borde);">

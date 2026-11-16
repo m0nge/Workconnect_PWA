@@ -1,5 +1,6 @@
 import { formatosFoto, subirFoto } from '../utilidades/fotos.js';
 import { enlazarVistaPreviaVacante } from '../utilidades/vistaPreviaVacante.js';
+import { renderizarAvatar } from '../utilidades/avatar.js';
 import { confirmarAccion, mostrarAviso } from './dialogos.js';
 import { reportarContenido } from '../utilidades/reportes.js';
 import { escaparHtml } from '../utilidades/formato.js';
@@ -1679,20 +1680,12 @@ async function enlazarPostulaciones() {
     cuerpoFilas.innerHTML = filtradas
       .map((p) => {
         const fecha = p.creado_en ? formatoFecha.format(new Date(p.creado_en)) : '—';
-        const iniciales = (p.candidato?.nombre || 'C')
-          .split(/\s+/)
-          .slice(0, 2)
-          .map((w) => w[0])
-          .join('')
-          .toUpperCase();
 
         return `
           <tr data-postulacion-fila="${p.id}">
             <td>
               <div style="display: flex; align-items: center; gap: 0.75rem;">
-                <div style="width: 36px; height: 36px; border-radius: 50%; background: var(--color-acento-solido); color: white; display: inline-flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: bold; flex-shrink: 0;">
-                  ${iniciales}
-                </div>
+                ${renderizarAvatar({ nombre: p.candidato?.nombre || 'Candidato/a', fotoUrl: p.candidato?.foto_url })}
                 <div>
                   <strong>${escaparHtml(p.candidato?.nombre || 'Candidato/a')}</strong>
                   <div class="mi-perfil-ayuda" style="font-size: 0.78rem;">

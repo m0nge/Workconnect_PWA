@@ -1065,6 +1065,11 @@ textarea {
   color: var(--color-texto-atenuado);
 }
 
+.avatar-con-respaldo { display: inline-grid; flex: 0 0 auto; vertical-align: middle; }
+.avatar-con-respaldo > * { grid-area: 1 / 1; }
+.avatar-con-respaldo > img { position: relative; object-fit: cover; background: var(--color-superficie-base); }
+.postulacion-reportada-identidad { margin-bottom: .75rem; }
+
 /* Encabezado superior */
 .encabezado {
   background-color: var(--color-superficie-base);

@@ -1233,10 +1233,10 @@ aplicacion.get('/api/datos', async (solicitud, respuesta) => {
         ? supabase.from('usuarios').select('*').order('creado_en', { ascending: false })
         : Promise.resolve({ data: [], error: null }),
       esAdministrador
-        ? supabase.from('empresas').select('*').order('creado_en', { ascending: false })
+        ? supabase.from('empresas').select('*, usuarios(foto_url)').order('creado_en', { ascending: false })
         : supabase
             .from('empresas')
-            .select('*')
+            .select('*, usuarios(foto_url)')
             .eq('estado_verificacion', 'Verificada')
             .order('creado_en', { ascending: false }),
       esAdministrador
@@ -1251,7 +1251,7 @@ aplicacion.get('/api/datos', async (solicitud, respuesta) => {
             .eq('empresas.estado_verificacion', 'Verificada')
             .order('creado_en', { ascending: false }),
       esAdministrador
-        ? supabase.from('postulaciones').select('id, estado, creado_en')
+        ? supabase.from('postulaciones').select('id, estado, creado_en, perfiles_candidatos(usuarios(nombre, foto_url))')
         : Promise.resolve({ data: [], error: null }),
       esAdministrador
         ? supabase.from('moderacion_reportes').select('*').order('creado_en', { ascending: false })
@@ -1310,7 +1310,10 @@ aplicacion.get('/api/datos', async (solicitud, respuesta) => {
       }
       return empresa;
     });
-    const elementosModeracion = (resultadoModeracion.data || []).map(mapearModeracion);
+    const candidatosPorPostulacion = new Map((resultadoPostulaciones.data || []).map((postulacion) => [postulacion.id, postulacion.perfiles_candidatos?.usuarios]));
+    const elementosModeracion = (resultadoModeracion.data || []).map((reporte) => mapearModeracion({ ...reporte,
+      candidato: reporte.detalles?.startsWith('Origen: postulaciones\n') ? candidatosPorPostulacion.get(reporte.referencia) : null
+    }));
     const solicitudesVerificacion = (resultadoVerificaciones.data || []).map(
       mapearSolicitudVerificacion
     );

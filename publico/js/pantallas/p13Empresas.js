@@ -1,5 +1,6 @@
 import { escaparHtml, iconoBusquedaSvg } from '../utilidades/formato.js';
 import { abrirModal } from '../componentes/modal.js';
+import { renderizarAvatar } from '../utilidades/avatar.js';
 
 const estadoFiltrosEmpresas = {
   terminoBusqueda: '',
@@ -132,7 +133,7 @@ export function renderizarP13Empresas(contenedor, empresas, acciones) {
           <tr>
             <td>
               <div class="celda-identidad">
-                <div class="avatar-cuadrado">${escaparHtml(empresa.iniciales)}</div>
+                ${renderizarAvatar({ nombre: empresa.nombreComercial, fotoUrl: empresa.logoUrl, cuadrado: true })}
                 <div>
                   <p class="titulo-fila">${escaparHtml(empresa.nombreComercial)}</p>
                   <p class="subtitulo-fila">${escaparHtml(empresa.contactoCorreo)}</p>
@@ -195,7 +196,7 @@ function abrirModalDetalleEmpresa(empresa, alCambiarEstadoEmpresa) {
       <div class="pila-compacta">
         <div class="caja-resumen-modal">
           <div class="celda-identidad">
-            <div class="avatar-cuadrado grande">${escaparHtml(empresa.iniciales)}</div>
+            ${renderizarAvatar({ nombre: empresa.nombreComercial, fotoUrl: empresa.logoUrl, cuadrado: true, grande: true })}
             <div>
               <h4 style="margin:0; font-weight:700; font-size:1rem; color:var(--color-texto);">
                 ${escaparHtml(empresa.nombreComercial)}

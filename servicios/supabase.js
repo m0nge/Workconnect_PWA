@@ -49,6 +49,7 @@ export function mapearEmpresa(fila, conteoVacantes = 0) {
   return {
     id: fila.id,
     nombreComercial: fila.nombre_comercial,
+    logoUrl: fila.logo_url || fila.usuarios?.foto_url || '',
     razonSocial: fila.razon_social,
     nit: fila.nit,
     sector: fila.sector,
@@ -103,7 +104,9 @@ export function mapearModeracion(fila) {
     autor: fila.autor_nombre,
     fecha: formatearFechaCorta(fila.creado_en),
     estado: fila.estado,
-    detalles: fila.detalles
+    detalles: fila.detalles,
+    fotoUrl: fila.candidato?.foto_url || '',
+    candidatoNombre: fila.candidato?.nombre || ''
   };
 }
 

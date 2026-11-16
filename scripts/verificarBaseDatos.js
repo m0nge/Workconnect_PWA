@@ -188,6 +188,14 @@ try {
   await solicitar('POST', '/api/candidato/postulaciones', { vacante_id: vacante.id }, candidata, 409);
   const recibidas = (await solicitar('GET', '/api/empresa/postulaciones', undefined, empresa)).cuerpo.postulaciones;
   comprobar.ok(recibidas.some((registro) => registro.id === postulacion.id));
+  comprobar.ok(recibidas.find((registro) => registro.id === postulacion.id).candidato.foto_url);
+  await solicitar('POST', '/api/reportes', { origen: 'postulaciones', id: postulacion.id, motivo: 'Reporte temporal para verificar la foto del candidato' }, empresa, 201);
+  const datosConFotos = (await solicitar('GET', '/api/datos', undefined, administracion)).cuerpo;
+  comprobar.ok(datosConFotos.empresas.find((registro) => registro.id === perfilEmpresa.id).logoUrl);
+  const reportePostulacion = datosConFotos.elementosModeracion.find((registro) => registro.referencia === postulacion.id);
+  comprobar.ok(reportePostulacion.fotoUrl);
+  comprobar.ok(reportePostulacion.candidatoNombre);
+  console.log('Fotos de empresas y candidatos presentes en las listas y reportes de administración.');
   await solicitar('GET', `/api/empresa/postulaciones/${postulacion.id}/curriculum`, undefined, empresa);
   await solicitar('GET', `/api/empresa/postulaciones/${postulacion.id}/curriculum`, undefined, empresas[1], 404);
   await solicitar('PUT', `/api/empresa/postulaciones/${postulacion.id}/estado`, { estado: 'Entrevista' }, empresa);
