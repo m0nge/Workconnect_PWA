@@ -82,8 +82,8 @@ try {
   const estilosAcciones = new Map();
   for (const pantalla of [
     { ancho: 1365, alto: 1000, vistas },
-    { ancho: 390, alto: 844, vistas: ['P01', 'P03', 'P19', 'P09', 'registro-empresa', 'P05&ventana=dialogo', 'P08', 'P08&ventana=oferta'] },
-    { ancho: 320, alto: 844, vistas: ['P19', 'P01', 'registro-empresa'] }
+    { ancho: 390, alto: 844, vistas: ['P01', 'P03', 'P19', 'P07', 'P09', 'registro-empresa', 'P05&ventana=dialogo', 'P08', 'P08&ventana=oferta'] },
+    { ancho: 320, alto: 844, vistas: ['P19', 'P07', 'P01', 'registro-empresa'] }
   ]) {
     await ordenar('Emulation.setDeviceMetricsOverride', { width: pantalla.ancho, height: pantalla.alto, deviceScaleFactor: 1, mobile: pantalla.ancho < 600 });
     for (const tema of ['claro', 'oscuro']) {
@@ -99,6 +99,46 @@ try {
       }
       if (!lista?.lista) throw new Error(`${vista}: la pantalla no terminó de cargar.`);
       await esperar(150);
+      if (vista === 'P07') {
+        const perfilDinamico = await evaluar(`(async () => {
+          const original = window.fetch;
+          const esperarCambio = async (condicion) => {
+            for (let intento = 0; intento < 100; intento++) {
+              if (condicion()) return;
+              await new Promise(resolver => setTimeout(resolver, 20));
+            }
+            throw new Error('El perfil no actualizo su contenido.');
+          };
+          window.fetch = async (ruta, opciones = {}) => {
+            if (ruta === '/api/candidato/perfil' && opciones.method === 'PUT') return new Response(JSON.stringify({ guardado: true }), { headers: { 'Content-Type': 'application/json' } });
+            if (ruta === '/api/candidato/curriculum') return new Response(JSON.stringify(opciones.method === 'DELETE' ? { eliminado: true, curriculum_nombre: '' } : { guardado: true, curriculum_nombre: 'revision-dinamica.pdf' }), { headers: { 'Content-Type': 'application/json' } });
+            return original(ruta, opciones);
+          };
+          try {
+            document.querySelector('#perfil-editar-datos').click();
+            document.querySelector('#perfil-titulo').value = 'Especialista de revision';
+            document.querySelector('#perfil-telefono').value = '7777-1111';
+            document.querySelector('[data-formulario="perfil"]').requestSubmit();
+            await esperarCambio(() => document.querySelector('#perfil-titulo-resumen').textContent === 'Especialista de revision');
+            if (document.querySelector('#perfil-resumen-telefono').textContent !== '7777-1111') return false;
+            document.querySelector('#perfil-editar-curriculum').click();
+            const transferencia = new DataTransfer();
+            transferencia.items.add(new File(['%PDF-1.4'], 'revision-dinamica.pdf', { type: 'application/pdf' }));
+            document.querySelector('#perfil-cv').files = transferencia.files;
+            document.querySelector('#perfil-cv-guardar').click();
+            await esperarCambio(() => document.querySelector('#perfil-cv-resumen').textContent === 'revision-dinamica.pdf');
+            const quitar = document.querySelector('#perfil-cv-quitar');
+            if (quitar.hidden || document.querySelector('#perfil-cv-descargar').hidden) return false;
+            quitar.click(); document.querySelector('dialog').close();
+            await new Promise(resolver => setTimeout(resolver, 30));
+            if (quitar.hidden) return false;
+            quitar.click(); document.querySelector('dialog').close('aceptar');
+            await esperarCambio(() => quitar.hidden);
+            return document.querySelector('#perfil-cv-resumen').textContent === 'Sin currículum cargado' && document.querySelector('#perfil-cv-descargar').hidden && document.querySelector('#perfil-titulo-resumen').textContent === 'Especialista de revision';
+          } finally { window.fetch = original; }
+        })()`);
+        if (!perfilDinamico) throw new Error('El perfil o el CV requieren recargar para ver los cambios.');
+      }
       if (vista === 'P19') {
         const detalleCorrecto = await evaluar(`(() => {
           const fila = document.querySelector('[data-ver-contenido]');

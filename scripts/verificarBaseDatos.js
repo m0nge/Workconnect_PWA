@@ -102,10 +102,14 @@ async function limpiar() {
     for (const tabla of ['postulaciones', 'experiencias_laborales', 'estudios_candidatos', 'habilidades_candidatos', 'alertas_laborales']) {
       await consultar(cliente.from(tabla).delete().in('candidato_id', perfiles.map((perfil) => perfil.id)));
     }
-    const archivos = perfiles.filter((perfil) => perfil.curriculum_url?.startsWith(perfil.id + '/')).map((perfil) => perfil.curriculum_url);
-    if (archivos.length) {
-      const { error } = await cliente.storage.from('curriculums-candidatos').remove(archivos);
-      if (error) throw new Error('No se pudieron retirar los PDF temporales.');
+    for (const perfil of perfiles) {
+      const almacen = cliente.storage.from('curriculums-candidatos');
+      const { data: archivos, error: errorLista } = await almacen.list(perfil.id);
+      if (errorLista) throw new Error('No se pudieron consultar los PDF temporales.');
+      if (archivos.length) {
+        const { error } = await almacen.remove(archivos.map((archivo) => `${perfil.id}/${archivo.name}`));
+        if (error) throw new Error('No se pudieron retirar los PDF temporales.');
+      }
     }
   }
   if (ofertas.length) await consultar(cliente.from('vacantes').delete().in('id', ofertas.map((oferta) => oferta.id)));
@@ -186,6 +190,18 @@ try {
   const postulacion = (await solicitar('POST', '/api/candidato/postulaciones', { vacante_id: vacante.id }, candidata, 201)).cuerpo;
   referencias.add(postulacion.id);
   await solicitar('POST', '/api/candidato/postulaciones', { vacante_id: vacante.id }, candidata, 409);
+  await solicitar('POST', '/api/candidato/curriculum', crearPdf(), candidatas[1], 200, { 'Content-Type': 'application/pdf', 'X-File-Name': 'revision-sin-postulaciones.pdf' });
+  await solicitar('DELETE', '/api/candidato/curriculum', undefined, null, 401);
+  await solicitar('DELETE', '/api/candidato/curriculum', undefined, empresa, 403);
+  await solicitar('DELETE', '/api/candidato/curriculum', { candidato_id: candidatas[1].id }, candidata);
+  comprobar.equal((await solicitar('GET', '/api/candidato/perfil', undefined, candidata)).cuerpo.perfil.curriculum_nombre, '');
+  await solicitar('GET', '/api/candidato/curriculum', undefined, candidata, 404);
+  comprobar.equal((await solicitar('GET', '/api/candidato/perfil', undefined, candidatas[1])).cuerpo.perfil.curriculum_nombre, 'revision-sin-postulaciones.pdf');
+  await solicitar('DELETE', '/api/candidato/curriculum', undefined, candidatas[1]);
+  const perfilSinPostulaciones = (await consultar(cliente.from('perfiles_candidatos').select('id').eq('usuario_id', candidatas[1].id)))[0];
+  const { data: archivosRetirados, error: errorListaCurriculums } = await cliente.storage.from('curriculums-candidatos').list(perfilSinPostulaciones.id);
+  comprobar.equal(errorListaCurriculums, null);
+  comprobar.equal(archivosRetirados.length, 0);
   const recibidas = (await solicitar('GET', '/api/empresa/postulaciones', undefined, empresa)).cuerpo.postulaciones;
   comprobar.ok(recibidas.some((registro) => registro.id === postulacion.id));
   comprobar.ok(recibidas.find((registro) => registro.id === postulacion.id).candidato.foto_url);

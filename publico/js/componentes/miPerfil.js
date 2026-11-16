@@ -280,6 +280,7 @@ function renderizarPerfilCandidato(seccion = null) {
         </div>
         <div class="mi-perfil-acciones">
           <a id="perfil-cv-descargar" href="/api/candidato/curriculum" hidden>Descargar currículum</a>
+          <button id="perfil-cv-quitar" class="boton boton-peligro" type="button" hidden>Quitar CV</button>
         </div>
       </section>
       <section class="mi-perfil-tarjeta mi-perfil-seccion-alertas">
@@ -469,6 +470,33 @@ function renderizarListaCandidato(tipo, registros) {
   }
 }
 
+function actualizarResumenCandidato(perfil) {
+  const campos = {
+    nombre: ['perfil-nombre-resumen', 'Mi perfil'],
+    titulo_profesional: ['perfil-titulo-resumen', 'Completa tu información profesional'],
+    email: ['perfil-resumen-correo', '—'], telefono: ['perfil-resumen-telefono', '—'],
+    ubicacion: ['perfil-resumen-ubicacion', '—'], resumen_laboral: ['perfil-resumen-texto', '—']
+  };
+  for (const [clave, [id, predeterminado]] of Object.entries(campos)) {
+    if (!Object.hasOwn(perfil, clave)) continue;
+    const elemento = contenido.querySelector(`#${id}`);
+    if (elemento) elemento.textContent = String(perfil[clave] || '').trim() || predeterminado;
+  }
+}
+
+function actualizarCurriculumCandidato(nombre = '') {
+  const guardado = Boolean(nombre);
+  contenido.querySelector('#perfil-cv-resumen').textContent = nombre || 'Sin currículum cargado';
+  const mensaje = contenido.querySelector('#perfil-cv-mensaje');
+  mensaje.textContent = guardado ? `Currículum guardado: ${nombre}.` : 'Ningún currículum cargado.';
+  mensaje.classList.remove('mi-perfil-error-en-linea');
+  const enlace = contenido.querySelector('#perfil-cv-descargar');
+  enlace.classList.toggle('boton', guardado);
+  enlace.hidden = !guardado;
+  contenido.querySelector('#perfil-cv-quitar').hidden = !guardado;
+  contenido.querySelector('#perfil-editar-curriculum').textContent = guardado ? 'Reemplazar' : 'Agregar CV';
+}
+
 async function cargarPerfilCandidato(alCambiarPantalla = () => {}, activarPestana = () => {}) {
   const datos = await solicitarApiCandidato('/perfil');
   if (!datos || !datos.perfil) return;
@@ -490,16 +518,7 @@ async function cargarPerfilCandidato(alCambiarPantalla = () => {}, activarPestan
     const el = contenido.querySelector(`#${campoId}`);
     if (el) el.value = valor || '';
   }
-  const establecerTexto = (id, valor) => {
-    const el = contenido.querySelector(`#${id}`);
-    if (el) el.textContent = valor;
-  };
-  establecerTexto('perfil-nombre-resumen', datos.perfil.nombre || 'Mi perfil');
-  establecerTexto('perfil-titulo-resumen', datos.perfil.titulo_profesional || 'Completa tu información profesional');
-  establecerTexto('perfil-resumen-correo', datos.perfil.email || '—');
-  establecerTexto('perfil-resumen-telefono', datos.perfil.telefono || '—');
-  establecerTexto('perfil-resumen-ubicacion', datos.perfil.ubicacion || '—');
-  establecerTexto('perfil-resumen-texto', datos.perfil.resumen_laboral || '—');
+  actualizarResumenCandidato(datos.perfil);
 
   const foto = contenido.querySelector('#perfil-foto-vista');
   const avatar = contenido.querySelector('#perfil-foto-avatar');
@@ -513,20 +532,7 @@ async function cargarPerfilCandidato(alCambiarPantalla = () => {}, activarPestan
     if (foto) foto.classList.add('oculto');
     if (avatar) avatar.classList.remove('oculto');
   }
-  const curriculumGuardado = Boolean(datos.perfil.curriculum_nombre);
-  establecerTexto(
-    'perfil-cv-mensaje',
-    curriculumGuardado ? `Currículum guardado: ${datos.perfil.curriculum_nombre}.` : 'Ningún currículum cargado.'
-  );
-  establecerTexto(
-    'perfil-cv-resumen',
-    curriculumGuardado ? datos.perfil.curriculum_nombre : 'Sin currículum cargado'
-  );
-  const enlaceCurriculum = contenido.querySelector('#perfil-cv-descargar');
-  if (enlaceCurriculum) {
-    enlaceCurriculum.classList.toggle('boton', curriculumGuardado);
-    enlaceCurriculum.hidden = !curriculumGuardado;
-  }
+  actualizarCurriculumCandidato(datos.perfil.curriculum_nombre);
 
   for (const [tipo, propiedad] of [
     ['experiencia', 'experiencias'],
@@ -809,6 +815,8 @@ function enlazarPerfilCandidato(alCambiarPantalla = () => {}, alCambiarSeccion =
     try {
       const datos = Object.fromEntries(new FormData(formPerfil).entries());
       await solicitarApiCandidato('/perfil', { method: 'PUT', body: JSON.stringify(datos) });
+      actualizarResumenCandidato(datos);
+      actualizarProgreso();
       perfilOriginal = {
         telefono: datos.telefono || '',
         ubicacion: datos.ubicacion || '',
@@ -892,8 +900,26 @@ function enlazarPerfilCandidato(alCambiarPantalla = () => {}, alCambiarSeccion =
 
   const selectorCurriculum = contenido.querySelector('#perfil-cv');
   const estadoCurriculum = contenido.querySelector('#perfil-cv-mensaje');
-  const enlaceCurriculum = contenido.querySelector('#perfil-cv-descargar');
   const botonCurriculum = contenido.querySelector('#perfil-cv-guardar');
+  const botonQuitarCurriculum = contenido.querySelector('#perfil-cv-quitar');
+  botonQuitarCurriculum.addEventListener('click', async () => {
+    if (!await confirmarAccion('¿Quitar el CV de tu perfil? Las postulaciones ya enviadas conservarán su archivo.')) return;
+    botonQuitarCurriculum.disabled = true;
+    botonCurriculum.disabled = true;
+    selectorCurriculum.disabled = true;
+    try {
+      await solicitarApiCandidato('/curriculum', { method: 'DELETE' });
+      selectorCurriculum.value = '';
+      actualizarCurriculumCandidato();
+      contenido.querySelector('[data-edicion-curriculum]').hidden = true;
+    } catch (error) {
+      await mostrarAviso(error.message || 'No se pudo quitar el CV.');
+    } finally {
+      botonQuitarCurriculum.disabled = false;
+      botonCurriculum.disabled = false;
+      selectorCurriculum.disabled = false;
+    }
+  });
   selectorCurriculum.addEventListener('change', (evento) => {
     const archivo = evento.target.files[0];
     if (!archivo) {
@@ -921,6 +947,8 @@ function enlazarPerfilCandidato(alCambiarPantalla = () => {}, alCambiarSeccion =
     }
 
     botonCurriculum.disabled = true;
+    botonQuitarCurriculum.disabled = true;
+    selectorCurriculum.disabled = true;
     estadoCurriculum.textContent = 'Guardando currículum…';
     estadoCurriculum.classList.remove('mi-perfil-error-en-linea');
     try {
@@ -935,15 +963,15 @@ function enlazarPerfilCandidato(alCambiarPantalla = () => {}, alCambiarSeccion =
       const resultado = await respuesta.json().catch(() => ({}));
       if (!respuesta.ok) throw new Error(resultado.error || 'No se pudo guardar el currículum.');
       selectorCurriculum.value = '';
-      estadoCurriculum.textContent = `Currículum guardado: ${resultado.curriculum_nombre}.`;
-      enlaceCurriculum.classList.add('boton');
-      enlaceCurriculum.hidden = false;
+      actualizarCurriculumCandidato(resultado.curriculum_nombre);
       contenido.querySelector('[data-edicion-curriculum]').hidden = true;
     } catch (error) {
       estadoCurriculum.textContent = error.message || 'No se pudo guardar el currículum.';
       estadoCurriculum.classList.add('mi-perfil-error-en-linea');
     } finally {
       botonCurriculum.disabled = false;
+      botonQuitarCurriculum.disabled = false;
+      selectorCurriculum.disabled = false;
     }
   });
 

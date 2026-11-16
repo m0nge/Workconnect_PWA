@@ -1,4 +1,5 @@
 import { guardarFoto } from './servicios/fotos.js';
+import { quitarCurriculum } from './servicios/curriculum.js';
 import { validarVacanteEmpresa, registrarEdicionVacanteEmpresa } from './servicios/vacantesEmpresa.js';
 import { crearUsuarioRegistrado, eliminarRegistroIncompleto } from './servicios/registro.js';
 import 'dotenv/config';
@@ -671,6 +672,18 @@ aplicacion.post(
     return respuesta.json({ guardado: true, curriculum_nombre: nombreArchivo });
   })
 );
+
+aplicacion.delete('/api/candidato/curriculum', conManejoErrores(async (solicitud, respuesta) => {
+  const contexto = await obtenerCandidatoAutenticado(solicitud, respuesta);
+  if (!contexto) return;
+  try {
+    const resultado = await quitarCurriculum(contexto);
+    respuesta.set('Cache-Control', 'no-store');
+    return respuesta.json(resultado);
+  } catch (error) {
+    return respuesta.status(503).json({ error: error.message });
+  }
+}));
 
 aplicacion.get('/api/candidato/curriculum', conManejoErrores(async (solicitud, respuesta) => {
   const contexto = await obtenerCandidatoAutenticado(solicitud, respuesta);
