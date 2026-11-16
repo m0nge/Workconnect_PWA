@@ -99,6 +99,23 @@ try {
       }
       if (!lista?.lista) throw new Error(`${vista}: la pantalla no terminó de cargar.`);
       await esperar(150);
+      if (vista === 'P19') {
+        const detalleCorrecto = await evaluar(`(() => {
+          const fila = document.querySelector('[data-ver-contenido]');
+          if (!fila) return false;
+          fila.querySelector('td').click();
+          if (!document.querySelector('#modal-raiz .recurso-detalle-lectura')) return false;
+          document.querySelector('#modal-cerrar-x').click();
+          fila.querySelector('[data-editar]').click();
+          if (!document.querySelector('#editar-contenido') || document.querySelector('.recurso-detalle-lectura')) return false;
+          document.querySelector('#modal-cerrar-x').click();
+          fila.querySelector('.titulo-con-detalle').click();
+          const correcto = !!document.querySelector('#modal-raiz .recurso-detalle-texto');
+          document.querySelector('#modal-cerrar-x').click();
+          return correcto;
+        })()`);
+        if (!detalleCorrecto) throw new Error('El detalle del recurso no abre o interfiere con la edición.');
+      }
       if (['P10', 'P13', 'P15'].includes(vista)) {
         const imagenesCorrectas = await evaluar(`(async () => {
           const imagenes = [...document.querySelectorAll('#area-contenido .avatar-con-respaldo img')];

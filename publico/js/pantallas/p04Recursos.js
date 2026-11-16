@@ -1,5 +1,5 @@
 import { escaparHtml, textoSeguro } from '../utilidades/formato.js';
-import { abrirModal } from '../componentes/modal.js';
+import { abrirDetalleRecurso } from '../componentes/detalleRecurso.js';
 
 export function renderizarP04Recursos(contenedor, datos, titulo = 'Recursos laborales', { integrado = false } = {}) {
   const recursos = datos.recursosLaborales || [];
@@ -76,27 +76,7 @@ export function renderizarP04Recursos(contenedor, datos, titulo = 'Recursos labo
       boton.addEventListener('click', () => {
         const recurso = recursos.find((elemento) => String(elemento.id) === boton.dataset.recurso);
         if (!recurso) return;
-        abrirModal({
-          titulo: recurso.titulo || 'Recurso laboral',
-          subtitulo: `${recurso.categoria || 'General'} · ${recurso.tiempoLecturaMin || 0} min de lectura`,
-          contenidoHtml: `
-            ${recurso.imagenPortadaUrl ? `
-              <div style="margin:-0.5rem 0 1rem; max-height:220px; overflow:hidden; border-radius:0.5rem;">
-                <img src="${escaparHtml(recurso.imagenPortadaUrl)}" alt="${escaparHtml(recurso.titulo)}" style="width:100%; max-height:220px; object-fit:cover;" onerror="this.parentElement.style.display='none'" />
-              </div>
-            ` : ''}
-            <span class="etiqueta-cuadrada">${escaparHtml(recurso.nivelLectura || 'General')}</span>
-            <p class="detalle-texto" style="margin-top:0.75rem; line-height:1.6;">${escaparHtml(recurso.contenido || recurso.resumen || 'Contenido no disponible.')}</p>
-          `,
-          alMontar(cuerpo, cerrar) {
-            const boton = document.createElement('button');
-            boton.type = 'button';
-            boton.className = 'boton-secundario';
-            boton.textContent = 'Cerrar';
-            boton.addEventListener('click', cerrar);
-            cuerpo.append(boton);
-          }
-        });
+        abrirDetalleRecurso(recurso);
       });
     });
   };

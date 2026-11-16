@@ -49,7 +49,7 @@ export function editarContenido(elementoLista, campos, alGuardar) {
   });
 }
 
-export function renderizarListaContenido(contenedor, { elementos: elementosLista, camposEdicion, alGuardar, alAlternar, alEliminar, estadosDisponibles = ['Activo', 'Inactivo'] }) {
+export function renderizarListaContenido(contenedor, { elementos: elementosLista, camposEdicion, alGuardar, alAlternar, alEliminar, alVer, estadosDisponibles = ['Activo', 'Inactivo'] }) {
   let datos = [...elementosLista];
   const categorias = [...new Set(datos.map((i) => i.categoria).filter(Boolean))];
   const estados = [...new Set(datos.map((i) => i.estado).filter(Boolean))];
@@ -70,13 +70,18 @@ export function renderizarListaContenido(contenedor, { elementos: elementosLista
     const visibles = filtrarContenido(datos, filtros);
     contenedor.querySelector('[data-conteo]').textContent = `${visibles.length} de ${datos.length}`;
     const cuerpoFilas = contenedor.querySelector('tbody');
-    cuerpoFilas.innerHTML = visibles.length ? visibles.map((elementoLista) => `<tr>
-      <td><strong>${escaparHtml(elementoLista.titulo)}</strong>${elementoLista.autor ? `<p class="texto-secundario">${escaparHtml(elementoLista.autor)}</p>` : ''}</td>
+    cuerpoFilas.innerHTML = visibles.length ? visibles.map((elementoLista) => `<tr ${alVer ? `data-ver-contenido="${escaparHtml(elementoLista.id)}" class="fila-con-detalle"` : ''}>
+      <td>${alVer ? `<button type="button" class="titulo-con-detalle" aria-label="Ver recurso: ${escaparHtml(elementoLista.titulo)}">${escaparHtml(elementoLista.titulo)}</button>` : `<strong>${escaparHtml(elementoLista.titulo)}</strong>`}${elementoLista.autor ? `<p class="texto-secundario">${escaparHtml(elementoLista.autor)}</p>` : ''}</td>
       <td>${escaparHtml(elementoLista.categoria)}</td><td><span class="etiqueta-cuadrada">${escaparHtml(elementoLista.estado)}</span></td>
       <td><div class="grupo-acciones"><button type="button" class="boton" data-editar="${escaparHtml(elementoLista.id)}">Editar</button>
       <button type="button" class="boton" data-alternar="${escaparHtml(elementoLista.id)}">${elementoLista.activo ? 'Desactivar' : 'Activar'}</button>
       <button type="button" class="boton boton-peligro" data-eliminar="${escaparHtml(elementoLista.id)}">Eliminar</button></div></td></tr>`).join('') : '<tr><td colspan="4" class="texto-centro">No hay resultados con estos filtros.</td></tr>';
-    cuerpoFilas.querySelectorAll('button').forEach((boton) => boton.addEventListener('click', async () => {
+    cuerpoFilas.querySelectorAll('[data-ver-contenido]').forEach((fila) => fila.addEventListener('click', (evento) => {
+      if (evento.target.closest('button:not(.titulo-con-detalle), a, input, select, textarea')) return;
+      const elemento = datos.find((dato) => String(dato.id) === fila.dataset.verContenido);
+      if (elemento) alVer(elemento);
+    }));
+    cuerpoFilas.querySelectorAll('[data-editar], [data-alternar], [data-eliminar]').forEach((boton) => boton.addEventListener('click', async () => {
       const accion = Object.keys(boton.dataset)[0];
       const elementoLista = datos.find((i) => i.id === boton.dataset[accion]);
       if (!elementoLista) return;

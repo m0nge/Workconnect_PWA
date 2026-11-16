@@ -1,10 +1,12 @@
 import { renderizarListaContenido } from '../componentes/listaContenido.js';
+import { abrirDetalleRecurso } from '../componentes/detalleRecurso.js';
 
 export function renderizarGestionRecursos(contenedor, recursos, acciones) {
   const adaptar = (r) => ({ ...r, estado: r.estadoPublicacion, activo: r.estadoPublicacion === 'Publicado' });
   renderizarListaContenido(contenedor, {
     elementos: recursos.map(adaptar),
     estadosDisponibles: ['Publicado', 'Borrador'],
+    alVer: (recurso) => abrirDetalleRecurso(recurso, { mostrarEstado: true }),
     camposEdicion: [
       { clave: 'titulo', etiqueta: 'Título', min: 8, max: 160 },
       { clave: 'categoria', etiqueta: 'Categoría', opciones: ['Artículo', 'Consejo', 'Tutorial', 'Noticia'] },

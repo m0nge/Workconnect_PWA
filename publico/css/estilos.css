@@ -3018,6 +3018,13 @@ textarea {
 .tabla-gestion-contenido td:first-child { min-width:220px; }
 .tabla-gestion-contenido td:last-child { min-width:230px; }
 .tabla-gestion-contenido .grupo-acciones { flex-wrap:wrap; }
+.fila-con-detalle { cursor: pointer; }
+.fila-con-detalle:is(:hover, :focus-within) { background: var(--color-superficie-secundaria); }
+.titulo-con-detalle { padding: 0; border: 0; background: transparent; color: var(--color-vino); font: inherit; font-weight: 600; text-align: left; cursor: pointer; }
+.titulo-con-detalle:is(:hover, :focus-visible) { text-decoration: underline; }
+.titulo-con-detalle:focus-visible { outline: 2px solid var(--color-vino); outline-offset: 4px; }
+.recurso-detalle-portada { display: block; width: 100%; max-height: 18rem; object-fit: cover; border-radius: var(--radio-mediano); margin-bottom: 1rem; }
+.recurso-detalle-texto { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.8; margin: 1rem 0; }
 @media (max-width:640px) {
   .filtros-gestion-contenido { grid-template-columns:1fr; }
 }
