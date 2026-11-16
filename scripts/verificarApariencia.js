@@ -77,12 +77,12 @@ try {
   await ordenar('Runtime.enable');
   await ordenar('Page.enable');
   await ordenar('Emulation.setDeviceMetricsOverride', { width: 1365, height: 1000, deviceScaleFactor: 1, mobile: false });
-  const vistas = ['P01', 'P02', 'P03', 'P04', 'P05', 'P05-publico', 'P07', 'P08', 'P09', 'P10', 'P11', 'P12', 'P13', 'P14', 'P15', 'P16', 'P19', 'P28', 'ingreso', 'registro', 'registro-empresa', 'P19&formulario=recurso', 'P19&ventana=edicion', 'P05&ventana=edicion', 'P05&ventana=dialogo'];
+  const vistas = ['P01', 'P02', 'P03', 'P04', 'P05', 'P05-publico', 'P07', 'P08', 'P09', 'P10', 'P11', 'P12', 'P13', 'P14', 'P15', 'P16', 'P19', 'P28', 'ingreso', 'registro', 'registro-empresa', 'P19&formulario=recurso', 'P19&ventana=edicion', 'P05&ventana=edicion', 'P05&ventana=dialogo', 'P08&ventana=oferta'];
   const informes = [];
   const estilosAcciones = new Map();
   for (const pantalla of [
     { ancho: 1365, alto: 1000, vistas },
-    { ancho: 390, alto: 844, vistas: ['P01', 'P03', 'P19', 'P09', 'registro-empresa', 'P05&ventana=dialogo'] },
+    { ancho: 390, alto: 844, vistas: ['P01', 'P03', 'P19', 'P09', 'registro-empresa', 'P05&ventana=dialogo', 'P08', 'P08&ventana=oferta'] },
     { ancho: 320, alto: 844, vistas: ['P19', 'P01', 'registro-empresa'] }
   ]) {
     await ordenar('Emulation.setDeviceMetricsOverride', { width: pantalla.ancho, height: pantalla.alto, deviceScaleFactor: 1, mobile: pantalla.ancho < 600 });
@@ -99,6 +99,20 @@ try {
       }
       if (!lista?.lista) throw new Error(`${vista}: la pantalla no terminó de cargar.`);
       await esperar(150);
+      if (vista === 'P08') {
+        const filtradoCorrecto = await evaluar(`(() => {
+          const entrada = document.querySelector('#buscar-ofertas-empresa');
+          entrada.value = 'SIN_RESULTADO_DE_BUSQUEDA'; entrada.dispatchEvent(new Event('input', { bubbles: true }));
+          const vacio = document.querySelectorAll('[data-vacante-id]').length === 0;
+          entrada.value = ''; entrada.dispatchEvent(new Event('input', { bubbles: true }));
+          return vacio && document.querySelectorAll('[data-vacante-id]').length === 1 && !!document.querySelector('[data-editar-oferta]');
+        })()`);
+        if (!filtradoCorrecto) throw new Error('No funciona el buscador de ofertas de empresa.');
+      }
+      if (vista === 'P08&ventana=oferta') {
+        const cargada = await evaluar("document.querySelector('#modal-raiz #vacante-titulo')?.value === 'Asistente de administración'");
+        if (!cargada) throw new Error('La oferta no se cargó en el formulario de edición.');
+      }
       const informe = await evaluar(`(() => {
         const visibles = [...document.querySelectorAll('input:not([type="hidden"]), select, textarea, .tarjeta, .mi-perfil-tarjeta, .modal-ventana, dialog, .encabezado, .pie-pagina')].filter(e => e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden');
         const superficiesClaras = visibles.filter(e => !e.matches('input[type="checkbox"], input[type="radio"]') && /^rgb\\(/.test(getComputedStyle(e).backgroundColor) && getComputedStyle(e).backgroundColor.match(/\\d+/g).slice(0,3).every(n => Number(n) > 220)).map(e => e.className || e.tagName);

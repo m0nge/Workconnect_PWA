@@ -1,7 +1,8 @@
+import { validarVacanteEmpresa, registrarEdicionVacanteEmpresa } from './servicios/vacantesEmpresa.js';
 import 'dotenv/config';
 import express from 'express';
 import { registrarFlujoPostulaciones } from './servicios/flujoPostulaciones.js';
-import { crearControlAcceso, esUuid, esTexto, esCorreo, esTelefono, esUrlWeb, esFecha, esNumeroCampo, esPortadaRecurso } from './servicios/validaciones.js';
+import { crearControlAcceso, esUuid, esTexto, esCorreo, esTelefono, esUrlWeb, esNumeroCampo, esPortadaRecurso } from './servicios/validaciones.js';
 import { registrarGestionContenido } from './servicios/gestionContenido.js';
 import { reportarAutomaticamente, destinoModeracion } from './servicios/moderacion.js';
 import { randomUUID as crearIdentificador } from 'node:crypto';
@@ -1037,58 +1038,10 @@ aplicacion.post('/api/empresa/vacantes', conManejoErrores(async (solicitud, resp
   const contexto = await obtenerEmpresaAutenticada(solicitud, respuesta);
   if (!contexto) return;
 
-  const datos = solicitud.body || {};
-  const titulo = typeof datos.titulo === 'string' ? datos.titulo.trim() : '';
-  const sector = typeof datos.sector === 'string' ? datos.sector.trim() : '';
-  const departamento = typeof datos.departamento === 'string' ? datos.departamento.trim() : '';
-  const municipio = typeof datos.municipio === 'string' ? datos.municipio.trim() : '';
-  const modalidad = typeof datos.modalidad === 'string' ? datos.modalidad.trim() : '';
-  const tipoContrato = typeof datos.tipo_contrato === 'string' ? datos.tipo_contrato.trim() : '';
-  const plazas = Number(datos.plazas) || 1;
-  const salarioMin = datos.salario_min !== undefined && datos.salario_min !== null && datos.salario_min !== '' ? Number(datos.salario_min) : null;
-  const salarioMax = datos.salario_max !== undefined && datos.salario_max !== null && datos.salario_max !== '' ? Number(datos.salario_max) : null;
-  const descripcion = typeof datos.descripcion === 'string' ? datos.descripcion.trim() : '';
-  if (!esNumeroCampo(datos.salario_min) || !esNumeroCampo(datos.salario_max) ||
-      (datos.plazas !== undefined && (!esNumeroCampo(datos.plazas) || Number(datos.plazas) < 1)) ||
-      [datos.funciones, datos.requisitos, datos.beneficios].some((lista) => lista !== undefined &&
-        typeof lista !== 'string' && (!Array.isArray(lista) || lista.some((v) => typeof v !== 'string')))) {
-    return respuesta.status(400).json({ error: 'Revisa los salarios, plazas y las listas de funciones, requisitos y beneficios.' });
-  }
-
-  if (titulo.length < 5 || titulo.length > 120) {
-    return respuesta.status(400).json({ error: 'El título debe tener entre 5 y 120 caracteres.' });
-  }
-  if (!sector) return respuesta.status(400).json({ error: 'Selecciona el sector de la vacante.' });
-  if (!departamento || !municipio) return respuesta.status(400).json({ error: 'Selecciona departamento y municipio para la vacante.' });
-  if (!['Presencial', 'Híbrido', 'Remoto'].includes(modalidad)) {
-    return respuesta.status(400).json({ error: 'Selecciona una modalidad válida (Presencial, Híbrido, Remoto).' });
-  }
-  if (!tipoContrato) return respuesta.status(400).json({ error: 'Selecciona el tipo de contrato.' });
-  if (plazas < 1 || plazas > 10000 || !Number.isInteger(plazas)) return respuesta.status(400).json({ error: 'El número de plazas debe ser entre 1 y 10000.' });
-  if (salarioMin === null || salarioMax === null || !Number.isFinite(salarioMin) || !Number.isFinite(salarioMax) || salarioMin < 0 || salarioMax < salarioMin || salarioMax > 1000000) {
-    return respuesta.status(400).json({ error: 'El salario mínimo y máximo deben ser válidos y el máximo debe ser mayor o igual al mínimo.' });
-  }
-  if (!esTexto(descripcion, 10, 10000)) return respuesta.status(400).json({ error: 'La descripción debe tener entre 10 y 10000 caracteres.' });
-  const hoyVacante = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/El_Salvador', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-  if (datos.fecha_limite && (!esFecha(datos.fecha_limite) || datos.fecha_limite < hoyVacante)) return respuesta.status(400).json({ error: 'Selecciona una fecha límite válida que no haya pasado.' });
-
-  const procesarLista = (campo) => {
-    if (Array.isArray(campo)) return campo.map((elementoLista) => String(elementoLista).trim()).filter(Boolean);
-    if (typeof campo === 'string') {
-      return campo.split(/\r?\n/).map((linea) => linea.replace(/^[-*•]\s*/, '').trim()).filter(Boolean);
-    }
-    return [];
-  };
-
-  const funciones = procesarLista(datos.funciones);
-  const requisitos = procesarLista(datos.requisitos);
-  const beneficios = procesarLista(datos.beneficios);
-  if ([funciones, requisitos, beneficios].some((lista) => lista.length > 100 || lista.some((texto) => texto.length > 1000))) {
-    return respuesta.status(400).json({ error: 'Cada lista admite hasta 100 elementos de un máximo de 1000 caracteres.' });
-  }
-
-  if (!funciones.length) return respuesta.status(400).json({ error: 'Escribe al menos una función o responsabilidad del puesto.' });
-  if (!requisitos.length) return respuesta.status(400).json({ error: 'Escribe al menos un requisito para el puesto.' });
+  const validacion = validarVacanteEmpresa(solicitud.body || {});
+  if (validacion.error) return respuesta.status(400).json({ error: validacion.error });
+  const { titulo, sector, departamento, municipio, modalidad, tipo_contrato: tipoContrato, plazas,
+    salario_min: salarioMin, salario_max: salarioMax, descripcion, funciones, requisitos, beneficios } = validacion.datos;
 
   const { data: vacante, error: errorVacante } = await contexto.supabase
     .from('vacantes')
@@ -1103,7 +1056,7 @@ aplicacion.post('/api/empresa/vacantes', conManejoErrores(async (solicitud, resp
       salario_min: salarioMin,
       salario_max: salarioMax,
       plazas,
-      fecha_limite: datos.fecha_limite || null,
+      fecha_limite: validacion.datos.fecha_limite,
       estado: 'Activa',
       descripcion,
       funciones,
@@ -1120,6 +1073,8 @@ aplicacion.post('/api/empresa/vacantes', conManejoErrores(async (solicitud, resp
   await reportarAutomaticamente(contexto.supabase, { texto: [titulo, descripcion, ...funciones, ...requisitos, ...beneficios].join(' '), tipo: 'reporte', categoria: 'Reportes', origen: 'vacantes', id: vacante.id, autor: contexto.usuario.nombre });
   return respuesta.status(201).json({ guardado: true, vacante });
 }));
+
+registrarEdicionVacanteEmpresa(aplicacion, { conManejoErrores, obtenerEmpresaAutenticada, reportarAutomaticamente });
 
 aplicacion.get('/api/empresa/vacantes', conManejoErrores(async (solicitud, respuesta) => {
   const contexto = await obtenerEmpresaAutenticada(solicitud, respuesta);

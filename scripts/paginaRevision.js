@@ -40,6 +40,10 @@ try {
   if (parametros.get('formulario') === 'recurso') contenedor.querySelector('[data-subpestana="Crear"]').click();
   if (parametros.get('ventana') === 'edicion') contenedor.querySelector('[data-editar]').click();
   if (parametros.get('ventana') === 'dialogo') pedirMotivo();
+  if (parametros.get('ventana') === 'oferta') {
+    for (let intento = 0; intento < 100 && !contenedor.querySelector('[data-editar-oferta]'); intento++) await new Promise((resolver) => setTimeout(resolver, 20));
+    contenedor.querySelector('[data-editar-oferta]').click();
+  }
   window.revisionLista = true;
 } catch (error) { window.errorRevision = error.stack; }
 `;

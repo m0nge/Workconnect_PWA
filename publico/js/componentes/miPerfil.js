@@ -2,6 +2,8 @@ import { confirmarAccion, mostrarAviso } from './dialogos.js';
 import { reportarContenido } from '../utilidades/reportes.js';
 import { escaparHtml } from '../utilidades/formato.js';
 import { solicitarApi } from '../utilidades/solicitudes.js';
+import { abrirModal } from './modal.js';
+import { filtrarOfertas } from '../utilidades/ofertas.js';
 import {
   DEPARTAMENTOS_EL_SALVADOR,
   SECTORES_ECONOMICOS,
@@ -368,7 +370,7 @@ function renderizarPerfilCandidato(seccion = null) {
       </section>
 
       <section class="mi-perfil-tarjeta">
-        <div style="display:flex; justify-content:space-between; align-elementos:center; margin-bottom:1.15rem; border-bottom: 1px solid var(--color-borde-suave); padding-bottom: 0.75rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.15rem; border-bottom: 1px solid var(--color-borde-suave); padding-bottom: 0.75rem;">
           <h3 style="margin:0; font-size: 1.05rem;">Historial de postulaciones</h3>
           <span id="postulaciones-conteo-texto" style="font-size:0.8rem; color:var(--color-texto-atenuado);">Consultando...</span>
         </div>
@@ -1014,7 +1016,7 @@ function renderizarEmpresa() {
     <section class="mi-perfil-tarjeta">
       <h3>Vista previa corporativa</h3>
       <div class="mi-perfil-vista-previa">
-        <div id="empresa-previa-avatar" style="width: 64px; height: 64px; font-size: 1.25rem; margin: 0 auto 0.75rem auto; display: flex; align-elementos: center; justify-content: center; background: var(--color-acento-solido); color: white; border-radius: 50%; font-weight: bold; overflow: hidden; border: 2px solid var(--color-borde);">
+        <div id="empresa-previa-avatar" style="width: 64px; height: 64px; font-size: 1.25rem; margin: 0 auto 0.75rem auto; display: flex; align-items: center; justify-content: center; background: var(--color-acento-solido); color: white; border-radius: 50%; font-weight: bold; overflow: hidden; border: 2px solid var(--color-borde);">
           <span id="empresa-previa-iniciales">WC</span>
           <img id="empresa-previa-img" src="" alt="Logo de la empresa" style="width: 100%; height: 100%; object-fit: cover; display: none;" />
         </div>
@@ -1034,7 +1036,7 @@ function renderizarEmpresa() {
         <div class="mi-perfil-estadistica"><strong id="estadistica-postulaciones-conteo">0</strong><span>Postulaciones recibidas</span></div>
       </div>
       <p id="empresa-previa-verificacion" class="mi-perfil-ayuda" style="margin-top: 1rem;">
-        <span style="display: inline-flex; align-elementos: center; gap: 0.35rem; color: var(--color-esmeralda); font-weight: 600;">
+        <span style="display: inline-flex; align-items: center; gap: 0.35rem; color: var(--color-esmeralda); font-weight: 600;">
           <svg width="16" height="16" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
           Empresa activa y verificada en WorkConnect
         </span>
@@ -1045,13 +1047,18 @@ function renderizarEmpresa() {
       </div>
     </section>
     <section class="mi-perfil-tarjeta" style="grid-column: 1 / -1; margin-top: 1rem;">
-      <div style="display: flex; justify-content: space-between; align-elementos: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
         <div>
           <h3 style="margin: 0; font-size: 1.15rem;">Mis ofertas de empleo publicadas</h3>
-          <p class="mi-perfil-ayuda" style="margin: 0.2rem 0 0;">Gestiona tus ofertas activas, pausa o inactiva las que ya no reciban postulaciones, o elimina ofertas.</p>
+          <p class="mi-perfil-ayuda" style="margin: 0.2rem 0 0;">Busca, edita y administra tus ofertas de empleo.</p>
         </div>
         <button type="button" class="boton boton-primario boton-ir-publicar-vacante">+ Publicar nueva vacante</button>
       </div>
+      <label class="campo-formulario" for="buscar-ofertas-empresa">
+        <span>Buscar en mis ofertas</span>
+        <input id="buscar-ofertas-empresa" class="campo-texto" type="search" maxlength="120" placeholder="Puesto, sector, ubicación o estado..." />
+      </label>
+      <p id="conteo-ofertas-empresa" class="mi-perfil-ayuda" role="status" aria-live="polite"></p>
       <div class="mi-perfil-desplazamiento">
         <table class="mi-perfil-tabla" id="tabla-vacantes-empresa">
           <thead>
@@ -1200,104 +1207,121 @@ async function enlazarEmpresa(alCambiarPantalla = () => {}) {
     contenido.querySelector(`#${id}`)?.addEventListener('input', actualizarPrevia);
     contenido.querySelector(`#${id}`)?.addEventListener('change', actualizarPrevia);
   });
+  const buscadorOfertas = contenido.querySelector('#buscar-ofertas-empresa');
+  const conteoOfertas = contenido.querySelector('#conteo-ofertas-empresa');
+  let ofertasCargadas = [];
+  const pintarOfertas = () => {
+    if (!cuerpoFilasVacantes) return;
+    const vacantes = filtrarOfertas(ofertasCargadas, buscadorOfertas?.value || '');
+    if (conteoOfertas) conteoOfertas.textContent = `${vacantes.length} de ${ofertasCargadas.length} ofertas`;
+    if (!vacantes.length) {
+      cuerpoFilasVacantes.innerHTML = `<tr><td colspan="5" class="mi-perfil-vacio">${ofertasCargadas.length ? 'No hay ofertas que coincidan con tu búsqueda.' : 'Todavía no has publicado ofertas de empleo.'}</td></tr>`;
+      return;
+    }
+
+    cuerpoFilasVacantes.innerHTML = vacantes.map((v) => {
+      const esActiva = v.estado === 'Activa';
+
+      return `
+        <tr data-vacante-id="${v.id}">
+          <td>
+            <strong>${escaparHtml(v.titulo)}</strong>
+            <div class="mi-perfil-ayuda" style="font-size:0.75rem;">${escaparHtml(v.sector)}</div>
+          </td>
+          <td>
+            <div>${escaparHtml(v.municipio)}, ${escaparHtml(v.departamento)}</div>
+            <div class="mi-perfil-ayuda" style="font-size:0.75rem;">${escaparHtml(v.modalidad)} · ${escaparHtml(v.tipo_contrato)}</div>
+          </td>
+          <td>
+            <div>${v.plazas} ${v.plazas === 1 ? 'plaza' : 'plazas'}</div>
+            <div class="mi-perfil-ayuda" style="font-size:0.75rem;">$${Number(v.salario_min || 0)} - $${Number(v.salario_max || 0)}</div>
+          </td>
+          <td>
+            <span class="etiqueta-estado">
+              ${escaparHtml(v.estado)}
+            </span>
+          </td>
+          <td>
+            <div class="grupo-acciones">
+              <button type="button" class="boton" data-editar-oferta="${v.id}">Editar</button>
+              <button type="button" class="boton boton-cambiar-vacante" data-id="${v.id}" data-estado-actual="${v.estado}">
+                ${esActiva ? 'Desactivar' : 'Activar'}
+              </button>
+              <button type="button" class="boton boton-eliminar-vacante" data-id="${v.id}" data-titulo="${escaparHtml(v.titulo)}">
+                Eliminar
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+    cuerpoFilasVacantes.querySelectorAll('[data-editar-oferta]').forEach((boton) => {
+      boton.addEventListener('click', () => {
+        const oferta = ofertasCargadas.find((vacante) => vacante.id === boton.dataset.editarOferta);
+        if (!oferta) return;
+        abrirModal({ titulo: 'Editar oferta', contenidoHtml: renderizarVacante(oferta), alMontar(raiz, cerrar) {
+          enlazarVacante(alCambiarPantalla, { raiz, vacante: oferta, alCancelar: cerrar,
+            alGuardar: async () => { cerrar(); await cargarOfertasEmpresa(); } });
+        } });
+      });
+    });
+    cuerpoFilasVacantes.querySelectorAll('.boton-cambiar-vacante').forEach((boton) => {
+      boton.addEventListener('click', async () => {
+        const id = boton.dataset.id;
+        const estadoActual = boton.dataset.estadoActual;
+        const nuevoEstado = estadoActual === 'Activa' ? 'Inactiva' : 'Activa';
+        boton.disabled = true;
+
+        try {
+          const respuestaHttp = await fetch(`/api/empresa/vacantes/${id}/estado`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ estado: nuevoEstado })
+          });
+          const resultadoJson = await respuestaHttp.json().catch(() => ({}));
+          if (!respuestaHttp.ok) throw new Error(resultadoJson.error || 'No se pudo cambiar el estado.');
+          await cargarOfertasEmpresa();
+        } catch (errorCapturado) {
+          mostrarAviso(errorCapturado.message || 'Error al cambiar estado.');
+          boton.disabled = false;
+        }
+      });
+    });
+    cuerpoFilasVacantes.querySelectorAll('.boton-eliminar-vacante').forEach((boton) => {
+      boton.addEventListener('click', async () => {
+        const id = boton.dataset.id;
+        const titulo = boton.dataset.titulo;
+        const confirmar = await confirmarAccion(`¿Estás seguro de que deseas eliminar la oferta "${titulo}"? Se eliminarán también las postulaciones vinculadas a ella.`);
+        if (!confirmar) return;
+
+        boton.disabled = true;
+        try {
+          const respuestaHttp = await fetch(`/api/empresa/vacantes/${id}`, { method: 'DELETE' });
+          const resultadoJson = await respuestaHttp.json().catch(() => ({}));
+          if (!respuestaHttp.ok) throw new Error(resultadoJson.error || 'No se pudo eliminar la vacante.');
+          await cargarOfertasEmpresa();
+        } catch (errorCapturado) {
+          mostrarAviso(errorCapturado.message || 'Error al eliminar oferta.');
+          boton.disabled = false;
+        }
+      });
+    });
+
+  };
   const cargarOfertasEmpresa = async () => {
     if (!cuerpoFilasVacantes) return;
     try {
-      const respuestaHttp = await fetch('/api/empresa/vacantes', { cache: 'no-store' });
-      const datos = await respuestaHttp.json().catch(() => ({}));
-      const vacantes = Array.isArray(datos.vacantes) ? datos.vacantes : [];
-
+      const datos = await solicitarApi('/api/empresa/vacantes', { cache: 'no-store' });
+      ofertasCargadas = Array.isArray(datos.vacantes) ? datos.vacantes : [];
       const estadisticaVacantes = contenido.querySelector('#estadistica-vacantes-conteo');
-      if (estadisticaVacantes) estadisticaVacantes.textContent = vacantes.length;
-
-      if (!vacantes.length) {
-        cuerpoFilasVacantes.innerHTML = `<tr><td colspan="5" class="mi-perfil-vacio">No has publicado ofertas de empleo aún. Haz clic en "+ Publicar nueva vacante" para empezar.</td></tr>`;
-        return;
-      }
-
-      cuerpoFilasVacantes.innerHTML = vacantes.map((v) => {
-        const esActiva = v.estado === 'Activa';
-        const colorInsignia = esActiva
-          ? 'background:var(--color-esmeralda-fondo); color:var(--color-esmeralda); border:1px solid var(--color-esmeralda-borde);'
-          : 'background:var(--color-superficie-elevada); color:var(--color-texto-secundario); border:1px solid var(--color-borde-suave);';
-
-        return `
-          <tr data-vacante-id="${v.id}">
-            <td>
-              <strong>${escaparHtml(v.titulo)}</strong>
-              <div class="mi-perfil-ayuda" style="font-size:0.75rem;">${escaparHtml(v.sector)}</div>
-            </td>
-            <td>
-              <div>${escaparHtml(v.municipio)}, ${escaparHtml(v.departamento)}</div>
-              <div class="mi-perfil-ayuda" style="font-size:0.75rem;">${escaparHtml(v.modalidad)} · ${escaparHtml(v.tipo_contrato)}</div>
-            </td>
-            <td>
-              <div>${v.plazas} ${v.plazas === 1 ? 'plaza' : 'plazas'}</div>
-              <div class="mi-perfil-ayuda" style="font-size:0.75rem;">$${Number(v.salario_min || 0)} - $${Number(v.salario_max || 0)}</div>
-            </td>
-            <td>
-              <span style="${colorInsignia} padding:0.2rem 0.55rem; border-radius:0.35rem; font-size:0.75rem; font-weight:700;">
-                ${escaparHtml(v.estado)}
-              </span>
-            </td>
-            <td>
-              <div style="display:flex; gap:0.4rem; align-elementos:center;">
-                <button type="button" class="boton boton-cambiar-vacante" data-id="${v.id}" data-estado-actual="${v.estado}" style="padding:0.25rem 0.6rem; font-size:0.75rem;">
-                  ${esActiva ? 'Pausar / Inactivar' : 'Reactivar'}
-                </button>
-                <button type="button" class="boton boton-eliminar-vacante" data-id="${v.id}" data-titulo="${escaparHtml(v.titulo)}">
-                  Eliminar
-                </button>
-              </div>
-            </td>
-          </tr>
-        `;
-      }).join('');
-      cuerpoFilasVacantes.querySelectorAll('.boton-cambiar-vacante').forEach((boton) => {
-        boton.addEventListener('click', async () => {
-          const id = boton.dataset.id;
-          const estadoActual = boton.dataset.estadoActual;
-          const nuevoEstado = estadoActual === 'Activa' ? 'Inactiva' : 'Activa';
-          boton.disabled = true;
-
-          try {
-            const respuestaHttp = await fetch(`/api/empresa/vacantes/${id}/estado`, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ estado: nuevoEstado })
-            });
-            const resultadoJson = await respuestaHttp.json().catch(() => ({}));
-            if (!respuestaHttp.ok) throw new Error(resultadoJson.error || 'No se pudo cambiar el estado.');
-            await cargarOfertasEmpresa();
-          } catch (errorCapturado) {
-            mostrarAviso(errorCapturado.message || 'Error al cambiar estado.');
-            boton.disabled = false;
-          }
-        });
-      });
-      cuerpoFilasVacantes.querySelectorAll('.boton-eliminar-vacante').forEach((boton) => {
-        boton.addEventListener('click', async () => {
-          const id = boton.dataset.id;
-          const titulo = boton.dataset.titulo;
-          const confirmar = await confirmarAccion(`¿Estás seguro de que deseas eliminar la oferta "${titulo}"? Se eliminarán también las postulaciones vinculadas a ella.`);
-          if (!confirmar) return;
-
-          boton.disabled = true;
-          try {
-            const respuestaHttp = await fetch(`/api/empresa/vacantes/${id}`, { method: 'DELETE' });
-            const resultadoJson = await respuestaHttp.json().catch(() => ({}));
-            if (!respuestaHttp.ok) throw new Error(resultadoJson.error || 'No se pudo eliminar la vacante.');
-            await cargarOfertasEmpresa();
-          } catch (errorCapturado) {
-            mostrarAviso(errorCapturado.message || 'Error al eliminar oferta.');
-            boton.disabled = false;
-          }
-        });
-      });
-    } catch (errorCapturado) {
-      cuerpoFilasVacantes.innerHTML = `<tr><td colspan="5" class="mi-perfil-vacio">No se pudieron cargar las ofertas de empleo.</td></tr>`;
+      if (estadisticaVacantes) estadisticaVacantes.textContent = ofertasCargadas.length;
+      pintarOfertas();
+    } catch (error) {
+      cuerpoFilasVacantes.innerHTML = '<tr><td colspan="5" class="mi-perfil-vacio">No se pudieron cargar las ofertas de empleo.</td></tr>';
+      if (conteoOfertas) conteoOfertas.textContent = error.message;
     }
   };
+  buscadorOfertas?.addEventListener('input', pintarOfertas);
   try {
     const respuestaHttp = await fetch('/api/empresa/perfil', { cache: 'no-store' });
     const datos = await respuestaHttp.json().catch(() => ({}));
@@ -1393,11 +1417,11 @@ async function enlazarEmpresa(alCambiarPantalla = () => {}) {
   });
 }
 
-function renderizarVacante() {
+function renderizarVacante(vacante = null) {
   return `<div class="mi-perfil-contenedor">
     <section class="mi-perfil-tarjeta">
-      <h2>Publicar vacante</h2>
-      <p>Publica una nueva oportunidad laboral. Quedará activa inmediatamente para que los candidatos puedan postularse.</p>
+      <h2>${vacante ? 'Editar oferta de empleo' : 'Publicar vacante'}</h2>
+      <p>${vacante ? 'Actualiza los datos de tu oferta. Su estado de publicación se conserva.' : 'Publica una nueva oportunidad laboral. Quedará activa inmediatamente para que los candidatos puedan postularse.'}</p>
       <form class="mi-perfil-formulario" data-formulario="vacante">
         <div class="mi-perfil-campos">
           ${campo('Título del puesto *', 'vacante-titulo', 'text', { requerido: true, atributo: 'placeholder="Ej. Desarrollador/a Frontend React"' })}
@@ -1440,8 +1464,8 @@ function renderizarVacante() {
           ${campo('Número de plazas *', 'vacante-plazas', 'number', { requerido: true, atributo: 'min="1" step="1" value="1"' })}
         </div>
         <div class="mi-perfil-campos">
-          ${campo('Salario mínimo (USD) *', 'vacante-salario-min', 'number', { requerido: true, atributo: 'min="0" step="50" placeholder="Ej. 600"' })}
-          ${campo('Salario máximo (USD) *', 'vacante-salario-max', 'number', { requerido: true, atributo: 'min="0" step="50" placeholder="Ej. 1000"' })}
+          ${campo('Salario mínimo (USD) *', 'vacante-salario-min', 'number', { requerido: true, atributo: 'min="0" step="0.01" placeholder="Ej. 600"' })}
+          ${campo('Salario máximo (USD) *', 'vacante-salario-max', 'number', { requerido: true, atributo: 'min="0" step="0.01" placeholder="Ej. 1000"' })}
           ${campo('Fecha límite de postulación (opcional)', 'vacante-fecha-limite', 'date')}
         </div>
         <div class="mi-perfil-campos">
@@ -1452,16 +1476,16 @@ function renderizarVacante() {
         </div>
         <p id="vacante-mensaje-estado" class="mi-perfil-ayuda oculto" role="status"></p>
         <div class="mi-perfil-acciones">
-          <button id="boton-publicar-vacante" class="boton boton-primario" type="submit">Publicar vacante</button>
-          <button class="boton" type="reset">Limpiar formulario</button>
+          <button id="boton-publicar-vacante" class="boton boton-primario" type="submit">${vacante ? 'Guardar cambios' : 'Publicar vacante'}</button>
+          ${vacante ? '<button class="boton" type="button" data-cancelar-oferta>Cancelar</button>' : '<button class="boton" type="reset">Limpiar formulario</button>'}
         </div>
       </form>
     </section>
   </div>`;
 }
 
-function enlazarVacante(alCambiarPantalla = () => {}) {
-  const formulario = contenido.querySelector('[data-formulario="vacante"]');
+function enlazarVacante(alCambiarPantalla = () => {}, { raiz = contenido, vacante = null, alGuardar = () => {}, alCancelar = () => {} } = {}) {
+  const formulario = raiz.querySelector('[data-formulario="vacante"]');
   if (!formulario) return;
 
   const selectorDepartamento = formulario.querySelector('#vacante-departamento');
@@ -1472,6 +1496,24 @@ function enlazarVacante(alCambiarPantalla = () => {}) {
   const botonPublicarTema = formulario.querySelector('#boton-publicar-vacante');
 
   sincronizarMunicipios(selectorDepartamento, selectorMunicipio, 'San Salvador');
+  if (vacante) {
+    const valores = { titulo: vacante.titulo, sector: vacante.sector, departamento: vacante.departamento,
+      modalidad: vacante.modalidad, contrato: vacante.tipo_contrato, plazas: vacante.plazas,
+      'salario-min': vacante.salario_min, 'salario-max': vacante.salario_max,
+      'fecha-limite': vacante.fecha_limite?.slice(0, 10) || '', descripcion: vacante.descripcion,
+      funciones: Array.isArray(vacante.funciones) ? vacante.funciones.join('\n') : vacante.funciones || '',
+      requisitos: Array.isArray(vacante.requisitos) ? vacante.requisitos.join('\n') : vacante.requisitos || '',
+      beneficios: Array.isArray(vacante.beneficios) ? vacante.beneficios.join('\n') : vacante.beneficios || '' };
+    for (const [campo, valor] of Object.entries(valores)) {
+      const entrada = formulario.querySelector(`#vacante-${campo}`);
+      if (entrada.tagName === 'SELECT' && valor && ![...entrada.options].some((opcion) => opcion.value === valor)) entrada.add(new Option(valor, valor));
+      entrada.value = valor ?? '';
+    }
+    sincronizarMunicipios(selectorDepartamento, selectorMunicipio, vacante.municipio);
+    if (vacante.municipio && ![...selectorMunicipio.options].some((opcion) => opcion.value === vacante.municipio)) selectorMunicipio.add(new Option(vacante.municipio, vacante.municipio));
+    selectorMunicipio.value = vacante.municipio || '';
+    formulario.querySelector('[data-cancelar-oferta]').addEventListener('click', alCancelar);
+  }
 
   const validarSalario = () => {
     const min = minimo.value === '' ? null : Number(minimo.value);
@@ -1509,13 +1551,14 @@ function enlazarVacante(alCambiarPantalla = () => {}) {
     };
 
     try {
-      const respuestaHttp = await fetch('/api/empresa/vacantes', {
-        method: 'POST',
+      const respuestaHttp = await fetch(vacante ? `/api/empresa/vacantes/${vacante.id}` : '/api/empresa/vacantes', {
+        method: vacante ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(datos)
       });
       const resultado = await respuestaHttp.json().catch(() => ({}));
       if (!respuestaHttp.ok) throw new Error(resultado.error || 'No se pudo publicar la vacante.');
+      if (vacante) { await alGuardar(resultado.vacante); return; }
 
       if (mensajeEstado) {
         mensajeEstado.textContent = `✓ Vacante "${datos.titulo}" publicada exitosamente y visible para candidatos.`;
@@ -1646,8 +1689,8 @@ async function enlazarPostulaciones() {
         return `
           <tr data-postulacion-fila="${p.id}">
             <td>
-              <div style="display: flex; align-elementos: center; gap: 0.75rem;">
-                <div style="width: 36px; height: 36px; border-radius: 50%; background: var(--color-acento-solido); color: white; display: inline-flex; align-elementos: center; justify-content: center; font-size: 0.85rem; font-weight: bold; flex-shrink: 0;">
+              <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <div style="width: 36px; height: 36px; border-radius: 50%; background: var(--color-acento-solido); color: white; display: inline-flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: bold; flex-shrink: 0;">
                   ${iniciales}
                 </div>
                 <div>
@@ -1679,7 +1722,7 @@ async function enlazarPostulaciones() {
               </select>
             </td>
             <td>
-              <div style="display: flex; gap: 0.4rem; align-elementos: center; flex-wrap: wrap;">
+              <div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">
                 ${p.curriculum_url ? `<a class="boton" href="${escaparHtml(p.curriculum_url)}" target="_blank" rel="noopener">Ver currículum</a>` : ''}
                 <button type="button" class="boton" data-reportar-postulacion="${p.id}">Reportar</button>
                 <button type="button" class="boton boton-accion-aceptar" data-id="${p.id}" ${p.estado === 'Contratada' ? 'disabled' : ''} title="Aceptar al candidato">
