@@ -1,4 +1,5 @@
 import { formatosFoto, subirFoto } from '../utilidades/fotos.js';
+import { enlazarVistaPreviaVacante } from '../utilidades/vistaPreviaVacante.js';
 import { confirmarAccion, mostrarAviso } from './dialogos.js';
 import { reportarContenido } from '../utilidades/reportes.js';
 import { escaparHtml } from '../utilidades/formato.js';
@@ -1404,7 +1405,7 @@ async function enlazarEmpresa(alCambiarPantalla = () => {}) {
 }
 
 function renderizarVacante(vacante = null) {
-  return `<div class="mi-perfil-contenedor">
+  return `<div class="mi-perfil-contenedor ${vacante ? 'edicion-vacante-contenedor' : 'publicacion-vacante-contenedor'}">
     <section class="mi-perfil-tarjeta">
       <h2>${vacante ? 'Editar oferta de empleo' : 'Publicar vacante'}</h2>
       <p>${vacante ? 'Actualiza los datos de tu oferta. Su estado de publicación se conserva.' : 'Publica una nueva oportunidad laboral. Quedará activa inmediatamente para que los candidatos puedan postularse.'}</p>
@@ -1467,6 +1468,7 @@ function renderizarVacante(vacante = null) {
         </div>
       </form>
     </section>
+    ${vacante ? '' : '<aside class="mi-perfil-tarjeta vacante-vista-previa" aria-label="Vista previa de la vacante"></aside>'}
   </div>`;
 }
 
@@ -1572,6 +1574,7 @@ function enlazarVacante(alCambiarPantalla = () => {}, { raiz = contenido, vacant
     maximo.setCustomValidity('');
     if (mensajeEstado) mensajeEstado.classList.add('oculto');
   });
+  enlazarVistaPreviaVacante(formulario, raiz.querySelector('.vacante-vista-previa'));
 }
 
 function renderizarPostulaciones() {

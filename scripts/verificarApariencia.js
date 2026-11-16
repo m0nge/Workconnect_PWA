@@ -126,6 +126,23 @@ try {
         const cargada = await evaluar("document.querySelector('#modal-raiz #vacante-titulo')?.value === 'Asistente de administración'");
         if (!cargada) throw new Error('La oferta no se cargó en el formulario de edición.');
       }
+      if (vista === 'P09') {
+        const previaCorrecta = await evaluar(`(async () => {
+          const formulario = document.querySelector('[data-formulario="vacante"]');
+          const panel = document.querySelector('.vacante-vista-previa');
+          const titulo = formulario.querySelector('#vacante-titulo');
+          titulo.value = 'Analista de operaciones'; titulo.dispatchEvent(new Event('input', { bubbles: true }));
+          const descripcion = formulario.querySelector('#vacante-descripcion');
+          descripcion.value = '<img src=x onerror=alert(1)>'; descripcion.dispatchEvent(new Event('input', { bubbles: true }));
+          if (!panel.textContent.includes(titulo.value) || panel.querySelector('[onerror]') || !panel.textContent.includes(descripcion.value)) return false;
+          const izquierda = formulario.closest('.mi-perfil-tarjeta').getBoundingClientRect();
+          const derecha = panel.getBoundingClientRect();
+          if (innerWidth >= 1100 ? derecha.left < izquierda.right - 1 : derecha.top < izquierda.bottom - 1) return false;
+          formulario.reset(); await Promise.resolve();
+          return panel.textContent.includes('Título del puesto') && !panel.textContent.includes('Analista de operaciones');
+        })()`);
+        if (!previaCorrecta) throw new Error('La vista previa de la vacante no actualiza, protege o distribuye sus datos correctamente.');
+      }
       const informe = await evaluar(`(() => {
         const visibles = [...document.querySelectorAll('input:not([type="hidden"]), select, textarea, .tarjeta, .mi-perfil-tarjeta, .modal-ventana, dialog, .encabezado, .pie-pagina')].filter(e => e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden');
         const superficiesClaras = visibles.filter(e => !e.matches('input[type="checkbox"], input[type="radio"]') && /^rgb\\(/.test(getComputedStyle(e).backgroundColor) && getComputedStyle(e).backgroundColor.match(/\\d+/g).slice(0,3).every(n => Number(n) > 220)).map(e => e.className || e.tagName);

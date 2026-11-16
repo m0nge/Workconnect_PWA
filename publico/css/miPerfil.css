@@ -758,6 +758,29 @@
   grid-template-columns: minmax(0, 1fr);
 }
 
+.publicacion-vacante-contenedor,
+.edicion-vacante-contenedor {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+
+.vacante-vista-previa { min-width: 0; overflow-wrap: anywhere; }
+.vacante-previa-rotulo { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
+.vacante-previa-rotulo h2 { margin: 0; }
+.vacante-previa-oferta { margin-top: 1.5rem; }
+.vacante-previa-oferta .detalle-empleo-identidad { align-items: flex-start; }
+.vacante-previa-oferta .titulo-pantalla { margin: .5rem 0; font-size: 1.5rem; }
+.vacante-previa-oferta .detalle-empleo-etiquetas { flex-wrap: wrap; }
+.vacante-previa-salario { display: grid; gap: .35rem; margin: 1.25rem 0; padding: 1rem; border: 1px solid var(--color-borde); border-radius: var(--radio-pequeno); background: var(--color-superficie-secundaria); }
+.vacante-previa-salario strong { font-size: 1.2rem; }
+.vacante-previa-salario span { font-size: .8rem; color: var(--color-texto-atenuado); }
+.vacante-previa-descripcion { white-space: pre-wrap; }
+
+@media (min-width: 1100px) {
+  .publicacion-vacante-contenedor { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); }
+  .vacante-vista-previa { position: sticky; top: 5rem; max-height: calc(100dvh - 6rem); overflow-y: auto; }
+}
+
 .postulaciones-presentacion-tarjeta {
   background: linear-gradient(135deg, var(--color-superficie-base) 0%, var(--color-vino-suave) 100%);
   border: 1px solid var(--color-borde-suave, var(--color-borde));
