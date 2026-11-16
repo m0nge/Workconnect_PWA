@@ -457,14 +457,44 @@ export function renderizarP19CrearRecurso(contenedor, recursos, acciones) {
           return;
         }
         estadoRecurso.nombreArchivoPortada = archivo ? archivo.name : '';
-        etiquetaPortada.textContent = `🖼️ ${estadoRecurso.nombreArchivoPortada || 'Seleccionar portada'}`;
         if (archivo) {
+          etiquetaPortada.textContent = '⏳ Optimizando imagen...';
           const lector = new FileReader();
-          lector.onload = () => {
-            estadoRecurso.imagenPortadaUrl = lector.result;
-            if (inputUrl) inputUrl.value = lector.result;
+          lector.onload = (eventoCarga) => {
+            const img = new Image();
+            img.onload = () => {
+              const maxDim = 800;
+              let ancho = img.width;
+              let alto = img.height;
+              if (ancho > maxDim || alto > maxDim) {
+                if (ancho > alto) {
+                  alto = Math.round((alto * maxDim) / ancho);
+                  ancho = maxDim;
+                } else {
+                  ancho = Math.round((ancho * maxDim) / alto);
+                  alto = maxDim;
+                }
+              }
+              const lienzo = document.createElement('canvas');
+              lienzo.width = ancho;
+              lienzo.height = alto;
+              const ctx = lienzo.getContext('2d');
+              ctx.drawImage(img, 0, 0, ancho, alto);
+              const urlOptimizada = lienzo.toDataURL('image/jpeg', 0.75);
+              estadoRecurso.imagenPortadaUrl = urlOptimizada;
+              if (inputUrl) inputUrl.value = urlOptimizada;
+              etiquetaPortada.textContent = `🖼️ ${archivo.name}`;
+            };
+            img.onerror = () => {
+              estadoRecurso.imagenPortadaUrl = eventoCarga.target.result;
+              if (inputUrl) inputUrl.value = eventoCarga.target.result;
+              etiquetaPortada.textContent = `🖼️ ${archivo.name}`;
+            };
+            img.src = eventoCarga.target.result;
           };
           lector.readAsDataURL(archivo);
+        } else {
+          etiquetaPortada.textContent = '🖼️ Seleccionar portada';
         }
       });
     }
@@ -564,24 +594,29 @@ export function renderizarP19CrearRecurso(contenedor, recursos, acciones) {
         return;
       }
 
-      await acciones.alCrearRecurso({
-        titulo: tituloLimpio,
-        categoria: estadoRecurso.categoria,
-        nivelLectura: estadoRecurso.nivelLectura,
-        tiempoLecturaMin: Number(estadoRecurso.tiempoLecturaMin) || 5,
-        resumen: resumenLimpio,
-        contenido: contenidoLimpio,
-        imagenPortadaUrl: estadoRecurso.imagenPortadaUrl || estadoRecurso.nombreArchivoPortada || null,
-        adjuntos: estadoRecurso.nombreArchivoAdjunto ? [estadoRecurso.nombreArchivoAdjunto] : [],
-        etiquetas: estadoRecurso.etiquetas
-          .split(',')
-          .map((t) => t.trim())
-          .filter(Boolean),
-        estadoPublicacion: estadoRecurso.estadoPublicacion,
-        audiencia: [...estadoRecurso.audiencia]
-      });
+      try {
+        await acciones.alCrearRecurso({
+          titulo: tituloLimpio,
+          categoria: estadoRecurso.categoria,
+          nivelLectura: estadoRecurso.nivelLectura,
+          tiempoLecturaMin: Number(estadoRecurso.tiempoLecturaMin) || 5,
+          resumen: resumenLimpio,
+          contenido: contenidoLimpio,
+          imagenPortadaUrl: estadoRecurso.imagenPortadaUrl ? estadoRecurso.imagenPortadaUrl.trim() : null,
+          adjuntos: estadoRecurso.nombreArchivoAdjunto ? [estadoRecurso.nombreArchivoAdjunto] : [],
+          etiquetas: estadoRecurso.etiquetas
+            .split(',')
+            .map((t) => t.trim())
+            .filter(Boolean),
+          estadoPublicacion: estadoRecurso.estadoPublicacion,
+          audiencia: [...estadoRecurso.audiencia]
+        });
 
-      limpiarFormulario();
+        limpiarFormulario();
+      } catch (errorCrear) {
+        cajaError.textContent = errorCrear.message || 'Error al guardar el recurso laboral.';
+        cajaError.classList.remove('oculto');
+      }
     });
   };
 

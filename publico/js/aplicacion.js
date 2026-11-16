@@ -137,7 +137,19 @@ async function solicitarApi(ruta, opciones = {}) {
 
   const cuerpo = await respuesta.json().catch(() => ({}));
   if (!respuesta.ok) {
-    const error = new Error(cuerpo.error || 'Error al comunicarse con el servidor.');
+    let mensajeError = cuerpo.error;
+    if (!mensajeError) {
+      if (respuesta.status === 413) {
+        mensajeError = 'El contenido o imagen seleccionada supera el tamaño máximo permitido por el servidor.';
+      } else if (respuesta.status === 404) {
+        mensajeError = 'El recurso solicitado no fue encontrado.';
+      } else if (respuesta.status >= 500) {
+        mensajeError = 'Error interno del servidor. Por favor, intenta de nuevo.';
+      } else {
+        mensajeError = 'Error al comunicarse con el servidor.';
+      }
+    }
+    const error = new Error(mensajeError);
     error.status = respuesta.status;
     error.requiereConfiguracion = Boolean(cuerpo.requiereConfiguracion);
     error.urlSupabase = cuerpo.urlSupabase || '';

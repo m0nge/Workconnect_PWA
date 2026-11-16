@@ -26,7 +26,8 @@ const bucketFotosCandidatos = 'fotos-candidatos';
 const tamanoMaximoCurriculum = 5 * 1024 * 1024;
 const tamanoMaximoFotoCandidato = 10 * 1024 * 1024;
 
-aplicacion.use(express.json());
+aplicacion.use(express.json({ limit: '10mb' }));
+aplicacion.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 function obtenerClienteOError(respuesta) {
   const cliente = crearClienteBaseDatos();
