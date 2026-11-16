@@ -1575,7 +1575,7 @@ function enlazarVacante(alCambiarPantalla = () => {}, { raiz = contenido, vacant
 }
 
 function renderizarPostulaciones() {
-  return `<div class="mi-perfil-contenedor">
+  return `<div class="mi-perfil-contenedor empresa-postulaciones-contenedor">
     <section class="mi-perfil-tarjeta">
       <h2>Postulaciones recibidas</h2>
       <p>Revisa y gestiona los candidatos que se han postulado a las vacantes publicadas por tu empresa.</p>

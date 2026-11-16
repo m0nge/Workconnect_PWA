@@ -754,6 +754,10 @@
   gap: 1.5rem;
 }
 
+.empresa-postulaciones-contenedor {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .postulaciones-presentacion-tarjeta {
   background: linear-gradient(135deg, var(--color-superficie-base) 0%, var(--color-vino-suave) 100%);
   border: 1px solid var(--color-borde-suave, var(--color-borde));
