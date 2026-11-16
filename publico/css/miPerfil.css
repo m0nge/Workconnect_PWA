@@ -1,0 +1,941 @@
+.mi-perfil-encabezado {
+  max-width: 80rem;
+  min-width: 0;
+  gap: 0.75rem;
+}
+
+.mi-perfil-marca {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+  color: var(--color-carbon);
+  text-decoration: none;
+}
+
+.mi-perfil-marca > span:last-child {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.mi-perfil-marca small {
+  color: var(--color-texto-atenuado);
+  font-size: 0.7rem;
+}
+
+.mi-perfil-logo {
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  place-items: center;
+  border-radius: var(--radio-pequeno);
+  background: var(--color-vino);
+  color: var(--color-blanco);
+  font-weight: 800;
+}
+
+.mi-perfil-volver {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.55rem 0.85rem;
+  border: 1px solid var(--color-vino);
+  border-radius: var(--radio-pequeno);
+  background: var(--color-vino);
+  color: var(--color-blanco);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.mi-perfil-volver svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.mi-perfil-volver:hover {
+  border-color: var(--color-vino-oscuro);
+  background: var(--color-vino-oscuro);
+  color: var(--color-blanco);
+}
+
+.mi-perfil-volver:focus-visible {
+  outline: 3px solid var(--color-vino);
+  outline-offset: 3px;
+}
+
+.mi-perfil-principal {
+  max-width: 80rem;
+  margin: 0 auto;
+  min-width: 0;
+}
+
+.mi-perfil-principal .area-contenido {
+  margin-left: 0;
+}
+
+.mi-perfil-principal > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.mi-perfil-introduccion {
+  margin-bottom: 1.25rem;
+}
+
+.mi-perfil-navegacion {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--color-borde);
+}
+
+.mi-perfil-navegacion[hidden] {
+  display: none;
+}
+
+.mi-perfil-navegacion a {
+  flex: 0 1 auto;
+  min-width: 0;
+  padding: 0.75rem 0.65rem;
+  border-bottom: 2px solid transparent;
+  color: var(--color-texto-secundario);
+  font-size: 0.78rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+  text-align: center;
+  text-decoration: none;
+}
+
+.mi-perfil-navegacion a:hover,
+.mi-perfil-navegacion a.activo {
+  border-bottom-color: var(--color-vino);
+  color: var(--color-vino);
+}
+
+.mi-perfil-navegacion a:focus-visible {
+  border-radius: var(--radio-pequeno);
+  outline: 2px solid var(--color-vino);
+  outline-offset: 2px;
+}
+
+.mi-perfil-aviso-accion {
+  margin: 0;
+  color: var(--color-texto-atenuado);
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+.mi-perfil-error-inline {
+  color: var(--color-vino);
+  font-size: 0.78rem;
+}
+
+.mi-perfil-contenedor {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.mi-perfil-tarjeta {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  padding: 1.25rem;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio-mediano);
+  background: var(--color-blanco);
+  box-shadow: var(--sombra-suave);
+}
+
+.mi-perfil-perfil-cabecera > img {
+  display: block;
+  width: 4rem;
+  height: 4rem;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.mi-perfil-perfil-cabecera > img.oculto {
+  display: none;
+}
+
+.mi-perfil-completitud {
+  margin-top: .45rem;
+  color: var(--color-texto-atenuado);
+  font-size: .72rem;
+}
+
+.mi-perfil-completitud span {
+  color: var(--color-carbon);
+  font-weight: 700;
+}
+
+.mi-perfil-edicion {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-borde-suave);
+}
+
+.mi-perfil-formulario-edicion {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-borde-suave);
+}
+
+.mi-perfil-agregar {
+  position: absolute;
+  top: 1rem;
+  right: 1.25rem;
+  padding: .45rem .7rem;
+  font-size: .75rem;
+}
+
+.mi-perfil-resumen-personal {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-borde-suave);
+}
+
+.mi-perfil-resumen-personal h3 {
+  margin-bottom: .7rem;
+}
+
+.mi-perfil-resumen-personal dl {
+  display: grid;
+  gap: .45rem;
+  margin: 0;
+}
+
+.mi-perfil-resumen-personal dl div {
+  display: grid;
+  grid-template-columns: 7rem 1fr;
+  gap: .75rem;
+}
+
+.mi-perfil-resumen-personal dt {
+  color: var(--color-texto-atenuado);
+  font-size: .75rem;
+}
+
+.mi-perfil-resumen-personal dd {
+  margin: 0;
+  color: var(--color-texto);
+  font-size: .8rem;
+}
+
+.mi-perfil-curriculum-resumen {
+  display: flex;
+  flex-direction: column;
+  gap: .3rem;
+  min-height: 3.5rem;
+  justify-content: center;
+  padding: .75rem;
+  border: 1px solid var(--color-borde-suave);
+  border-radius: var(--radio-mediano);
+  background: var(--color-hueso);
+}
+
+.mi-perfil-curriculum-resumen span {
+  color: var(--color-texto-atenuado);
+  font-size: .75rem;
+}
+
+.mi-perfil-seccion-curriculum > .mi-perfil-agregar {
+  top: 1.25rem;
+}
+
+.mi-perfil-foto {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.mi-perfil-foto img {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.mi-perfil-foto label,
+.mi-perfil-foto small {
+  display: block;
+}
+
+.mi-perfil-foto small {
+  margin-top: .25rem;
+  color: var(--color-texto-atenuado);
+  font-size: .72rem;
+}
+
+.mi-perfil-perfil-principal {
+  grid-column: 1 / -1;
+}
+
+.mi-perfil-perfil-cabecera {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.mi-perfil-avatar {
+  display: grid;
+  width: 4rem;
+  height: 4rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--color-vino);
+  color: var(--color-blanco);
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+
+.mi-perfil-identidad {
+  min-width: 0;
+  flex: 1;
+}
+
+.mi-perfil-etiqueta-superior {
+  color: var(--color-vino);
+  font-size: .68rem;
+  font-weight: 800;
+  letter-spacing: .12em;
+}
+
+.mi-perfil-identidad h2 {
+  margin: .2rem 0;
+}
+
+.mi-perfil-identidad p {
+  margin: 0;
+  color: var(--color-texto-atenuado);
+  font-size: .78rem;
+}
+
+.mi-perfil-editar-perfil {
+  flex: 0 0 auto;
+}
+
+.mi-perfil-seccion-curriculum,
+.mi-perfil-seccion-postulaciones,
+.mi-perfil-seccion-alertas {
+  grid-column: 2;
+}
+
+.mi-perfil-seccion-experiencia,
+.mi-perfil-seccion-estudios,
+.mi-perfil-seccion-habilidades {
+  grid-column: 1;
+}
+
+.mi-perfil-seccion-experiencia { grid-row: 3; }
+.mi-perfil-seccion-estudios { grid-row: 4; }
+.mi-perfil-seccion-habilidades { grid-row: 5; }
+.mi-perfil-seccion-curriculum { grid-row: 3; }
+.mi-perfil-seccion-postulaciones { grid-row: 4; }
+.mi-perfil-seccion-alertas { grid-row: 5; }
+
+.mi-perfil-tarjeta h2,
+.mi-perfil-tarjeta h3 {
+  margin: 0 0 0.35rem;
+  color: var(--color-carbon);
+}
+
+.mi-perfil-tarjeta h2 {
+  font-size: 1.25rem;
+}
+
+.mi-perfil-tarjeta h3 {
+  font-size: 1rem;
+}
+
+.mi-perfil-tarjeta > p,
+.mi-perfil-ayuda {
+  color: var(--color-texto-secundario);
+  font-size: 0.83rem;
+}
+
+.mi-perfil-formulario,
+.mi-perfil-campos {
+  display: grid;
+  min-width: 0;
+  max-width: 100%;
+  gap: 1rem;
+}
+
+.mi-perfil-campos {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  margin-top: 1rem;
+}
+
+.mi-perfil-campo {
+  display: flex;
+  min-width: 0;
+  max-width: 100%;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.mi-perfil-campo.completo {
+  grid-column: 1 / -1;
+}
+
+.mi-perfil-campo label,
+.mi-perfil-etiqueta {
+  color: var(--color-texto);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.mi-perfil-campo input,
+.mi-perfil-campo select,
+.mi-perfil-campo textarea {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 2.7rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio-mediano);
+  background: var(--color-blanco);
+  color: var(--color-carbon);
+  font-size: 0.875rem;
+}
+
+.mi-perfil-campo textarea {
+  min-height: 7rem;
+  resize: vertical;
+}
+
+.mi-perfil-campo input:focus,
+.mi-perfil-campo select:focus,
+.mi-perfil-campo textarea:focus {
+  border-color: var(--color-vino);
+  outline: 2px solid var(--color-vino-suave);
+}
+
+.mi-perfil-opciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  align-items: center;
+}
+
+.mi-perfil-opcion {
+  display: inline-flex;
+  gap: 0.45rem;
+  align-items: center;
+  color: var(--color-texto-secundario);
+  font-size: 0.84rem;
+}
+
+.mi-perfil-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+  margin-top: 1rem;
+}
+
+#perfil-cv-guardar,
+#perfil-cv-descargar {
+  border-color: var(--color-vino);
+  background-color: var(--color-vino);
+  color: var(--color-blanco);
+}
+
+.mi-perfil-formulario[data-lista="experiencia"] button[type="submit"],
+.mi-perfil-formulario[data-lista="estudios"] button[type="submit"],
+.mi-perfil-formulario[data-lista="habilidades"] button[type="submit"],
+.mi-perfil-formulario[data-lista="alertas"] button[type="submit"] {
+  border-color: var(--color-vino);
+  background-color: var(--color-vino);
+  color: var(--color-blanco);
+}
+
+#perfil-cv-guardar:hover,
+#perfil-cv-descargar:hover,
+.mi-perfil-formulario[data-lista="experiencia"] button[type="submit"]:hover,
+.mi-perfil-formulario[data-lista="estudios"] button[type="submit"]:hover,
+.mi-perfil-formulario[data-lista="habilidades"] button[type="submit"]:hover,
+.mi-perfil-formulario[data-lista="alertas"] button[type="submit"]:hover {
+  border-color: var(--color-vino-oscuro);
+  background-color: var(--color-vino-oscuro);
+  color: var(--color-blanco);
+}
+
+.mi-perfil-enlace-boton {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.mi-perfil-lista {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mi-perfil-lista li,
+.mi-perfil-vacio {
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--color-borde-suave);
+  border-radius: var(--radio-mediano);
+  color: var(--color-texto-secundario);
+  font-size: 0.83rem;
+}
+
+.mi-perfil-lista li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.mi-perfil-lista li > span:first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.mi-perfil-lista button {
+  border: 0;
+  background: transparent;
+  color: var(--color-vino);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+
+.mi-perfil-vacio {
+  color: var(--color-texto-atenuado);
+}
+
+.mi-perfil-progreso {
+  width: 100%;
+  height: 0.6rem;
+  accent-color: var(--color-vino);
+}
+
+.mi-perfil-avance {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0.75rem 0 0.4rem;
+  color: var(--color-texto-secundario);
+  font-size: 0.8rem;
+}
+
+.mi-perfil-vista-previa {
+  min-height: 9rem;
+  padding: 1rem;
+  border: 1px dashed var(--color-borde);
+  border-radius: var(--radio-mediano);
+  background: var(--color-hueso);
+}
+
+.mi-perfil-vista-previa img {
+  display: block;
+  max-width: 9rem;
+  max-height: 5rem;
+  margin-bottom: 0.75rem;
+  object-fit: contain;
+}
+
+.mi-perfil-filtros {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: 0.75rem;
+}
+
+.mi-perfil-filtros .mi-perfil-campo {
+  margin: 0;
+}
+
+.mi-perfil-tabla {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.mi-perfil-tabla th,
+.mi-perfil-tabla td {
+  padding: 0.75rem;
+  border-bottom: 1px solid var(--color-borde-suave);
+  color: var(--color-texto-secundario);
+  font-size: 0.8rem;
+}
+
+.mi-perfil-tabla th {
+  color: var(--color-texto);
+  font-size: 0.7rem;
+}
+
+.mi-perfil-desplazamiento {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.mi-perfil-tabla {
+  min-width: 42rem;
+}
+
+.mi-perfil-estadisticas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.75rem;
+}
+
+.mi-perfil-estadistica {
+  padding: 0.9rem;
+  border: 1px solid var(--color-borde-suave);
+  border-radius: var(--radio-mediano);
+  background: var(--color-hueso);
+}
+
+.mi-perfil-estadistica strong {
+  display: block;
+  color: var(--color-carbon);
+  font-size: 1.25rem;
+}
+
+.mi-perfil-estadistica span {
+  color: var(--color-texto-atenuado);
+  font-size: 0.72rem;
+}
+
+@media (max-width: 760px) {
+  .mi-perfil-contenedor {
+    grid-template-columns: 1fr;
+  }
+
+  .mi-perfil-perfil-principal,
+  .mi-perfil-seccion-experiencia,
+  .mi-perfil-seccion-estudios,
+  .mi-perfil-seccion-habilidades,
+  .mi-perfil-seccion-curriculum,
+  .mi-perfil-seccion-postulaciones,
+  .mi-perfil-seccion-alertas {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .mi-perfil-perfil-cabecera {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .mi-perfil-editar-perfil {
+    margin-left: auto;
+  }
+}
+
+@media (max-width: 639px) {
+  .mi-perfil-contenedor {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mi-perfil-seccion-experiencia,
+  .mi-perfil-seccion-estudios,
+  .mi-perfil-seccion-habilidades,
+  .mi-perfil-seccion-curriculum,
+  .mi-perfil-seccion-postulaciones,
+  .mi-perfil-seccion-alertas {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .mi-perfil-perfil-cabecera {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .mi-perfil-encabezado {
+    height: auto;
+    min-height: 4rem;
+    flex-wrap: wrap;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+
+  .mi-perfil-volver {
+    padding: 0.5rem 0.65rem;
+    font-size: 0.75rem;
+  }
+
+  .mi-perfil-navegacion a {
+    flex: 1 1 calc(50% - 0.5rem);
+  }
+
+  .mi-perfil-tarjeta {
+    padding: 1rem;
+  }
+}
+
+#postulaciones-candidato-lista li:not(.mi-perfil-vacio) { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.mi-perfil-ver-detalle { display: inline-flex; align-items: center; justify-content: center; padding: .5rem .9rem; border: 1px solid #80143c; border-radius: .4rem; color: #80143c; background: #fff; text-decoration: none; font-size: .8rem; font-weight: 600; }
+.mi-perfil-ver-detalle:hover { color: #fff; background: #80143c; }
+.mi-perfil-ver-detalle:focus-visible { outline: 2px solid #80143c; outline-offset: 3px; }
+
+/* ==========================================================================
+   Pestañas de Candidato (Perfil vs Postulaciones)
+   ========================================================================== */
+.mi-perfil-pestanas {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 2px solid var(--color-borde, #e2e8f0);
+  padding-bottom: 0.25rem;
+}
+
+.mi-perfil-pestana {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1.25rem;
+  border: none;
+  background: transparent;
+  color: var(--color-texto-secundario, #64748b);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: var(--radio-pequeno, 6px) var(--radio-pequeno, 6px) 0 0;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.mi-perfil-pestana:hover {
+  color: var(--color-vino, #80143c);
+  background: rgba(128, 20, 60, 0.04);
+}
+
+.mi-perfil-pestana.activa {
+  color: var(--color-vino, #80143c);
+  font-weight: 700;
+}
+
+.mi-perfil-pestana.activa::after {
+  content: '';
+  position: absolute;
+  bottom: -0.35rem;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--color-vino, #80143c);
+  border-radius: 3px;
+}
+
+.insignia-conteo-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.3rem;
+  height: 1.3rem;
+  padding: 0 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border-radius: 999px;
+  background: var(--color-vino, #80143c);
+  color: #fff;
+}
+
+.estadistica-interactiva {
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.estadistica-interactiva:hover {
+  transform: translateY(-2px);
+  background: rgba(128, 20, 60, 0.05);
+}
+
+/* ==========================================================================
+   Panel de Postulaciones del Candidato
+   ========================================================================== */
+.mi-perfil-panel-postulaciones {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.postulaciones-hero-tarjeta {
+  background: linear-gradient(135deg, #ffffff 0%, #fdf8f9 100%);
+  border: 1px solid var(--color-borde-suave, #e2e8f0);
+}
+
+.postulaciones-hero-cabecera {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+
+.postulaciones-resumen-metricas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.75rem;
+}
+
+.postulacion-kpi-caja {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0.85rem 0.5rem;
+  background: #ffffff;
+  border: 1px solid var(--color-borde-suave, #e2e8f0);
+  border-radius: var(--radio-pequeno, 6px);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.postulacion-kpi-num {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--color-vino, #80143c);
+  line-height: 1.1;
+}
+
+.postulacion-kpi-etiqueta {
+  font-size: 0.76rem;
+  color: var(--color-texto-atenuado, #64748b);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-top: 0.25rem;
+}
+
+/* Lista y Tarjetas de Postulación */
+.lista-postulaciones-candidato {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.tarjeta-postulacion-candidato {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.1rem 1.25rem;
+  background: #ffffff;
+  border: 1px solid var(--color-borde-suave, #e2e8f0);
+  border-radius: var(--radio-pequeno, 6px);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.tarjeta-postulacion-candidato:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.tarjeta-postulacion-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.tarjeta-postulacion-titulo-linea {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.tarjeta-postulacion-titulo {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-carbon, #1e293b);
+}
+
+.tarjeta-postulacion-detalles {
+  display: flex;
+  gap: 1.25rem;
+  font-size: 0.82rem;
+  color: var(--color-texto-secundario, #64748b);
+  flex-wrap: wrap;
+}
+
+.tarjeta-postulacion-detalles span {
+  display: inline-flex;
+  align-items: center;
+}
+
+.tarjeta-postulacion-acciones {
+  flex-shrink: 0;
+}
+
+/* Insignias de Estado */
+.insignia-estado-postulacion {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.insignia-estado-nueva {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.insignia-estado-revision {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.insignia-estado-entrevista {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
+.insignia-estado-contratada {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.insignia-estado-rechazada {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.insignia-estado-defecto {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+/* Estado Vacío de Postulaciones */
+.postulacion-vacia-tarjeta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 3rem 1.5rem;
+  background: #f8fafc;
+  border-radius: var(--radio-pequeno, 6px);
+  border: 1px dashed var(--color-borde, #cbd5e1);
+}
+
+

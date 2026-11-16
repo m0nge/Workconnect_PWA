@@ -1,5 +1,4 @@
 import { renderizarEncabezado } from './componentes/encabezado.js';
-import { renderizarMenuLateral } from './componentes/menuLateral.js';
 import { renderizarP11Dashboard } from './pantallas/p11Dashboard.js';
 import { renderizarP12Usuarios } from './pantallas/p12Usuarios.js';
 import { renderizarP13Empresas } from './pantallas/p13Empresas.js';
@@ -14,9 +13,8 @@ import { renderizarP04Recursos } from './pantallas/p04Recursos.js';
 import { renderizarP05Foros } from './pantallas/p05Foros.js';
 import { renderizarP28CrearTema } from './pantallas/p28CrearTema.js';
 import { renderizarAutenticacion } from './componentes/autenticacion.js';
+import { renderizarCuentaIntegrada } from './componentes/miPerfil.js';
 import { escaparHtml } from './utilidades/formato.js';
-
-localStorage.removeItem('workconnect-cuentas');
 
 // Estado global de la aplicación en JavaScript puro
 const parametrosIniciales = new URLSearchParams(window.location.search);
@@ -47,7 +45,6 @@ const estadoAplicacion = {
 };
 
 const contenedorEncabezado = document.getElementById('encabezado-principal');
-const contenedorMenuLateral = document.getElementById('menu-lateral');
 const contenedorContenido = document.getElementById('area-contenido');
 const notificacionElemento = document.getElementById('notificacion-flotante');
 const notificacionTexto = document.getElementById('notificacion-texto');
@@ -83,7 +80,9 @@ function mostrarNotificacion(mensaje) {
 function navegarASeccionCuenta(pantalla) {
   const destino = pantalla === 'POSTULACIONES_CANDIDATO'
     ? { pantalla: 'P07', rol: 'candidato', seccion: 'postulaciones' }
-    : { pantalla, rol: { P07: 'candidato', P08: 'empresa', P09: 'empresa', P10: 'empresa' }[pantalla] };
+    : pantalla === 'P07'
+      ? { pantalla: 'P07', rol: 'candidato', seccion: 'perfil' }
+      : { pantalla, rol: { P07: 'candidato', P08: 'empresa', P09: 'empresa', P10: 'empresa' }[pantalla] };
   const rolRequerido = destino.rol;
   if (!rolRequerido) {
     mostrarNotificacion('No se pudo identificar la sección solicitada.');
@@ -108,8 +107,9 @@ function navegarASeccionCuenta(pantalla) {
 }
 
 function redireccionarDestinoCuenta(destino) {
-  const consulta = destino.seccion ? `?seccion=${encodeURIComponent(destino.seccion)}` : '';
-  window.location.href = `/persona2.html${consulta}#${destino.pantalla}`;
+  estadoAplicacion.pantallaActual = destino.pantalla;
+  estadoAplicacion.seccionCuenta = destino.seccion || null;
+  renderizarInterfaz();
 }
 
 function redireccionarAlPortalSegunRol(usuario) {
@@ -148,6 +148,13 @@ async function solicitarApi(ruta, opciones = {}) {
 }
 
 function cambiarPantalla(nuevaPantalla, idVacante = null, nuevoRol = estadoAplicacion.rolActual) {
+  if (nuevaPantalla === 'AUTH_REGISTRO_EMPRESA') {
+    estadoAplicacion.rolRegistro = 'empresa';
+    nuevaPantalla = 'AUTH_REGISTRO';
+  } else if (nuevaPantalla === 'AUTH_REGISTRO') {
+    estadoAplicacion.rolRegistro = nuevoRol === 'empresa' ? 'empresa' : 'candidato';
+  }
+
   if (
     ['AUTH_LOGIN', 'AUTH_REGISTRO'].includes(nuevaPantalla) &&
     estadoAplicacion.usuarioActual
@@ -164,7 +171,7 @@ function cambiarPantalla(nuevaPantalla, idVacante = null, nuevoRol = estadoAplic
 
   const pantallasProtegidas = ['P28', 'P11', 'P12', 'P13', 'P14', 'P15', 'P16', 'P19'];
   const permisos = {
-    P28: ['candidato', 'empresa'],
+    P28: ['candidato', 'administrador', 'empresa'],
     P11: ['administrador'],
     P12: ['administrador'],
     P13: ['administrador'],
@@ -347,6 +354,7 @@ const accionesPanel = {
 function completarAutenticacion(cuenta) {
   estadoAplicacion.usuarioActual = cuenta;
   estadoAplicacion.rolActual = cuenta.rol;
+  mostrarNotificacion('Sesión iniciada correctamente.');
 
   if (estadoAplicacion.destinoCuentaPendiente) {
     const destino = estadoAplicacion.destinoCuentaPendiente;
@@ -363,9 +371,23 @@ function completarAutenticacion(cuenta) {
     return;
   }
 
-  estadoAplicacion.pantallaActual = estadoAplicacion.pantallaPendiente || 'P01';
+  estadoAplicacion.pantallaActual =
+    estadoAplicacion.pantallaPendiente ||
+    (cuenta.rol === 'administrador'
+      ? 'P11'
+      : cuenta.rol === 'empresa'
+        ? 'P08'
+        : 'P01');
   estadoAplicacion.pantallaPendiente = null;
   renderizarInterfaz();
+
+  // Actualizar datos del portal en segundo plano para sincronizar la nueva cuenta/empresa
+  solicitarApi('/api/datos')
+    .then((datosFrescos) => {
+      estadoAplicacion.datos = datosFrescos;
+      renderizarInterfaz();
+    })
+    .catch(() => {});
 }
 
 function renderizarInterfaz() {
@@ -381,19 +403,19 @@ function renderizarInterfaz() {
   );
   document.body.classList.toggle('modo-inicio', estadoAplicacion.pantallaActual === 'P01');
   document.body.classList.toggle('modo-autenticacion', ['AUTH_LOGIN', 'AUTH_REGISTRO'].includes(estadoAplicacion.pantallaActual));
+  document.body.classList.toggle(
+    'modo-cuenta',
+    ['P07', 'P08', 'P09', 'P10'].includes(estadoAplicacion.pantallaActual)
+  );
   renderizarEncabezado(
     contenedorEncabezado,
     cambiarPantalla,
     estadoAplicacion.rolActual,
     estadoAplicacion.usuarioActual,
-    navegarASeccionCuenta
-  );
-  renderizarMenuLateral(
-    contenedorMenuLateral,
+    navegarASeccionCuenta,
     estadoAplicacion.pantallaActual,
     calcularPendientes(estadoAplicacion.datos),
-    cambiarPantalla,
-    estadoAplicacion.rolActual
+    estadoAplicacion.seccionCuenta
   );
 
   switch (estadoAplicacion.pantallaActual) {
@@ -410,7 +432,8 @@ function renderizarInterfaz() {
         contenedorContenido,
         'registro',
         completarAutenticacion,
-        () => cambiarPantalla('P01')
+        () => cambiarPantalla('P01'),
+        estadoAplicacion.rolRegistro || 'candidato'
       );
       break;
     case 'P01':
@@ -440,7 +463,33 @@ function renderizarInterfaz() {
       renderizarP04Recursos(contenedorContenido, estadoAplicacion.datos);
       break;
     case 'P05':
-      renderizarP05Foros(contenedorContenido, cambiarPantalla);
+      renderizarP05Foros(contenedorContenido, cambiarPantalla, estadoAplicacion.rolActual, mostrarNotificacion);
+      break;
+    case 'P07':
+    case 'P08':
+    case 'P09':
+    case 'P10':
+      renderizarCuentaIntegrada(
+        contenedorContenido,
+        document.querySelector('#navegacion-cuenta-integrada'),
+        estadoAplicacion.pantallaActual,
+        estadoAplicacion.seccionCuenta,
+        estadoAplicacion.usuarioActual,
+        cambiarPantalla,
+        (nuevaSeccion) => {
+          estadoAplicacion.seccionCuenta = nuevaSeccion;
+          renderizarEncabezado(
+            contenedorEncabezado,
+            cambiarPantalla,
+            estadoAplicacion.rolActual,
+            estadoAplicacion.usuarioActual,
+            navegarASeccionCuenta,
+            estadoAplicacion.pantallaActual,
+            calcularPendientes(estadoAplicacion.datos),
+            estadoAplicacion.seccionCuenta
+          );
+        }
+      );
       break;
     case 'P17':
       renderizarP04Recursos(contenedorContenido, estadoAplicacion.datos, 'Recursos laborales publicados');
@@ -487,13 +536,14 @@ function renderizarInterfaz() {
 }
 
 async function iniciarAplicacion() {
-  renderizarEncabezado(contenedorEncabezado, cambiarPantalla, estadoAplicacion.rolActual);
-  renderizarMenuLateral(
-    contenedorMenuLateral,
-    estadoAplicacion.pantallaActual,
-    { empresas: 0, vacantes: 0, moderacion: 0, verificaciones: 0 },
+  renderizarEncabezado(
+    contenedorEncabezado,
     cambiarPantalla,
-    estadoAplicacion.rolActual
+    estadoAplicacion.rolActual,
+    null,
+    navegarASeccionCuenta,
+    estadoAplicacion.pantallaActual,
+    { empresas: 0, vacantes: 0, moderacion: 0, verificaciones: 0 }
   );
 
   try {
@@ -506,9 +556,9 @@ async function iniciarAplicacion() {
         if (destinoPendiente?.rol === sesion.usuario.rol) {
           estadoAplicacion.destinoCuentaPendiente = null;
           redireccionarDestinoCuenta(destinoPendiente);
-          return;
+        } else {
+          redireccionarAlPortalSegunRol(sesion.usuario);
         }
-        if (redireccionarAlPortalSegunRol(sesion.usuario)) return;
       }
     }
   } catch (error) {

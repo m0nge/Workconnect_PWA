@@ -5,12 +5,13 @@ export function renderizarMenuLateral(
   alSeleccionarPantalla,
   rolActual = 'visitante'
 ) {
+  if (!contenedor) return;
   const elementos = [
-    { id: 'P02', etiqueta: 'Resultados', descripcion: 'Buscar vacantes', roles: ['visitante', 'candidato', 'empresa'] },
-    { id: 'P04', etiqueta: 'Recursos', descripcion: 'Consejos y tutoriales', roles: ['visitante', 'candidato', 'empresa'] },
-    { id: 'P05', etiqueta: 'Foros', descripcion: 'Comunidad laboral', roles: ['visitante', 'candidato', 'empresa'] },
-    { id: 'P17', etiqueta: 'Publicados', descripcion: 'Catálogo de recursos', roles: ['visitante', 'candidato', 'empresa'] },
-    { id: 'P28', etiqueta: 'Crear tema', descripcion: 'Abrir discusión', roles: ['candidato', 'empresa'] },
+    { id: 'P02', etiqueta: 'Resultados', descripcion: 'Buscar vacantes', roles: ['visitante', 'candidato', 'empresa', 'administrador'] },
+    { id: 'P04', etiqueta: 'Recursos', descripcion: 'Consejos y tutoriales', roles: ['visitante', 'candidato', 'empresa', 'administrador'] },
+    { id: 'P05', etiqueta: 'Foros', descripcion: 'Comunidad laboral', roles: ['visitante', 'candidato', 'empresa', 'administrador'] },
+    { id: 'P17', etiqueta: 'Publicados', descripcion: 'Catálogo de recursos', roles: ['visitante', 'candidato', 'empresa', 'administrador'] },
+    { id: 'P28', etiqueta: 'Crear tema', descripcion: 'Abrir discusión', roles: ['candidato', 'administrador'] },
     { id: 'P11', etiqueta: 'Dashboard', descripcion: 'Métricas generales', roles: ['administrador'] },
     { id: 'P12', etiqueta: 'Usuarios', descripcion: 'Gestión de cuentas', roles: ['administrador'] },
     {
@@ -71,11 +72,20 @@ export function renderizarMenuLateral(
     })
     .join('');
 
+  const textoSubetiqueta =
+    rolActual === 'administrador'
+      ? 'Administrador/a'
+      : rolActual === 'candidato'
+        ? 'Candidato/a'
+        : rolActual === 'empresa'
+          ? 'Empresa'
+          : 'Visitante';
+
   contenedor.innerHTML = `
     <div class="tarjeta-menu-lateral">
       <div class="menu-lateral-cabecera">
         <span>${rolActual === 'administrador' ? 'ADMINISTRACIÓN' : 'MI PORTAL'}</span>
-        <span class="menu-lateral-subetiqueta">${rolActual}</span>
+        <span class="menu-lateral-subetiqueta">${textoSubetiqueta}</span>
       </div>
 
       <nav class="lista-menu-lateral" aria-label="Menú de administración">

@@ -22,7 +22,9 @@ const __directorioActual = path.dirname(__archivoActual);
 const aplicacion = express();
 const puerto = Number(process.env.PORT) || 3000;
 const bucketCurriculums = 'curriculums-candidatos';
+const bucketFotosCandidatos = 'fotos-candidatos';
 const tamanoMaximoCurriculum = 5 * 1024 * 1024;
+const tamanoMaximoFotoCandidato = 10 * 1024 * 1024;
 
 aplicacion.use(express.json());
 
@@ -117,10 +119,22 @@ function borrarCookiesSesion(solicitud, respuesta) {
 }
 
 function normalizarRol(rol) {
-  const valor = String(rol || '').trim().toLowerCase();
-  if (valor === 'candidato' || valor === 'candidato/a') return 'candidato';
-  if (valor === 'empresa') return 'empresa';
-  if (valor === 'administrador' || valor === 'administración/a') return 'administrador';
+  const limpio = String(rol || '').trim().toLowerCase();
+  const sinTildes = limpio.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (limpio === 'candidato' || limpio === 'candidato/a' || sinTildes === 'candidato' || sinTildes === 'candidato/a') return 'candidato';
+  if (limpio === 'empresa' || sinTildes === 'empresa') return 'empresa';
+  if (
+    limpio === 'administrador' ||
+    limpio === 'administrador/a' ||
+    limpio === 'administración' ||
+    limpio === 'administración/a' ||
+    limpio === 'admin' ||
+    sinTildes === 'administrador' ||
+    sinTildes === 'administrador/a' ||
+    sinTildes === 'administracion' ||
+    sinTildes === 'administracion/a' ||
+    sinTildes === 'admin'
+  ) return 'administrador';
   return 'visitante';
 }
 
@@ -129,7 +143,8 @@ function mapearCuenta(usuario) {
     id: usuario.id,
     nombre: usuario.nombre,
     correo: usuario.email,
-    rol: normalizarRol(usuario.rol)
+    rol: normalizarRol(usuario.rol),
+    foto_url: usuario.foto_url || ''
   };
 }
 
@@ -180,7 +195,7 @@ async function obtenerContextoAutenticado(solicitud, respuesta, opcional = false
 
   const { data: usuario, error } = await supabase
     .from('usuarios')
-    .select('id, auth_uid, nombre, email, rol, estado')
+    .select('id, auth_uid, nombre, email, rol, estado, foto_url')
     .eq('auth_uid', usuarioAuth.id)
     .maybeSingle();
 
@@ -230,6 +245,64 @@ async function asegurarPerfilCandidato(supabase, usuarioId) {
     .single();
   if (error) throw new Error('No se pudo preparar el perfil del candidato.');
   return data;
+}
+
+async function asegurarPerfilEmpresa(supabase, usuario, datosExtra = {}) {
+  const { data: existente, error: errorConsulta } = await supabase
+    .from('empresas')
+    .select('id, usuario_id, nombre_comercial, razon_social, nit, sector, departamento, municipio, direccion, tamano, contacto_email, telefono, sitio_web, descripcion, estado_verificacion')
+    .eq('usuario_id', usuario.id)
+    .maybeSingle();
+
+  if (errorConsulta) {
+    console.error('Error al comprobar empresa existente:', errorConsulta);
+  }
+  if (existente) return existente;
+
+  const nombre = datosExtra.nombre || datosExtra.nombre_comercial || usuario.nombre || 'Empresa';
+  const { data, error } = await supabase
+    .from('empresas')
+    .insert({
+      usuario_id: usuario.id,
+      nombre_comercial: nombre,
+      razon_social: datosExtra.razon_social || nombre,
+      nit: datosExtra.nit || '0000-000000-000-0',
+      sector: datosExtra.sector || 'Servicios',
+      departamento: datosExtra.departamento || usuario.ubicacion || 'San Salvador',
+      municipio: datosExtra.municipio || 'San Salvador',
+      direccion: datosExtra.direccion || null,
+      tamano: datosExtra.tamano || '51-200 empleados',
+      contacto_email: datosExtra.contacto_email || usuario.email,
+      telefono: datosExtra.telefono || usuario.telefono || '2200-0000',
+      sitio_web: datosExtra.sitio_web || null,
+      descripcion: datosExtra.descripcion || 'Empresa registrada en WorkConnect.',
+      estado_verificacion: 'Verificada'
+    })
+    .select()
+    .maybeSingle();
+
+  if (error) {
+    console.error('Error al registrar perfil de empresa:', error);
+  }
+  return data;
+}
+
+async function obtenerEmpresaAutenticada(solicitud, respuesta) {
+  const contexto = await exigirRol(solicitud, respuesta, ['empresa']);
+  if (!contexto) return null;
+  respuesta.set('Cache-Control', 'no-store');
+
+  try {
+    const empresa = await asegurarPerfilEmpresa(contexto.supabase, contexto.usuario);
+    if (!empresa) {
+      respuesta.status(500).json({ error: 'No se pudo obtener el perfil de la empresa.' });
+      return null;
+    }
+    return { ...contexto, empresa };
+  } catch (error) {
+    respuesta.status(500).json({ error: error.message });
+    return null;
+  }
 }
 
 async function obtenerCandidatoAutenticado(solicitud, respuesta) {
@@ -284,11 +357,24 @@ function normalizarRegistroCandidato(tipo, datos, parcial = false) {
     return null;
   }
 
-  for (const campo of ['puesto', 'empresa', 'carrera_programa', 'institucion', 'nivel_academico', 'habilidad', 'nombre_alerta', 'sector', 'frecuencia', 'descripcion']) {
+  const limitesTexto = {
+    puesto: 120,
+    empresa: 120,
+    carrera_programa: 160,
+    institucion: 160,
+    nivel_academico: 80,
+    habilidad: 80,
+    nombre_alerta: 100,
+    sector: 100,
+    frecuencia: 20,
+    descripcion: 1000
+  };
+  for (const campo of Object.keys(limitesTexto)) {
     if (Object.hasOwn(registro, campo) && registro[campo] !== null) {
       if (typeof registro[campo] !== 'string') return null;
       registro[campo] = registro[campo].trim();
       if (!registro[campo] && configuracion.requeridos.includes(campo)) return null;
+      if (registro[campo].length > limitesTexto[campo]) return null;
     }
   }
 
@@ -311,8 +397,11 @@ function normalizarRegistroCandidato(tipo, datos, parcial = false) {
       registro[campo] = null;
     }
   }
-  if (Object.hasOwn(registro, 'es_trabajo_actual') && typeof registro.es_trabajo_actual !== 'boolean') {
-    return null;
+  for (const campo of ['es_trabajo_actual', 'activa']) {
+    if (!Object.hasOwn(registro, campo)) continue;
+    if (registro[campo] === 'true') registro[campo] = true;
+    if (registro[campo] === 'false') registro[campo] = false;
+    if (typeof registro[campo] !== 'boolean') return null;
   }
   if (registro.es_trabajo_actual) registro.fecha_fin = null;
   if (Object.hasOwn(registro, 'modalidad') && ![null, '', 'Presencial', 'Híbrido', 'Remoto'].includes(registro.modalidad)) {
@@ -326,7 +415,6 @@ function normalizarRegistroCandidato(tipo, datos, parcial = false) {
       if (!Number.isFinite(registro.salario_minimo) || registro.salario_minimo < 0) return null;
     }
   }
-  if (Object.hasOwn(registro, 'activa') && typeof registro.activa !== 'boolean') return null;
   if (Object.hasOwn(registro, 'nivel_dominio') && !['Básico', 'Intermedio', 'Avanzado'].includes(registro.nivel_dominio)) {
     return null;
   }
@@ -341,7 +429,7 @@ aplicacion.post('/api/auth/registro', conManejoErrores(async (solicitud, respues
   const clientes = obtenerClientesSupabase(respuesta);
   if (!clientes) return;
   const { datos: supabase, autenticacion: supabaseAuth } = clientes;
-  const { nombre, email, password, rol } = solicitud.body || {};
+  const { nombre, email, password, rol, sector, telefono, departamento, municipio, razon_social, nit, tamano } = solicitud.body || {};
   const nombreLimpio = typeof nombre === 'string' ? nombre.trim() : '';
   const correo = typeof email === 'string' ? email.trim().toLowerCase() : '';
   if (
@@ -356,25 +444,45 @@ aplicacion.post('/api/auth/registro', conManejoErrores(async (solicitud, respues
     return respuesta.status(400).json({ error: 'Revisa nombre, correo, contraseña y tipo de cuenta.' });
   }
 
-  const { data, error } = await supabaseAuth.auth.signUp({
+  let dataUser = null;
+  const resAdmin = await supabaseAuth.auth.admin.createUser({
     email: correo,
     password,
-    options: { data: { nombre: nombreLimpio, rol } }
+    email_confirm: true,
+    user_metadata: { nombre: nombreLimpio, rol }
   });
-  if (error || !data.user) {
-    return respuesta.status(400).json({
-      error: error?.message || 'No se pudo crear la cuenta. Revisa los datos e intenta de nuevo.'
+
+  if (!resAdmin.error && resAdmin.data?.user) {
+    dataUser = resAdmin.data.user;
+  } else {
+    const resSignUp = await supabaseAuth.auth.signUp({
+      email: correo,
+      password,
+      options: { data: { nombre: nombreLimpio, rol } }
     });
+    if (resSignUp.error || !resSignUp.data.user) {
+      return respuesta.status(400).json({
+        error: resSignUp.error?.message || resAdmin.error?.message || 'No se pudo crear la cuenta. Revisa los datos e intenta de nuevo.'
+      });
+    }
+    dataUser = resSignUp.data.user;
+    if (dataUser?.id) {
+      await supabaseAuth.auth.admin.updateUserById(dataUser.id, { email_confirm: true }).catch(() => {});
+    }
   }
 
   let usuario;
   try {
     const { data: vinculado, error: errorVinculo } = await supabase
       .from('usuarios')
-      .select('id, auth_uid, nombre, email, rol, estado')
-      .eq('auth_uid', data.user.id)
+      .select('id, auth_uid, nombre, email, rol, estado, foto_url')
+      .eq('auth_uid', dataUser.id)
       .maybeSingle();
     if (errorVinculo) throw new Error('La cuenta Auth se creó, pero no se pudo validar su perfil.');
+
+    const ubicacionTexto = municipio && departamento
+      ? `${municipio}, ${departamento}`
+      : (departamento || null);
 
     if (vinculado) {
       usuario = vinculado;
@@ -390,13 +498,15 @@ aplicacion.post('/api/auth/registro', conManejoErrores(async (solicitud, respues
       const { data: nuevoUsuario, error: errorUsuario } = await supabase
         .from('usuarios')
         .insert({
-          auth_uid: data.user.id,
+          auth_uid: dataUser.id,
           nombre: nombreLimpio,
           email: correo,
           rol: rol === 'candidato' ? 'Candidato/a' : 'Empresa',
+          telefono: typeof telefono === 'string' ? telefono.trim() : null,
+          ubicacion: ubicacionTexto,
           estado: 'Activo'
         })
-        .select('id, auth_uid, nombre, email, rol, estado')
+        .select('id, auth_uid, nombre, email, rol, estado, foto_url')
         .single();
       if (errorUsuario) {
         throw new Error(
@@ -410,16 +520,35 @@ aplicacion.post('/api/auth/registro', conManejoErrores(async (solicitud, respues
 
     if (rol === 'candidato') {
       await asegurarPerfilCandidato(supabase, usuario.id);
+    } else if (rol === 'empresa') {
+      await asegurarPerfilEmpresa(supabase, usuario, {
+        nombre: nombreLimpio,
+        sector,
+        telefono,
+        departamento,
+        municipio,
+        razon_social,
+        nit,
+        tamano,
+        contacto_email: correo
+      });
     }
   } catch (errorVinculo) {
     return respuesta.status(409).json({ error: errorVinculo.message });
   }
 
+  // Generar sesión inmediatamente para que el usuario ingrese sin bloqueo
+  let sesionActiva = null;
+  const resLogin = await supabaseAuth.auth.signInWithPassword({ email: correo, password });
+  if (resLogin.data?.session) {
+    sesionActiva = resLogin.data.session;
+    guardarCookiesSesion(solicitud, respuesta, sesionActiva);
+  }
+
   respuesta.set('Cache-Control', 'no-store');
-  if (data.session) guardarCookiesSesion(solicitud, respuesta, data.session);
   return respuesta.status(201).json({
     usuario: mapearCuenta(usuario),
-    confirmacionRequerida: !data.session
+    confirmacionRequerida: false
   });
 }));
 
@@ -433,14 +562,31 @@ aplicacion.post('/api/auth/login', conManejoErrores(async (solicitud, respuesta)
     return respuesta.status(400).json({ error: 'Escribe un correo y una contraseña válidos.' });
   }
 
-  const { data, error } = await supabaseAuth.auth.signInWithPassword({ email: correo, password });
+  let { data, error } = await supabaseAuth.auth.signInWithPassword({ email: correo, password });
+
+  // Si la cuenta estaba sin confirmar, auto-confirmarla con permisos de admin y reintentar
+  if (error && (error.code === 'email_not_confirmed' || /confirm/i.test(error.message || ''))) {
+    try {
+      const { data: lista } = await supabaseAuth.auth.admin.listUsers();
+      const u = lista?.users?.find((item) => item.email?.toLowerCase() === correo);
+      if (u) {
+        await supabaseAuth.auth.admin.updateUserById(u.id, { email_confirm: true });
+        const reintento = await supabaseAuth.auth.signInWithPassword({ email: correo, password });
+        data = reintento.data;
+        error = reintento.error;
+      }
+    } catch (errorAutoConfirm) {
+      console.error('Error al auto-confirmar usuario:', errorAutoConfirm);
+    }
+  }
+
   if (error || !data.user || !data.session) {
-    return respuesta.status(401).json({ error: 'Correo o contraseña incorrectos, o cuenta sin confirmar.' });
+    return respuesta.status(401).json({ error: 'Correo o contraseña incorrectos.' });
   }
 
   const { data: usuario, error: errorUsuario } = await supabase
     .from('usuarios')
-    .select('id, auth_uid, nombre, email, rol, estado')
+    .select('id, auth_uid, nombre, email, rol, estado, foto_url')
     .eq('auth_uid', data.user.id)
     .maybeSingle();
   if (errorUsuario) {
@@ -464,12 +610,19 @@ aplicacion.post('/api/auth/login', conManejoErrores(async (solicitud, respuesta)
     return respuesta.status(403).json({ error: 'La cuenta está inactiva. Contacta con soporte.' });
   }
 
-  if (normalizarRol(usuario.rol) === 'candidato') {
+  const rolNorm = normalizarRol(usuario.rol);
+  if (rolNorm === 'candidato') {
     try {
       await asegurarPerfilCandidato(supabase, usuario.id);
     } catch (errorPerfil) {
       await supabase.auth.admin.signOut(data.session.access_token, 'local');
       return respuesta.status(500).json({ error: errorPerfil.message });
+    }
+  } else if (rolNorm === 'empresa') {
+    try {
+      await asegurarPerfilEmpresa(supabase, usuario);
+    } catch (errorEmpresa) {
+      console.error('No se pudo asegurar perfil de empresa:', errorEmpresa);
     }
   }
 
@@ -531,7 +684,7 @@ aplicacion.get('/api/candidato/perfil', conManejoErrores(async (solicitud, respu
 
   const { data: usuario, error: errorUsuario } = await contexto.supabase
     .from('usuarios')
-    .select('id, nombre, email, telefono, ubicacion')
+    .select('id, nombre, email, telefono, ubicacion, foto_url')
     .eq('id', contexto.usuario.id)
     .single();
   if (errorUsuario) return respuesta.status(500).json({ error: 'No se pudieron cargar los datos de la cuenta.' });
@@ -542,6 +695,7 @@ aplicacion.get('/api/candidato/perfil', conManejoErrores(async (solicitud, respu
       email: usuario.email,
       telefono: usuario.telefono || '',
       ubicacion: usuario.ubicacion || '',
+      foto_url: usuario.foto_url || '',
       titulo_profesional: contexto.perfil.titulo_profesional || '',
       resumen_laboral: contexto.perfil.resumen_laboral || '',
       curriculum_nombre: contexto.perfil.curriculum_nombre || ''
@@ -558,6 +712,43 @@ aplicacion.get('/api/candidato/perfil', conManejoErrores(async (solicitud, respu
     }))
   });
 }));
+
+aplicacion.post(
+  '/api/candidato/foto',
+  express.raw({ type: ['image/jpeg', 'image/png', 'image/webp'], limit: tamanoMaximoFotoCandidato }),
+  conManejoErrores(async (solicitud, respuesta) => {
+    const contexto = await obtenerCandidatoAutenticado(solicitud, respuesta);
+    if (!contexto) return;
+    if (!Buffer.isBuffer(solicitud.body) || !solicitud.body.length) {
+      return respuesta.status(400).json({ error: 'Selecciona una imagen válida.' });
+    }
+    const tipo = solicitud.headers['content-type'];
+    const extensiones = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
+    const extension = extensiones[tipo];
+    if (!extension) return respuesta.status(400).json({ error: 'Solo se permiten imágenes JPG, PNG o WebP.' });
+
+    const rutaArchivo = `${contexto.usuario.id}/foto.${extension}`;
+    const { error: errorSubida } = await contexto.supabase.storage
+      .from(bucketFotosCandidatos)
+      .upload(rutaArchivo, solicitud.body, { contentType: tipo, upsert: true });
+    if (errorSubida) {
+      return respuesta.status(/bucket not found/i.test(errorSubida.message || '') ? 503 : 400).json({
+        error: /bucket not found/i.test(errorSubida.message || '')
+          ? 'Storage de fotos no está activado.'
+          : 'No se pudo guardar la foto.'
+      });
+    }
+    const { data: urlPublica } = contexto.supabase.storage
+      .from(bucketFotosCandidatos)
+      .getPublicUrl(rutaArchivo);
+    const { error: errorUsuario } = await contexto.supabase
+      .from('usuarios')
+      .update({ foto_url: urlPublica.publicUrl })
+      .eq('id', contexto.usuario.id);
+    if (errorUsuario) return respuesta.status(400).json({ error: 'La foto se subió, pero no se pudo guardar en el perfil.' });
+    return respuesta.json({ guardado: true, foto_url: urlPublica.publicUrl });
+  })
+);
 
 aplicacion.post(
   '/api/candidato/curriculum',
@@ -688,7 +879,13 @@ aplicacion.put('/api/candidato/perfil', conManejoErrores(async (solicitud, respu
   const datos = solicitud.body || {};
   const { telefono, ubicacion, titulo_profesional, resumen_laboral } = datos;
   const campos = [telefono, ubicacion, titulo_profesional, resumen_laboral];
-  if (campos.some((valor) => valor !== undefined && valor !== null && typeof valor !== 'string')) {
+  if (
+    campos.some((valor) => valor !== undefined && valor !== null && typeof valor !== 'string') ||
+    (typeof telefono === 'string' && telefono.length > 30) ||
+    (typeof ubicacion === 'string' && ubicacion.length > 120) ||
+    (typeof titulo_profesional === 'string' && titulo_profesional.length > 120) ||
+    (typeof resumen_laboral === 'string' && resumen_laboral.length > 1000)
+  ) {
     return respuesta.status(400).json({ error: 'Revisa los datos del perfil.' });
   }
 
@@ -852,6 +1049,263 @@ aplicacion.delete('/api/candidato/:tipo/:id', conManejoErrores(async (solicitud,
   if (error) return respuesta.status(400).json({ error: 'No se pudo eliminar el elemento.' });
   if (!data) return respuesta.status(404).json({ error: 'El elemento no existe en tu perfil.' });
   return respuesta.json({ eliminado: true });
+}));
+
+// ==================== RUTAS PARA GESTIÓN DE EMPRESA ====================
+
+aplicacion.get('/api/empresa/perfil', conManejoErrores(async (solicitud, respuesta) => {
+  const contexto = await obtenerEmpresaAutenticada(solicitud, respuesta);
+  if (!contexto) return;
+
+  const [resVacantes, resPostulaciones] = await Promise.all([
+    contexto.supabase
+      .from('vacantes')
+      .select('id, titulo, estado, sector, modalidad, creado_en')
+      .eq('empresa_id', contexto.empresa.id)
+      .order('creado_en', { ascending: false }),
+    contexto.supabase
+      .from('postulaciones')
+      .select('id, vacantes!inner(empresa_id)')
+      .eq('vacantes.empresa_id', contexto.empresa.id)
+  ]);
+
+  const { data: usuario } = await contexto.supabase
+    .from('usuarios')
+    .select('id, nombre, email, telefono, ubicacion, foto_url')
+    .eq('id', contexto.usuario.id)
+    .single();
+
+  return respuesta.json({
+    empresa: contexto.empresa,
+    conteoVacantes: resVacantes.data?.length || 0,
+    conteoPostulaciones: resPostulaciones.data?.length || 0,
+    usuario: usuario || contexto.usuario
+  });
+}));
+
+aplicacion.put('/api/empresa/perfil', conManejoErrores(async (solicitud, respuesta) => {
+  const contexto = await obtenerEmpresaAutenticada(solicitud, respuesta);
+  if (!contexto) return;
+
+  const datos = solicitud.body || {};
+  const nombreComercial = typeof datos.nombre_comercial === 'string' ? datos.nombre_comercial.trim() : '';
+  const sector = typeof datos.sector === 'string' ? datos.sector.trim() : '';
+  const departamento = typeof datos.departamento === 'string' ? datos.departamento.trim() : '';
+  const municipio = typeof datos.municipio === 'string' ? datos.municipio.trim() : '';
+  const contactoEmail = typeof datos.contacto_email === 'string' ? datos.contacto_email.trim().toLowerCase() : '';
+  const telefono = typeof datos.telefono === 'string' ? datos.telefono.trim() : '';
+
+  if (nombreComercial.length < 3 || nombreComercial.length > 120) {
+    return respuesta.status(400).json({ error: 'El nombre comercial debe tener entre 3 y 120 caracteres.' });
+  }
+  if (!sector) {
+    return respuesta.status(400).json({ error: 'Selecciona el sector de la empresa.' });
+  }
+  if (!departamento || !municipio) {
+    return respuesta.status(400).json({ error: 'Selecciona departamento y municipio válidos.' });
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactoEmail)) {
+    return respuesta.status(400).json({ error: 'Escribe un correo de contacto válido.' });
+  }
+  if (telefono.length < 7) {
+    return respuesta.status(400).json({ error: 'Escribe un número de teléfono válido (mínimo 7 caracteres).' });
+  }
+
+  const camposActualizar = {
+    nombre_comercial: nombreComercial,
+    razon_social: typeof datos.razon_social === 'string' && datos.razon_social.trim() ? datos.razon_social.trim() : nombreComercial,
+    nit: typeof datos.nit === 'string' && datos.nit.trim() ? datos.nit.trim() : '0000-000000-000-0',
+    sector,
+    departamento,
+    municipio,
+    direccion: typeof datos.direccion === 'string' ? datos.direccion.trim() || null : null,
+    tamano: typeof datos.tamano === 'string' ? datos.tamano.trim() || '51-200 empleados' : '51-200 empleados',
+    contacto_email: contactoEmail,
+    telefono,
+    sitio_web: typeof datos.sitio_web === 'string' ? datos.sitio_web.trim() || null : null,
+    descripcion: typeof datos.descripcion === 'string' ? datos.descripcion.trim() || null : null,
+    estado_verificacion: 'Verificada'
+  };
+
+  const { data: empresaActualizada, error: errorEmpresa } = await contexto.supabase
+    .from('empresas')
+    .update(camposActualizar)
+    .eq('id', contexto.empresa.id)
+    .select()
+    .single();
+
+  if (errorEmpresa) {
+    return respuesta.status(400).json({ error: 'No se pudo actualizar el perfil de la empresa: ' + errorEmpresa.message });
+  }
+
+  // Sincronizar en la tabla usuarios para que el nombre comercial y teléfono coincidan
+  await contexto.supabase
+    .from('usuarios')
+    .update({
+      nombre: nombreComercial,
+      telefono: telefono || null,
+      ubicacion: `${municipio}, ${departamento}`
+    })
+    .eq('id', contexto.usuario.id);
+
+  return respuesta.json({ guardado: true, empresa: empresaActualizada });
+}));
+
+aplicacion.post('/api/empresa/vacantes', conManejoErrores(async (solicitud, respuesta) => {
+  const contexto = await obtenerEmpresaAutenticada(solicitud, respuesta);
+  if (!contexto) return;
+
+  const datos = solicitud.body || {};
+  const titulo = typeof datos.titulo === 'string' ? datos.titulo.trim() : '';
+  const sector = typeof datos.sector === 'string' ? datos.sector.trim() : '';
+  const departamento = typeof datos.departamento === 'string' ? datos.departamento.trim() : '';
+  const municipio = typeof datos.municipio === 'string' ? datos.municipio.trim() : '';
+  const modalidad = typeof datos.modalidad === 'string' ? datos.modalidad.trim() : '';
+  const tipoContrato = typeof datos.tipo_contrato === 'string' ? datos.tipo_contrato.trim() : '';
+  const plazas = Number(datos.plazas) || 1;
+  const salarioMin = datos.salario_min !== undefined && datos.salario_min !== null && datos.salario_min !== '' ? Number(datos.salario_min) : null;
+  const salarioMax = datos.salario_max !== undefined && datos.salario_max !== null && datos.salario_max !== '' ? Number(datos.salario_max) : null;
+  const descripcion = typeof datos.descripcion === 'string' ? datos.descripcion.trim() : '';
+
+  if (titulo.length < 5 || titulo.length > 120) {
+    return respuesta.status(400).json({ error: 'El título debe tener entre 5 y 120 caracteres.' });
+  }
+  if (!sector) return respuesta.status(400).json({ error: 'Selecciona el sector de la vacante.' });
+  if (!departamento || !municipio) return respuesta.status(400).json({ error: 'Selecciona departamento y municipio para la vacante.' });
+  if (!['Presencial', 'Híbrido', 'Remoto'].includes(modalidad)) {
+    return respuesta.status(400).json({ error: 'Selecciona una modalidad válida (Presencial, Híbrido, Remoto).' });
+  }
+  if (!tipoContrato) return respuesta.status(400).json({ error: 'Selecciona el tipo de contrato.' });
+  if (plazas < 1 || !Number.isInteger(plazas)) return respuesta.status(400).json({ error: 'El número de plazas debe ser al menos 1.' });
+  if (salarioMin === null || salarioMax === null || salarioMin < 0 || salarioMax < salarioMin) {
+    return respuesta.status(400).json({ error: 'El salario mínimo y máximo deben ser válidos y el máximo debe ser mayor o igual al mínimo.' });
+  }
+  if (descripcion.length < 10) return respuesta.status(400).json({ error: 'Ingresa una descripción de al menos 10 caracteres.' });
+
+  const procesarLista = (campo) => {
+    if (Array.isArray(campo)) return campo.map((item) => String(item).trim()).filter(Boolean);
+    if (typeof campo === 'string') {
+      return campo.split(/\r?\n/).map((linea) => linea.replace(/^[-*•]\s*/, '').trim()).filter(Boolean);
+    }
+    return [];
+  };
+
+  const funciones = procesarLista(datos.funciones);
+  const requisitos = procesarLista(datos.requisitos);
+  const beneficios = procesarLista(datos.beneficios);
+
+  if (!funciones.length) return respuesta.status(400).json({ error: 'Escribe al menos una función o responsabilidad del puesto.' });
+  if (!requisitos.length) return respuesta.status(400).json({ error: 'Escribe al menos un requisito para el puesto.' });
+
+  const { data: vacante, error: errorVacante } = await contexto.supabase
+    .from('vacantes')
+    .insert({
+      empresa_id: contexto.empresa.id,
+      titulo,
+      sector,
+      departamento,
+      municipio,
+      modalidad,
+      tipo_contrato: tipoContrato,
+      salario_min: salarioMin,
+      salario_max: salarioMax,
+      plazas,
+      fecha_limite: datos.fecha_limite || null,
+      estado: 'Activa',
+      descripcion,
+      funciones,
+      requisitos,
+      beneficios
+    })
+    .select()
+    .single();
+
+  if (errorVacante) {
+    return respuesta.status(400).json({ error: 'No se pudo publicar la vacante: ' + errorVacante.message });
+  }
+
+  return respuesta.status(201).json({ guardado: true, vacante });
+}));
+
+aplicacion.get('/api/empresa/postulaciones', conManejoErrores(async (solicitud, respuesta) => {
+  const contexto = await obtenerEmpresaAutenticada(solicitud, respuesta);
+  if (!contexto) return;
+
+  const { data, error } = await contexto.supabase
+    .from('postulaciones')
+    .select(`
+      id,
+      vacante_id,
+      candidato_id,
+      curriculum_url,
+      estado,
+      creado_en,
+      vacantes!inner(id, titulo, modalidad, sector, empresa_id),
+      perfiles_candidatos!inner(id, titulo_profesional, usuarios!inner(nombre, email, telefono, ubicacion, foto_url))
+    `)
+    .eq('vacantes.empresa_id', contexto.empresa.id)
+    .order('creado_en', { ascending: false });
+
+  if (error) {
+    return respuesta.status(400).json({ error: 'No se pudieron obtener las postulaciones: ' + error.message });
+  }
+
+  const postulaciones = (data || []).map((p) => ({
+    id: p.id,
+    estado: p.estado,
+    creado_en: p.creado_en,
+    curriculum_url: p.curriculum_url,
+    vacante: {
+      id: p.vacantes?.id,
+      titulo: p.vacantes?.titulo,
+      modalidad: p.vacantes?.modalidad,
+      sector: p.vacantes?.sector
+    },
+    candidato: {
+      id: p.perfiles_candidatos?.id,
+      nombre: p.perfiles_candidatos?.usuarios?.nombre || 'Candidato/a',
+      email: p.perfiles_candidatos?.usuarios?.email || '',
+      telefono: p.perfiles_candidatos?.usuarios?.telefono || '',
+      ubicacion: p.perfiles_candidatos?.usuarios?.ubicacion || '',
+      foto_url: p.perfiles_candidatos?.usuarios?.foto_url || '',
+      titulo_profesional: p.perfiles_candidatos?.titulo_profesional || ''
+    }
+  }));
+
+  return respuesta.json({ postulaciones });
+}));
+
+aplicacion.put('/api/empresa/postulaciones/:id/estado', conManejoErrores(async (solicitud, respuesta) => {
+  const contexto = await obtenerEmpresaAutenticada(solicitud, respuesta);
+  if (!contexto) return;
+
+  const nuevoEstado = String(solicitud.body?.estado || '').trim();
+  const estadosPermitidos = ['Nueva', 'En revisión', 'Entrevista', 'Finalista', 'Descartada'];
+  if (!estadosPermitidos.includes(nuevoEstado)) {
+    return respuesta.status(400).json({ error: 'Estado de postulación no válido.' });
+  }
+
+  const { data: postulacion, error: errorP } = await contexto.supabase
+    .from('postulaciones')
+    .select('id, vacantes!inner(empresa_id)')
+    .eq('id', solicitud.params.id)
+    .eq('vacantes.empresa_id', contexto.empresa.id)
+    .maybeSingle();
+
+  if (errorP || !postulacion) {
+    return respuesta.status(404).json({ error: 'Postulación no encontrada o no pertenece a tu empresa.' });
+  }
+
+  const { error: errorUpdate } = await contexto.supabase
+    .from('postulaciones')
+    .update({ estado: nuevoEstado, actualizado_en: new Date().toISOString() })
+    .eq('id', solicitud.params.id);
+
+  if (errorUpdate) {
+    return respuesta.status(400).json({ error: 'No se pudo actualizar el estado: ' + errorUpdate.message });
+  }
+
+  return respuesta.json({ actualizado: true, nuevoEstado });
 }));
 
 // Estado de configuración de la base de datos (sin exponer secretos)
@@ -1164,6 +1618,11 @@ aplicacion.patch('/api/moderacion/:id/estado', async (solicitud, respuesta) => {
     return respuesta.status(400).json({ error: error.message });
   }
 
+  if (data.tipo === 'foro' && data.referencia) {
+  await supabase.from('foros_temas')
+    .update({ estado: estado === 'Oculto' ? 'Oculto' : 'Activo' })
+    .eq('id', data.referencia);
+}
   return respuesta.json(mapearModeracion(data));
 });
 
@@ -1288,6 +1747,118 @@ aplicacion.post('/api/recursos', async (solicitud, respuesta) => {
 
   return respuesta.status(201).json(mapearRecurso(data));
 });
+
+const CATEGORIAS_FORO = ['Búsqueda de empleo', 'Desarrollo profesional', 'Experiencias laborales'];
+
+aplicacion.get('/api/foros/temas', conManejoErrores(async (_solicitud, respuesta) => {
+  const supabase = obtenerClienteOError(respuesta);
+  if (!supabase) return;
+  respuesta.set('Cache-Control', 'no-store');
+  const { data, error } = await supabase
+    .from('foros_temas')
+    .select('id, titulo, categoria, mensaje, creado_en, usuarios(nombre, foto_url), foros_respuestas(id, estado)')
+    .eq('estado', 'Activo')
+    .order('creado_en', { ascending: false });
+  if (error) return respuesta.status(400).json({ error: 'No se pudieron cargar los temas.' });
+  return respuesta.json((data || []).map((t) => {
+    const respuestasActivas = Array.isArray(t.foros_respuestas)
+      ? t.foros_respuestas.filter((r) => r.estado === 'Activo').length
+      : 0;
+    return {
+      id: t.id,
+      titulo: t.titulo,
+      categoria: t.categoria,
+      descripcion: t.mensaje,
+      autor: t.usuarios?.nombre || 'Usuario',
+      fotoUrl: t.usuarios?.foto_url || '',
+      respuestas: respuestasActivas,
+      creadoEn: t.creado_en
+    };
+  }));
+}));
+
+aplicacion.get('/api/foros/temas/:id/respuestas', conManejoErrores(async (solicitud, respuesta) => {
+  const supabase = obtenerClienteOError(respuesta);
+  if (!supabase) return;
+  respuesta.set('Cache-Control', 'no-store');
+  const { data, error } = await supabase
+    .from('foros_respuestas')
+    .select('id, respuesta, creado_en, usuarios(nombre, foto_url)')
+    .eq('tema_id', solicitud.params.id)
+    .eq('estado', 'Activo')
+    .order('creado_en', { ascending: true });
+  if (error) return respuesta.status(400).json({ error: 'No se pudieron cargar las respuestas.' });
+  return respuesta.json((data || []).map((r) => ({
+    id: r.id,
+    autor: r.usuarios?.nombre || 'Usuario',
+    fotoUrl: r.usuarios?.foto_url || '',
+    contenido: r.respuesta,
+    creadoEn: r.creado_en
+  })));
+}));
+
+aplicacion.post('/api/foros/temas', conManejoErrores(async (solicitud, respuesta) => {
+  const contexto = await exigirRol(solicitud, respuesta, ['candidato', 'empresa', 'administrador']);
+  if (!contexto) return;
+  const titulo = String(solicitud.body?.titulo ?? '').trim();
+  const categoria = String(solicitud.body?.categoria ?? '').trim();
+  const mensaje = String(solicitud.body?.descripcion ?? solicitud.body?.mensaje ?? '').trim();
+  if (titulo.length < 5 || titulo.length > 120 || !CATEGORIAS_FORO.includes(categoria) ||
+      mensaje.length < 20 || mensaje.length > 2000) {
+    return respuesta.status(400).json({ error: 'Revisa título, categoría y descripción (mínimo 20 caracteres).' });
+  }
+  const { data, error } = await contexto.supabase
+    .from('foros_temas')
+    .insert({ titulo, categoria, mensaje, autor_id: contexto.usuario.id, estado: 'Activo' })
+    .select('id, titulo, categoria, mensaje, creado_en').single();
+  if (error) return respuesta.status(400).json({ error: 'No se pudo publicar el tema: ' + error.message });
+  return respuesta.status(201).json(data);
+}));
+
+aplicacion.post('/api/foros/temas/:id/respuestas', conManejoErrores(async (solicitud, respuesta) => {
+  const contexto = await exigirRol(solicitud, respuesta, ['candidato', 'empresa', 'administrador']);
+  if (!contexto) return;
+  const texto = String(solicitud.body?.contenido ?? solicitud.body?.respuesta ?? '').trim();
+  if (texto.length < 5 || texto.length > 1000) {
+    return respuesta.status(400).json({ error: 'La respuesta debe tener entre 5 y 1000 caracteres.' });
+  }
+  const { data, error } = await contexto.supabase.from('foros_respuestas').insert({
+    tema_id: solicitud.params.id,
+    autor_id: contexto.usuario.id,
+    respuesta: texto,
+    estado: 'Activo'
+  }).select('id, respuesta, creado_en, usuarios(nombre, foto_url)').single();
+  if (error) return respuesta.status(400).json({ error: 'No se pudo guardar tu respuesta: ' + error.message });
+  return respuesta.status(201).json({
+    guardada: true,
+    respuesta: {
+      id: data?.id,
+      autor: data?.usuarios?.nombre || contexto.usuario.nombre || 'Usuario',
+      fotoUrl: data?.usuarios?.foto_url || contexto.usuario.foto_url || '',
+      contenido: data?.respuesta || texto,
+      creadoEn: data?.creado_en
+    }
+  });
+}));
+
+aplicacion.post('/api/foros/temas/:id/reportar', conManejoErrores(async (solicitud, respuesta) => {
+  const contexto = await exigirRol(solicitud, respuesta, ['candidato', 'empresa', 'administrador']);
+  if (!contexto) return;
+  const { data: tema } = await contexto.supabase
+    .from('foros_temas').select('id, titulo').eq('id', solicitud.params.id).maybeSingle();
+  if (!tema) return respuesta.status(404).json({ error: 'El tema no existe.' });
+  const { error } = await contexto.supabase.from('moderacion_reportes').insert({
+    reportado_por: contexto.usuario.id,
+    tipo: 'foro',
+    categoria: 'Foros',
+    motivo_titulo: tema.titulo,
+    referencia: tema.id,
+    autor_nombre: contexto.usuario.nombre,
+    detalles: `Tema reportado desde el foro por ${contexto.usuario.nombre}`
+  });
+  if (error) return respuesta.status(400).json({ error: 'No se pudo enviar el reporte: ' + error.message });
+  return respuesta.status(201).json({ reportado: true });
+}));
 
 // Manejador 404 para rutas /api no definidas
 aplicacion.all('/api/*', (_solicitud, respuesta) => {

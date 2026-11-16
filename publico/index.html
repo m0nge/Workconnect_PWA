@@ -27,6 +27,7 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/css/estilos.css" />
+    <link rel="stylesheet" href="/css/miPerfil.css" />
   </head>
   <body>
     <div class="aplicacion-raiz">
@@ -42,9 +43,7 @@
       <!-- 3. Contenedor principal -->
       <main class="contenedor-principal">
         <div class="disposicion-panel">
-          <!-- Menú lateral (P11 a P16, P19) -->
-          <aside id="menu-lateral" class="menu-lateral-columna"></aside>
-
+          <nav id="navegacion-cuenta-integrada" class="mi-perfil-navegacion" aria-label="Secciones de tu cuenta" hidden></nav>
           <!-- Área de trabajo dinámica -->
           <section id="area-contenido" class="area-contenido" aria-live="polite">
             <div class="tarjeta-estado-carga">Cargando WorkConnect...</div>
@@ -64,24 +63,23 @@
             <a href="#" data-pie-pantalla="P17">Recursos</a>
             <a href="#" data-pie-pantalla="P05">Foros</a>
             <a href="#" data-pie-cuenta="P07">Mi perfil</a>
+            <a href="#" data-pie-cuenta="POSTULACIONES_CANDIDATO">Mis postulaciones</a>
           </div>
           <div class="pie-columna">
             <h2>EMPRESAS</h2>
             <a href="#" data-pie-cuenta="P09">Publicar vacante</a>
             <a href="#" data-pie-cuenta="P10">Postulaciones</a>
             <a href="#" data-pie-cuenta="P08">Mi empresa</a>
-            <a href="#" data-pie-pantalla="AUTH_REGISTRO">Registrar empresa</a>
+            <a href="#" data-pie-pantalla="AUTH_REGISTRO_EMPRESA">Registrar empresa</a>
           </div>
           <div class="pie-columna">
             <h2>PORTAL</h2>
             <a href="#" data-pie-pantalla="AUTH_LOGIN">Ingresar</a>
             <a href="#" data-pie-pantalla="P11">Administración</a>
-            <a href="#" data-pie-pantalla="P01">Índice P01–P15</a>
           </div>
         </div>
         <div class="pie-pagina-inferior">
           <span>© 2026 WorkConnect · Conectando talento con oportunidades.</span>
-          <span>Proyecto universitario · Datos ficticios de El Salvador</span>
         </div>
       </footer>
     </div>
