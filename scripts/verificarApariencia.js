@@ -99,6 +99,20 @@ try {
       }
       if (!lista?.lista) throw new Error(`${vista}: la pantalla no terminó de cargar.`);
       await esperar(150);
+      if (vista === 'P10') {
+        const perfilCorrecto = await evaluar(`(async () => {
+          document.querySelector('[data-ver-perfil-postulante]').click();
+          for (let intento = 0; intento < 100; intento++) {
+            if (document.querySelector('#modal-raiz .perfil-postulante-contacto')) break;
+            await new Promise(resolver => setTimeout(resolver, 20));
+          }
+          const perfil = document.querySelector('#modal-raiz .perfil-postulante');
+          const correcto = perfil && ['Persona de ejemplo', 'Asistente de operaciones', 'Institución de ejemplo', 'Organización'].every(texto => perfil.textContent.includes(texto)) && !!perfil.querySelector('a[href$="/curriculum"]');
+          document.querySelector('#modal-cerrar-x').click();
+          return correcto;
+        })()`);
+        if (!perfilCorrecto) throw new Error('No se puede abrir el perfil profesional desde la postulación.');
+      }
       if (['P30', 'P31'].includes(vista)) {
         const tableroCorrecto = await evaluar(`(async () => {
           const esEmpresa = ${vista === 'P31'};

@@ -193,6 +193,18 @@ try {
   await solicitar('POST', '/api/candidato/curriculum', crearPdf(), candidata, 200, { 'Content-Type': 'application/pdf', 'X-File-Name': 'revision-temporal.pdf' });
   const postulacion = (await solicitar('POST', '/api/candidato/postulaciones', { vacante_id: vacante.id }, candidata, 201)).cuerpo;
   referencias.add(postulacion.id);
+  for (const tipo of ['experiencias', 'estudios', 'habilidades']) await solicitar('POST', `/api/candidato/${tipo}`, listas[tipo], candidata, 201);
+  const rutaPerfilPostulante = `/api/empresa/postulaciones/${postulacion.id}/perfil`;
+  const perfilVisibleEmpresa = (await solicitar('GET', rutaPerfilPostulante, undefined, empresa)).cuerpo;
+  comprobar.equal(perfilVisibleEmpresa.perfil.titulo_profesional, 'Asistente temporal');
+  comprobar.equal(perfilVisibleEmpresa.experiencias[0].puesto, listas.experiencias.puesto);
+  comprobar.equal(perfilVisibleEmpresa.estudios[0].institucion, listas.estudios.institucion);
+  comprobar.equal(perfilVisibleEmpresa.habilidades[0].habilidad, listas.habilidades.habilidad);
+  for (const campo of ['password_hash', 'auth_uid', 'alertas', 'postulaciones', 'usuario_id', 'fecha_nacimiento']) comprobar.equal(JSON.stringify(perfilVisibleEmpresa).includes(`"${campo}"`), false);
+  await solicitar('GET', rutaPerfilPostulante, undefined, empresas[1], 404);
+  await solicitar('GET', rutaPerfilPostulante, undefined, candidata, 403);
+  await solicitar('GET', rutaPerfilPostulante, undefined, null, 401);
+  console.log('Perfil del postulante: experiencia, estudios y habilidades visibles únicamente para la empresa receptora.');
   await solicitar('POST', '/api/candidato/postulaciones', { vacante_id: vacante.id }, candidata, 409);
   await solicitar('POST', '/api/candidato/curriculum', crearPdf(), candidatas[1], 200, { 'Content-Type': 'application/pdf', 'X-File-Name': 'revision-sin-postulaciones.pdf' });
   await solicitar('DELETE', '/api/candidato/curriculum', undefined, null, 401);

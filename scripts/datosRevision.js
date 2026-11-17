@@ -40,6 +40,12 @@ export const datosRevision = {
 };
 
 export function respuestaRevision(ruta, vista) {
+  if (/^\/api\/empresa\/postulaciones\/[^/]+\/perfil$/.test(ruta)) return {
+    perfil: { nombre: 'Persona de ejemplo', email: 'persona@example.invalid', telefono: '7777-8888', ubicacion: 'Santa Ana', foto_url: '/multimedia/icono.png', titulo_profesional: 'Asistente administrativo', resumen_laboral: 'Experiencia profesional de revisión.' },
+    experiencias: [{ puesto: 'Asistente de operaciones', empresa: 'Empresa de ejemplo', fecha_inicio: '2020-01-01', fecha_fin: '2023-01-01', descripcion: 'Organización de documentos y atención al cliente.' }],
+    estudios: [{ carrera_programa: 'Administración', institucion: 'Institución de ejemplo', nivel_academico: 'Licenciatura', anio_inicio: 2015, anio_fin: 2019 }],
+    habilidades: [{ habilidad: 'Organización', nivel_dominio: 'Intermedio' }], curriculum_url: '/api/empresa/postulaciones/' + identificador + '/curriculum'
+  };
   if (ruta === '/api/auth/login' && ['login-candidato', 'login-empresa'].includes(vista)) return { usuario: { ...usuarioRevision, rol: vista === 'login-candidato' ? 'candidato' : 'empresa' } };
   if (ruta === '/api/auth/sesion' && ['login-candidato', 'login-empresa'].includes(vista)) return { autenticado: false, usuario: null };
   if (ruta === '/api/auth/sesion' && vista === 'portada-publica') return { autenticado: false, usuario: null };

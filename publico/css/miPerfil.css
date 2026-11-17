@@ -764,6 +764,19 @@
   grid-template-columns: minmax(0, 1fr);
 }
 
+.perfil-postulante { display: grid; gap: 1.5rem; min-width: 0; }
+.perfil-postulante h2 { margin: 0; font-size: 1.3rem; }
+.perfil-postulante h3 { margin: 0 0 .75rem; font-size: 1.05rem; }
+.perfil-postulante p { margin: .4rem 0; line-height: 1.6; overflow-wrap: anywhere; }
+.perfil-postulante-contacto { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); gap: 1rem; margin: 0; padding: 1rem; border: 1px solid var(--color-borde); border-radius: var(--radio-pequeno); background: var(--color-superficie-secundaria); }
+.perfil-postulante-contacto dt { color: var(--color-texto-atenuado); font-size: .8rem; }
+.perfil-postulante-contacto dd { margin: .3rem 0 0; overflow-wrap: anywhere; }
+.perfil-postulante-lista { list-style: none; margin: 0; padding: 0; }
+.perfil-postulante-lista li { padding: .8rem 0; border-bottom: 1px solid var(--color-borde); }
+.perfil-postulante-lista li:last-child { border: 0; }
+.perfil-postulante-lista .etiqueta-cuadrada { margin-left: .75rem; }
+.perfil-postulante-texto { white-space: pre-wrap; }
+
 .tablero-cuenta { display: grid; gap: 1.5rem; min-width: 0; }
 .tablero-cabecera { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1.5rem; padding: 1.75rem; border: 1px solid var(--color-borde); border-radius: var(--radio-mediano); background: linear-gradient(120deg, var(--color-superficie-base), var(--color-vino-suave)); }
 .tablero-cabecera .celda-identidad { min-width: 0; flex: 1 1 20rem; align-items: flex-start; }

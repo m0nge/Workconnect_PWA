@@ -3,6 +3,7 @@ import { enlazarVistaPreviaVacante } from '../utilidades/vistaPreviaVacante.js';
 import { renderizarAvatar } from '../utilidades/avatar.js';
 import { enlazarValidacionVacante } from '../utilidades/validacionFormularioVacante.js';
 import { mostrarAvisoContextual } from './avisoContextual.js';
+import { abrirPerfilPostulante } from './perfilPostulante.js';
 import { confirmarAccion, mostrarAviso } from './dialogos.js';
 import { reportarContenido } from '../utilidades/reportes.js';
 import { escaparHtml } from '../utilidades/formato.js';
@@ -1611,7 +1612,7 @@ function renderizarPostulaciones() {
               <th>PUESTO / VACANTE</th>
               <th>FECHA</th>
               <th>ESTADO</th>
-              <th>CURRÍCULUM</th>
+              <th>PERFIL Y ACCIONES</th>
             </tr>
           </thead>
           <tbody id="cuerpo-postulaciones-empresa">
@@ -1708,6 +1709,7 @@ async function enlazarPostulaciones() {
             <td>
               <div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">
                 ${p.curriculum_url ? `<a class="boton" href="${escaparHtml(p.curriculum_url)}" target="_blank" rel="noopener">Ver currículum</a>` : ''}
+                <button type="button" class="boton" data-ver-perfil-postulante="${escaparHtml(p.id)}">Ver perfil</button>
                 <button type="button" class="boton" data-reportar-postulacion="${p.id}">Reportar</button>
                 <button type="button" class="boton boton-accion-aceptar" data-id="${p.id}" ${p.estado === 'Contratada' ? 'disabled' : ''} title="Aceptar al candidato">
                   ✓ Aceptar
@@ -1722,6 +1724,9 @@ async function enlazarPostulaciones() {
       })
       .join('');
 
+    cuerpoFilas.querySelectorAll('[data-ver-perfil-postulante]').forEach((boton) => {
+      boton.addEventListener('click', () => abrirPerfilPostulante(boton.dataset.verPerfilPostulante));
+    });
     cuerpoFilas.querySelectorAll('[data-reportar-postulacion]').forEach((boton) => {
       boton.addEventListener('click', async () => {
         boton.disabled = true;

@@ -1,5 +1,6 @@
 import { guardarFoto } from './servicios/fotos.js';
 import { quitarCurriculum } from './servicios/curriculum.js';
+import { registrarPerfilPostulante } from './servicios/perfilPostulante.js';
 import { validarVacanteEmpresa, registrarEdicionVacanteEmpresa } from './servicios/vacantesEmpresa.js';
 import { crearUsuarioRegistrado, eliminarRegistroIncompleto } from './servicios/registro.js';
 import 'dotenv/config';
@@ -1034,6 +1035,7 @@ aplicacion.post('/api/empresa/vacantes', conManejoErrores(async (solicitud, resp
 }));
 
 registrarEdicionVacanteEmpresa(aplicacion, { conManejoErrores, obtenerEmpresaAutenticada, reportarAutomaticamente });
+registrarPerfilPostulante(aplicacion, { conManejoErrores, obtenerEmpresaAutenticada });
 
 aplicacion.get('/api/empresa/vacantes', conManejoErrores(async (solicitud, respuesta) => {
   const contexto = await obtenerEmpresaAutenticada(solicitud, respuesta);
