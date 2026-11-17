@@ -20,7 +20,7 @@ export function editarContenido(elementoLista, campos, alGuardar) {
   abrirModal({
     titulo: 'Editar contenido',
     contenidoHtml: `<form id="editar-contenido" class="formulario-publico pila-compacta">
-      ${campos.map((campo) => `<label class="campo-formulario"><span>${escaparHtml(campo.etiqueta)}</span>
+      ${campos.map((campo) => campo.casillas ? `<fieldset class="audiencia-edicion"><legend>${escaparHtml(campo.etiqueta)}</legend>${campo.casillas.map((opcion) => `<label class="opcion-linea"><input type="checkbox" name="${campo.clave}" value="${escaparHtml(opcion)}" ${(elementoLista[campo.clave] || []).includes(opcion) ? 'checked' : ''} />${escaparHtml(opcion)}</label>`).join('')}</fieldset>` : `<label class="campo-formulario"><span>${escaparHtml(campo.etiqueta)}</span>
         ${campo.opciones ? `<select name="${campo.clave}">${campo.opciones.map((opcion) => `<option value="${escaparHtml(opcion)}" ${elementoLista[campo.clave] === opcion ? 'selected' : ''}>${escaparHtml(opcion)}</option>`).join('')}</select>` :
           campo.multilinea ? `<textarea name="${campo.clave}" rows="${campo.clave === 'contenido' ? 10 : 4}" ${campo.min ? `minlength="${campo.min}" required` : ''} maxlength="${campo.max || 10000}">${escaparHtml(elementoLista[campo.clave] || '')}</textarea>` :
           `<input name="${campo.clave}" type="${campo.numero ? 'number' : 'text'}" value="${escaparHtml(elementoLista[campo.clave] ?? '')}" ${campo.min ? `${campo.numero ? 'min' : 'minlength'}="${campo.min}" required` : ''} ${campo.max ? `${campo.numero ? 'max' : 'maxlength'}="${campo.max}"` : ''} />`}
@@ -36,6 +36,8 @@ export function editarContenido(elementoLista, campos, alGuardar) {
         boton.disabled = true;
         try {
           const datos = Object.fromEntries(new FormData(evento.target));
+          campos.filter((campo) => campo.casillas).forEach((campo) => { datos[campo.clave] = new FormData(evento.target).getAll(campo.clave); });
+          if (campos.some((campo) => campo.casillas && !datos[campo.clave].length)) throw new Error('Selecciona al menos un grupo en Visible para. Usa Borrador para ocultar el recurso a todos.');
           campos.filter((c) => c.numero).forEach((c) => { datos[c.clave] = Number(datos[c.clave]); });
           await alGuardar(datos);
           cerrar();

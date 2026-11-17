@@ -9,7 +9,10 @@ const parametros = new URLSearchParams(location.search);
 const vista = parametros.get('vista') || 'P19';
 const contenedor = document.querySelector('#area-contenido');
 const sinAccion = () => {};
-const acciones = new Proxy({}, { get: () => sinAccion });
+const acciones = new Proxy({}, { get: (_objetivo, nombre) => (...argumentos) => {
+  window.ultimaAccionRevision = { nombre, argumentos };
+  if (nombre === 'alActualizarRecurso') return { ...datosRevision.recursosLaborales[0], ...argumentos[1] };
+} });
 const rol = ['P07','P30'].includes(vista) ? 'candidato' : ['P08','P09','P10','P31'].includes(vista) ? 'empresa' : vista.endsWith('publico') || ['P01','P02','P03','ingreso','registro','registro-empresa'].includes(vista) ? 'visitante' : 'administrador';
 renderizarEncabezado(document.querySelector('#encabezado-principal'), sinAccion, rol, rol === 'visitante' ? null : {...usuarioRevision, rol}, sinAccion, vista);
 document.body.classList.toggle('modo-autenticacion', ['ingreso','registro','registro-empresa'].includes(vista));

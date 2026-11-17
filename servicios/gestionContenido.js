@@ -1,6 +1,8 @@
 import { esPortadaRecurso } from './validaciones.js';
+import { audienciaValida, retirarAdjuntosSinUso } from './archivosRecursos.js';
 
 export function validarEdicionRecurso(datos) {
+  if (datos.audiencia !== undefined && !audienciaValida(datos.audiencia)) return null;
   const texto = (campo, min, max) => typeof datos[campo] === 'string' && datos[campo].trim().length >= min && datos[campo].trim().length <= max;
   if (!texto('titulo', 8, 160) || !texto('resumen', 20, 500) || !texto('contenido', 30, 10000) ||
       !['Artículo', 'Consejo', 'Tutorial', 'Noticia'].includes(datos.categoria) ||
@@ -10,7 +12,8 @@ export function validarEdicionRecurso(datos) {
   return {
     titulo: datos.titulo.trim(), categoria: datos.categoria, nivel_lectura: datos.nivelLectura,
     tiempo_lectura_min: datos.tiempoLecturaMin, resumen: datos.resumen.trim(), contenido: datos.contenido.trim(),
-    ...(datos.imagenPortadaUrl !== undefined ? { imagen_portada_url: datos.imagenPortadaUrl.trim() || null } : {})
+    ...(datos.imagenPortadaUrl !== undefined ? { imagen_portada_url: datos.imagenPortadaUrl.trim() || null } : {}),
+    ...(datos.audiencia !== undefined ? { audiencia: [...datos.audiencia] } : {})
   };
 }
 
@@ -67,9 +70,13 @@ export function registrarGestionContenido(aplicacion, { exigirRol, conManejoErro
     }));
 
     aplicacion.delete(`${configuracion.ruta}/:id`, administrar(async (solicitud, respuesta, { supabase }) => {
-      const { data: datosRespuesta, error } = await supabase.from(configuracion.tabla).delete().eq('id', solicitud.params.id).select('id').maybeSingle();
+      const { data: datosRespuesta, error } = await supabase.from(configuracion.tabla).delete().eq('id', solicitud.params.id).select(configuracion.tabla === 'recursos_laborales' ? 'id, adjuntos' : 'id').maybeSingle();
       if (error) return respuesta.status(409).json({ error: 'No se pudo eliminar el contenido. Puede tener registros asociados que impiden borrarlo.' });
       if (!datosRespuesta) return respuesta.status(404).json({ error: 'El contenido ya no existe.' });
+      if (configuracion.tabla === 'recursos_laborales') {
+        try { await retirarAdjuntosSinUso(supabase, datosRespuesta.adjuntos || []); }
+        catch { console.error('El recurso se eliminó, pero no se pudieron retirar todos sus adjuntos.'); }
+      }
       return respuesta.json({ eliminado: true, id: datosRespuesta.id });
     }));
   }

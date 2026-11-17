@@ -203,12 +203,17 @@ function cambiarPantalla(nuevaPantalla, idVacante = null, nuevoRol = estadoAplic
     return;
   }
   if (nuevaPantalla === 'CERRAR_SESION') {
-    solicitarApi('/api/auth/logout', { method: 'POST' }).catch((error) => {
+    solicitarApi('/api/auth/logout', { method: 'POST' }).then(() => solicitarApi('/api/datos')).then((datos) => {
+      if (estadoAplicacion.usuarioActual) return;
+      estadoAplicacion.datos = datos;
+      renderizarInterfaz();
+    }).catch((error) => {
       mostrarNotificacion(error.message || 'No se pudo cerrar completamente la sesión.');
     });
     estadoAplicacion.usuarioActual = null;
     estadoAplicacion.rolActual = 'visitante';
     estadoAplicacion.pantallaActual = 'P01';
+    estadoAplicacion.datos = datosPublicosVacios();
     renderizarInterfaz();
     return;
   }
@@ -379,6 +384,12 @@ const accionesPanel = {
 function completarAutenticacion(cuenta) {
   estadoAplicacion.usuarioActual = cuenta;
   estadoAplicacion.rolActual = cuenta.rol;
+  estadoAplicacion.datos = datosPublicosVacios();
+  solicitarApi('/api/datos').then((datosFrescos) => {
+    if (estadoAplicacion.usuarioActual?.id !== cuenta.id) return;
+    estadoAplicacion.datos = datosFrescos;
+    if (!['P30', 'P31'].includes(estadoAplicacion.pantallaActual)) renderizarInterfaz();
+  }).catch(() => {});
   mostrarNotificacion('Sesión iniciada correctamente.');
 
   if (estadoAplicacion.destinoCuentaPendiente) {
@@ -405,12 +416,6 @@ function completarAutenticacion(cuenta) {
         : 'P30');
   estadoAplicacion.pantallaPendiente = null;
   renderizarInterfaz();
-  solicitarApi('/api/datos')
-    .then((datosFrescos) => {
-      estadoAplicacion.datos = datosFrescos;
-      if (!['P30', 'P31'].includes(estadoAplicacion.pantallaActual)) renderizarInterfaz();
-    })
-    .catch(() => {});
 }
 
 function renderizarInterfaz() {

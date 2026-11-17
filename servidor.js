@@ -1,6 +1,7 @@
 import { guardarFoto } from './servicios/fotos.js';
 import { quitarCurriculum } from './servicios/curriculum.js';
 import { registrarPerfilPostulante } from './servicios/perfilPostulante.js';
+import { registrarArchivosRecursos, audienciaValida, adjuntosValidos, puedeVerRecurso } from './servicios/archivosRecursos.js';
 import { validarVacanteEmpresa, registrarEdicionVacanteEmpresa } from './servicios/vacantesEmpresa.js';
 import { crearUsuarioRegistrado, eliminarRegistroIncompleto } from './servicios/registro.js';
 import 'dotenv/config';
@@ -521,6 +522,8 @@ aplicacion.use(
     return siguiente();
   })
 );
+
+registrarArchivosRecursos(aplicacion, { conManejoErrores, exigirRol, obtenerContextoAutenticado, obtenerClienteOError });
 
 aplicacion.get('/api/candidato/perfil', conManejoErrores(async (solicitud, respuesta) => {
   const contexto = await obtenerCandidatoAutenticado(solicitud, respuesta);
@@ -1332,7 +1335,7 @@ aplicacion.get('/api/datos', async (solicitud, respuesta) => {
     const solicitudesVerificacion = (resultadoVerificaciones.data || []).map(
       mapearSolicitudVerificacion
     );
-    const recursosLaborales = (resultadoRecursos.data || []).map((fila) =>
+    const recursosLaborales = (resultadoRecursos.data || []).filter((fila) => puedeVerRecurso(fila, contexto?.rol)).map((fila) =>
       mapearRecurso(esAdministrador ? fila : { ...fila, usuarios: null })
     );
     const estadisticasResumen = construirEstadisticasResumen(
@@ -1626,7 +1629,7 @@ aplicacion.post('/api/recursos', async (solicitud, respuesta) => {
       !['Básico', 'Intermedio', 'Avanzado'].includes(datos.nivelLectura) ||
       !Number.isInteger(datos.tiempoLecturaMin) || datos.tiempoLecturaMin < 1 || datos.tiempoLecturaMin > 60 ||
       !['Publicado', 'Borrador'].includes(datos.estadoPublicacion) ||
-      !Array.isArray(datos.audiencia) || !datos.audiencia.length || datos.audiencia.length > 10 || datos.audiencia.some((v) => !esTexto(v, 1, 80)) ||
+      !audienciaValida(datos.audiencia) || !adjuntosValidos(datos.adjuntos || []) ||
       !esPortadaRecurso(datos.imagenPortadaUrl) ||
       (datos.etiquetas !== undefined && (!Array.isArray(datos.etiquetas) || datos.etiquetas.length > 30 || datos.etiquetas.some((v) => !esTexto(v, 1, 80))))) {
     return respuesta.status(400).json({ error: 'Revisa los campos obligatorios, la URL, el estado y la audiencia del recurso.' });

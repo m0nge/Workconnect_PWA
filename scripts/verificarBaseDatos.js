@@ -14,6 +14,7 @@ const marcador = `revision-${crearIdentificador()}`;
 const correos = [];
 const referencias = new Set();
 const recursos = [];
+const adjuntosTemporales = [];
 const temas = [];
 let verificaciones = 0;
 const servidor = await new Promise((resolver) => { const instancia = aplicacion.listen(0, '127.0.0.1', () => resolver(instancia)); });
@@ -34,7 +35,7 @@ async function solicitar(metodo, ruta, datos, sesion, esperado = 200, cabeceras 
   const cuerpo = respuesta.headers.get('content-type')?.includes('application/json') ? await respuesta.json() : Buffer.from(await respuesta.arrayBuffer());
   if (respuesta.status !== esperado) throw new Error(`${metodo} ${ruta}: HTTP ${respuesta.status}; ${cuerpo.error || 'respuesta inesperada'}`);
   verificaciones++;
-  return { cuerpo, cookie: respuesta.headers.getSetCookie().map((valor) => valor.split(';')[0]).join('; ') };
+  return { cuerpo, cabeceras: respuesta.headers, cookie: respuesta.headers.getSetCookie().map((valor) => valor.split(';')[0]).join('; ') };
 }
 
 async function registrar(tipo, indice) {
@@ -97,6 +98,10 @@ async function limpiar() {
     await consultar(cliente.from('foros_temas').delete().in('id', temas));
   }
   if (recursos.length) await consultar(cliente.from('recursos_laborales').delete().in('id', recursos));
+  if (adjuntosTemporales.length) {
+    const { error } = await cliente.storage.from('recursos-adjuntos').remove(adjuntosTemporales.map((valor) => JSON.parse(valor).ruta));
+    if (error) throw new Error('No se pudieron retirar los adjuntos temporales.');
+  }
   if (empresas.length) await consultar(cliente.from('valoraciones_empresas').delete().in('empresa_id', empresas.map((empresa) => empresa.id)));
   if (perfiles.length) {
     for (const tabla of ['postulaciones', 'experiencias_laborales', 'estudios_candidatos', 'habilidades_candidatos', 'alertas_laborales']) {
@@ -251,11 +256,41 @@ try {
   await solicitar('DELETE', `/api/admin/foros/${tema.id}`, undefined, administracion);
   console.log('Foros, respuestas, reportes y moderación: operaciones correctas.');
   const recurso = { titulo: `Recurso temporal ${marcador}`, categoria: 'Artículo', nivelLectura: 'Básico', tiempoLecturaMin: 5, resumen: 'Resumen temporal para verificar las operaciones con recursos.', contenido: 'Contenido temporal para verificar inserciones, ediciones y eliminaciones.', estadoPublicacion: 'Publicado', audiencia: ['Visitantes'], etiquetas: ['Temporal'] };
-  const recursoCreado = (await solicitar('POST', '/api/recursos', recurso, administracion, 201)).cuerpo;
+  const contenidoAdjunto = Buffer.from([80, 75, 0, 255, 10, 12, 34, 98, 0, 199]);
+  await solicitar('POST', '/api/recursos/adjuntos', contenidoAdjunto, candidata, 403, { 'Content-Type': 'application/octet-stream', 'X-File-Name': 'temporal.zip' });
+  await solicitar('POST', '/api/recursos/adjuntos', contenidoAdjunto, null, 401, { 'Content-Type': 'application/octet-stream', 'X-File-Name': 'temporal.zip' });
+  for (const nombre of ['revisión temporal.zip', 'temporal-sin-extension']) {
+    const subida = await solicitar('POST', '/api/recursos/adjuntos', contenidoAdjunto, administracion, 201, { 'Content-Type': 'application/octet-stream', 'X-File-Name': encodeURIComponent(nombre) });
+    adjuntosTemporales.push(subida.cuerpo.adjunto);
+  }
+  const recursoConArchivos = { ...recurso, audiencia: ['Candidatos registrados'], adjuntos: [...adjuntosTemporales] };
+  const recursoCreado = (await solicitar('POST', '/api/recursos', recursoConArchivos, administracion, 201)).cuerpo;
   recursos.push(recursoCreado.id);
-  await solicitar('PUT', `/api/recursos/${recursoCreado.id}`, { ...recurso, titulo: 'Recurso temporal actualizado' }, administracion);
+  comprobar.equal(recursoCreado.adjuntos.length, 2);
+  for (const adjunto of recursoCreado.adjuntos) {
+    const descarga = await solicitar('GET', adjunto.url, undefined, candidata);
+    comprobar.deepEqual(descarga.cuerpo, contenidoAdjunto);
+    comprobar.equal(descarga.cabeceras.get('content-type'), 'application/octet-stream');
+    comprobar.ok(descarga.cabeceras.get('content-disposition').startsWith('attachment;'));
+    await solicitar('GET', adjunto.url, undefined, empresa, 404);
+    await solicitar('GET', adjunto.url, undefined, null, 404);
+  }
+  comprobar.ok((await solicitar('GET', '/api/datos', undefined, candidata)).cuerpo.recursosLaborales.some((elemento) => elemento.id === recursoCreado.id));
+  comprobar.equal((await solicitar('GET', '/api/datos', undefined, empresa)).cuerpo.recursosLaborales.some((elemento) => elemento.id === recursoCreado.id), false);
+  comprobar.equal((await solicitar('GET', '/api/datos')).cuerpo.recursosLaborales.some((elemento) => elemento.id === recursoCreado.id), false);
+  const cambioAudiencia = (await solicitar('PUT', `/api/recursos/${recursoCreado.id}`, { ...recurso, audiencia: ['Empresas'], titulo: 'Recurso temporal actualizado' }, administracion)).cuerpo;
+  comprobar.deepEqual(cambioAudiencia.audiencia, ['Empresas']);
+  await solicitar('GET', recursoCreado.adjuntos[0].url, undefined, candidata, 404);
+  await solicitar('GET', recursoCreado.adjuntos[0].url, undefined, empresa);
+  await solicitar('PUT', `/api/recursos/${recursoCreado.id}`, { ...recurso, audiencia: ['Visitantes'] }, administracion);
+  await solicitar('GET', recursoCreado.adjuntos[0].url);
   await solicitar('PATCH', `/api/recursos/${recursoCreado.id}/estado`, { estado: 'Borrador' }, administracion);
+  await solicitar('GET', recursoCreado.adjuntos[0].url, undefined, null, 404);
+  await solicitar('GET', recursoCreado.adjuntos[0].url, undefined, administracion);
   await solicitar('DELETE', `/api/recursos/${recursoCreado.id}`, undefined, administracion);
+  const { error: archivoEliminado } = await cliente.storage.from('recursos-adjuntos').download(JSON.parse(adjuntosTemporales[0]).ruta);
+  comprobar.ok(archivoEliminado);
+  console.log('Adjuntos: archivos binarios íntegros, descarga protegida, audiencia independiente y eliminación comprobadas.');
   await solicitar('POST', '/api/candidato/valoraciones', { empresa_id: perfilEmpresa.id, calificacion: 5, comentario: 'Valoración temporal de revisión de operaciones.' }, candidata, 201);
   await solicitar('DELETE', `/api/empresa/vacantes/${vacante.id}`, undefined, empresa);
   console.log(`Verificación real completada: ${verificaciones} operaciones correctas.`);

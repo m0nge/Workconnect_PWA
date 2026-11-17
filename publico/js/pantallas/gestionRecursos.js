@@ -11,6 +11,7 @@ export function renderizarGestionRecursos(contenedor, recursos, acciones) {
       { clave: 'titulo', etiqueta: 'Título', min: 8, max: 160 },
       { clave: 'categoria', etiqueta: 'Categoría', opciones: ['Artículo', 'Consejo', 'Tutorial', 'Noticia'] },
       { clave: 'nivelLectura', etiqueta: 'Nivel de lectura', opciones: ['Básico', 'Intermedio', 'Avanzado'] },
+      { clave: 'audiencia', etiqueta: 'Visible para', casillas: ['Visitantes', 'Candidatos registrados', 'Empresas'] },
       { clave: 'tiempoLecturaMin', etiqueta: 'Tiempo de lectura (minutos)', numero: true, min: 1, max: 60 },
       { clave: 'resumen', etiqueta: 'Resumen', multilinea: true, min: 20, max: 500 },
       { clave: 'contenido', etiqueta: 'Contenido', multilinea: true, min: 30, max: 10000 },

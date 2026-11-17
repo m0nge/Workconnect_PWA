@@ -99,6 +99,41 @@ try {
       }
       if (!lista?.lista) throw new Error(`${vista}: la pantalla no terminó de cargar.`);
       await esperar(150);
+      if (vista === 'P19&formulario=recurso') {
+        const adjuntoCorrecto = await evaluar(`(async () => {
+          const original = window.fetch;
+          let subidas = 0;
+          window.ultimaAccionRevision = null;
+          window.fetch = async (ruta, opciones) => {
+            if (ruta !== '/api/recursos/adjuntos') return original(ruta, opciones);
+            if (opciones.method === 'DELETE') return new Response('{}', { headers: { 'Content-Type': 'application/json' } });
+            if (opciones.headers['Content-Type'] !== 'application/octet-stream' || !(opciones.body instanceof File)) throw new Error('El archivo no se envio como contenido binario.');
+            subidas++;
+            return new Response(JSON.stringify({ adjunto: JSON.stringify({ version: 1, nombre: opciones.body.name, tamano: opciones.body.size, ruta: 'adjuntos/12345678-1234-1234-1234-123456789abc' }) }), { status: 201, headers: { 'Content-Type': 'application/json' } });
+          };
+          try {
+            const visitantes = document.querySelector('[data-audiencia="Visitantes"]');
+            const candidatos = document.querySelector('[data-audiencia="Candidatos registrados"]');
+            const empresas = document.querySelector('[data-audiencia="Empresas"]');
+            empresas.click(); visitantes.click();
+            if (visitantes.checked || !candidatos.checked || !empresas.checked) return false;
+            candidatos.click();
+            for (const [id, valor] of Object.entries({ 'recurso-titulo': 'Recurso con archivo de revision', 'recurso-resumen': 'Resumen completo para verificar el archivo adjunto.', 'recurso-contenido': 'Contenido completo de revision para comprobar la carga de archivos.' })) {
+              const campo = document.getElementById(id); campo.value = valor; campo.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+            const selector = document.querySelector('#recurso-archivo-adjunto');
+            if (selector.accept || !selector.multiple) return false;
+            const transferencia = new DataTransfer();
+            transferencia.items.add(new File(['contenido de formato libre'], 'datos.formato-libre', { type: 'application/x-formato-libre' }));
+            selector.files = transferencia.files; selector.dispatchEvent(new Event('change', { bubbles: true }));
+            document.querySelector('#formulario-crear-recurso').requestSubmit();
+            for (let intento = 0; intento < 100 && window.ultimaAccionRevision?.nombre !== 'alCrearRecurso'; intento++) await new Promise(resolver => setTimeout(resolver, 20));
+            const guardado = window.ultimaAccionRevision?.argumentos[0];
+            return subidas === 1 && guardado?.audiencia.join('|') === 'Empresas' && JSON.parse(guardado.adjuntos[0]).nombre === 'datos.formato-libre';
+          } finally { window.fetch = original; }
+        })()`);
+        if (!adjuntoCorrecto) throw new Error('El adjunto no se sube o las audiencias no son independientes.');
+      }
       if (vista === 'P10') {
         const perfilCorrecto = await evaluar(`(async () => {
           document.querySelector('[data-ver-perfil-postulante]').click();
@@ -232,6 +267,18 @@ try {
           return correcto;
         })()`);
         if (!detalleCorrecto) throw new Error('El detalle del recurso no abre o interfiere con la edición.');
+        const audienciaEditable = await evaluar(`(async () => {
+          window.ultimaAccionRevision = null;
+          document.querySelector('[data-editar]').click();
+          const formulario = document.querySelector('#editar-contenido');
+          formulario.querySelector('[name="audiencia"][value="Candidatos registrados"]').click();
+          formulario.querySelector('[name="audiencia"][value="Empresas"]').click();
+          formulario.requestSubmit();
+          for (let intento = 0; intento < 100 && document.querySelector('#editar-contenido'); intento++) await new Promise(resolver => setTimeout(resolver, 20));
+          const accion = window.ultimaAccionRevision;
+          return accion?.nombre === 'alActualizarRecurso' && accion.argumentos[1].audiencia.join('|') === 'Visitantes|Empresas';
+        })()`);
+        if (!audienciaEditable) throw new Error('Editar la audiencia marca grupos que no fueron seleccionados.');
       }
       if (['P10', 'P13', 'P15'].includes(vista)) {
         const imagenesCorrectas = await evaluar(`(async () => {

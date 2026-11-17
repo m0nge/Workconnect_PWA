@@ -3,6 +3,7 @@ import {
   verificarConfiguracionBaseDatos,
   crearClienteBaseDatos
 } from '../configuracion/baseDatos.js';
+import { mapearAdjuntosRecurso } from './archivosRecursos.js';
 
 export { configuracionBaseDatos, verificarConfiguracionBaseDatos, crearClienteBaseDatos };
 
@@ -148,7 +149,7 @@ export function mapearRecurso(fila) {
     resumen: fila.resumen,
     contenido: fila.contenido,
     imagenPortadaUrl: fila.imagen_portada_url || '',
-    adjuntos: Array.isArray(fila.adjuntos) ? fila.adjuntos : [],
+    adjuntos: mapearAdjuntosRecurso(fila),
     etiquetas: Array.isArray(fila.etiquetas) ? fila.etiquetas : [],
     estadoPublicacion: fila.estado_publicacion || 'Publicado',
     audiencia: Array.isArray(fila.audiencia) ? fila.audiencia : [],

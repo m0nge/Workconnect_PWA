@@ -1,4 +1,5 @@
 import { renderizarGestionRecursos } from './gestionRecursos.js';
+import { subirAdjuntosRecursos, retirarSubidasRecursos } from '../utilidades/archivosRecursos.js';
 import { escaparHtml, validarNumero, validarTexto, valorEnLista } from '../utilidades/formato.js';
 
 const estadoRecurso = {
@@ -13,7 +14,8 @@ const estadoRecurso = {
   estadoPublicacion: 'Publicado',
   audiencia: ['Visitantes', 'Candidatos registrados'],
   nombreArchivoPortada: '',
-  nombreArchivoAdjunto: ''
+  nombreArchivoAdjunto: '',
+  archivosAdjuntos: [], adjuntosSubidos: []
 };
 
 export function renderizarP19CrearRecurso(contenedor, recursos, acciones) {
@@ -151,10 +153,10 @@ export function renderizarP19CrearRecurso(contenedor, recursos, acciones) {
 
               <label class="caja-archivo-simulado" style="cursor:pointer; display:block;">
                 <p style="margin:0; font-size:0.75rem; font-weight:600; color:var(--color-texto-secundario);">Archivos adjuntos</p>
-                <p style="margin:0.15rem 0 0; font-size:10px; color:var(--color-texto-atenuado);">PDF, DOCX hasta 5 MB (plantillas)</p>
-                <input id="recurso-archivo-adjunto" type="file" accept=".pdf,.doc,.docx" class="oculto" />
+                <p style="margin:0.15rem 0 0; font-size:0.8rem; color:var(--color-texto-atenuado);">Cualquier formato. Hasta 10 archivos de 4 MB cada uno.</p>
+                <input id="recurso-archivo-adjunto" type="file" multiple class="oculto" />
                 <span id="etiqueta-archivo-adjunto" class="etiqueta-archivo">
-                  📎 ${escaparHtml(estadoRecurso.nombreArchivoAdjunto || 'Adjuntar archivo')}
+                  ${escaparHtml(estadoRecurso.nombreArchivoAdjunto || 'Adjuntar archivos')}
                 </span>
               </label>
             </div>
@@ -190,10 +192,6 @@ export function renderizarP19CrearRecurso(contenedor, recursos, acciones) {
                   <input type="radio" name="estadoPublicacion" value="Borrador" ${estadoRecurso.estadoPublicacion === 'Borrador' ? 'checked' : ''} />
                   <span>Borrador</span>
                 </label>
-                <label class="opcion-linea">
-                  <input type="radio" name="estadoPublicacion" value="Enviar a revisión" ${estadoRecurso.estadoPublicacion === 'Enviar a revisión' ? 'checked' : ''} />
-                  <span>Enviar a revisión</span>
-                </label>
                 <label class="opcion-linea" style="font-weight:700; color:var(--color-texto);">
                   <input type="radio" name="estadoPublicacion" value="Publicado" ${estadoRecurso.estadoPublicacion === 'Publicado' ? 'checked' : ''} />
                   <span>Publicar ahora</span>
@@ -203,6 +201,7 @@ export function renderizarP19CrearRecurso(contenedor, recursos, acciones) {
 
             <div>
               <span class="etiqueta-campo">Visible para:</span>
+              <p class="texto-secundario">Marca cada grupo que podrá leer y descargar este recurso. Visitantes son personas sin sesión iniciada.</p>
               <div class="grupo-opciones-linea">
                 <label class="opcion-linea">
                   <input type="checkbox" data-audiencia="Visitantes" ${estadoRecurso.audiencia.includes('Visitantes') ? 'checked' : ''} />
@@ -416,18 +415,18 @@ export function renderizarP19CrearRecurso(contenedor, recursos, acciones) {
     const etiquetaAdjunto = zonaSubpestana.querySelector('#etiqueta-archivo-adjunto');
     if (entradaAdjunto && etiquetaAdjunto) {
       entradaAdjunto.addEventListener('change', (e) => {
-        const archivo = e.target.files?.[0];
-        const extensionesPermitidas = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
-        if (archivo && (!extensionesPermitidas.includes(archivo.type) || archivo.size > 5 * 1024 * 1024)) {
+        const archivos = [...(e.target.files || [])];
+        if (archivos.length > 10 || archivos.some((archivo) => !archivo.size || archivo.size > 4 * 1024 * 1024 || archivo.name.length > 200)) {
           e.target.value = '';
-          estadoRecurso.nombreArchivoAdjunto = '';
-          etiquetaAdjunto.textContent = '📎 Adjuntar archivo';
-          cajaError.textContent = 'El adjunto debe ser PDF o Word de hasta 5 MB.';
+          cajaError.textContent = 'Selecciona hasta 10 archivos con contenido, de 4 MB como máximo cada uno y nombres de hasta 200 caracteres.';
           cajaError.classList.remove('oculto');
           return;
         }
-        estadoRecurso.nombreArchivoAdjunto = archivo ? archivo.name : '';
-        etiquetaAdjunto.textContent = `📎 ${estadoRecurso.nombreArchivoAdjunto || 'Adjuntar archivo'}`;
+        retirarSubidasRecursos(estadoRecurso.adjuntosSubidos);
+        estadoRecurso.adjuntosSubidos = [];
+        estadoRecurso.archivosAdjuntos = archivos;
+        estadoRecurso.nombreArchivoAdjunto = archivos.map((archivo) => archivo.name).join(', ');
+        etiquetaAdjunto.textContent = estadoRecurso.nombreArchivoAdjunto || 'Adjuntar archivos';
       });
     }
 
@@ -441,14 +440,7 @@ export function renderizarP19CrearRecurso(contenedor, recursos, acciones) {
 
     zonaSubpestana.querySelectorAll('[data-audiencia]').forEach((casilla) => {
       casilla.addEventListener('change', () => {
-        const valor = casilla.getAttribute('data-audiencia');
-        if (casilla.checked) {
-          if (!estadoRecurso.audiencia.includes(valor)) {
-            estadoRecurso.audiencia.push(valor);
-          }
-        } else {
-          estadoRecurso.audiencia = estadoRecurso.audiencia.filter((a) => a !== valor);
-        }
+        estadoRecurso.audiencia = [...zonaSubpestana.querySelectorAll('[data-audiencia]:checked')].map((elemento) => elemento.dataset.audiencia);
       });
     });
 
@@ -464,6 +456,9 @@ export function renderizarP19CrearRecurso(contenedor, recursos, acciones) {
       estadoRecurso.audiencia = ['Visitantes', 'Candidatos registrados'];
       estadoRecurso.nombreArchivoPortada = '';
       estadoRecurso.nombreArchivoAdjunto = '';
+      retirarSubidasRecursos(estadoRecurso.adjuntosSubidos);
+      estadoRecurso.archivosAdjuntos = [];
+      estadoRecurso.adjuntosSubidos = [];
       estadoRecurso.imagenPortadaUrl = '';
       pintarSubpestana();
     };
@@ -499,18 +494,25 @@ export function renderizarP19CrearRecurso(contenedor, recursos, acciones) {
 
       cajaError.classList.add('oculto');
 
+      if (!estadoRecurso.audiencia.length) {
+        cajaError.textContent = 'Selecciona al menos un grupo en Visible para. Usa Borrador para ocultar el recurso a todos.';
+        cajaError.classList.remove('oculto');
+        zonaSubpestana.querySelector('[data-audiencia]')?.focus();
+        return;
+      }
+
       if (!valorEnLista(estadoRecurso.categoria, ['Artículo', 'Consejo', 'Tutorial', 'Noticia']) ||
           !valorEnLista(estadoRecurso.nivelLectura, ['Básico', 'Intermedio', 'Avanzado']) ||
-          !validarNumero(estadoRecurso.tiempoLecturaMin, 1, 60) ||
-          estadoRecurso.audiencia.length === 0) {
+          !validarNumero(estadoRecurso.tiempoLecturaMin, 1, 60)) {
         cajaError.textContent = 'Revisa la categoría, el nivel, el tiempo y la audiencia del recurso.';
         cajaError.classList.remove('oculto');
         return;
       }
 
-      const botonGuardar = formulario.querySelector('[type="submit"]');
-      botonGuardar.disabled = true;
+      const controles = [...formulario.querySelectorAll('input, select, textarea, button')].map((elemento) => [elemento, elemento.disabled]);
+      controles.forEach(([elemento]) => { elemento.disabled = true; });
       try {
+      const adjuntos = await subirAdjuntosRecursos(estadoRecurso.archivosAdjuntos, estadoRecurso.adjuntosSubidos, (mensaje) => { etiquetaAdjunto.textContent = mensaje; });
       await acciones.alCrearRecurso({
         titulo: tituloLimpio,
         categoria: estadoRecurso.categoria,
@@ -519,7 +521,7 @@ export function renderizarP19CrearRecurso(contenedor, recursos, acciones) {
         resumen: resumenLimpio,
         contenido: contenidoLimpio,
         imagenPortadaUrl: estadoRecurso.imagenPortadaUrl?.trim() || null,
-        adjuntos: estadoRecurso.nombreArchivoAdjunto ? [estadoRecurso.nombreArchivoAdjunto] : [],
+        adjuntos,
         etiquetas: estadoRecurso.etiquetas
           .split(',')
           .map((t) => t.trim())
@@ -529,10 +531,11 @@ export function renderizarP19CrearRecurso(contenedor, recursos, acciones) {
       });
 
       estadoRecurso.subpestana = 'MisRecursos';
+      estadoRecurso.adjuntosSubidos = [];
       limpiarFormulario();
       renderizarP19CrearRecurso(contenedor, recursos, acciones);
       } catch (error) { cajaError.textContent = error.message; cajaError.classList.remove('oculto'); }
-      finally { botonGuardar.disabled = false; }
+      finally { controles.forEach(([elemento, deshabilitado]) => { elemento.disabled = deshabilitado; }); }
     });
   };
 

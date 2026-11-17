@@ -9,7 +9,9 @@ export function abrirDetalleRecurso(recurso, { mostrarEstado = false } = {}) {
       ${recurso.imagenPortadaUrl ? `<img class="recurso-detalle-portada" src="${escaparHtml(recurso.imagenPortadaUrl)}" alt="${escaparHtml(recurso.titulo)}" onerror="this.remove()" />` : ''}
       <div class="grupo-acciones"><span class="etiqueta-cuadrada">${escaparHtml(recurso.nivelLectura || 'General')}</span>${mostrarEstado ? `<span class="etiqueta-cuadrada">${escaparHtml(recurso.estadoPublicacion || recurso.estado || 'Borrador')}</span>` : ''}</div>
       ${recurso.autor ? `<p class="texto-secundario">Por ${escaparHtml(recurso.autor)}</p>` : ''}
+      ${mostrarEstado ? `<p class="texto-secundario">Visible para: ${(recurso.audiencia || []).map(escaparHtml).join(', ') || 'Ningún grupo'}</p>` : ''}
       <p class="detalle-texto recurso-detalle-texto">${escaparHtml(recurso.contenido || recurso.resumen || 'Contenido no disponible.')}</p>
+      ${recurso.adjuntos?.length ? `<section><h4>Archivos adjuntos</h4><ul class="recurso-adjuntos">${recurso.adjuntos.map((archivo) => `<li>${archivo.url ? `<a class="boton" href="${escaparHtml(archivo.url)}" download>${escaparHtml(archivo.nombre)}</a>` : `<span>${escaparHtml(archivo.nombre || archivo)} — Archivo anterior no disponible</span>`}</li>`).join('')}</ul></section>` : ''}
       ${recurso.etiquetas?.length ? `<div class="grupo-acciones">${recurso.etiquetas.map((etiqueta) => `<span class="etiqueta-cuadrada">${escaparHtml(etiqueta)}</span>`).join('')}</div>` : ''}
     </article>`,
     alMontar(cuerpo, cerrar) {
